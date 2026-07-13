@@ -5,7 +5,7 @@ import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Input } from "@food/components/ui/input"
 import { Button } from "@food/components/ui/button"
 import apiClient, { authAPI } from "@food/api"
-import { setAuthData as setUserAuthData } from "@food/utils/auth"
+import { setAuthData as setUserAuthData, isModuleAuthenticated } from "@food/utils/auth"
 import { motion, AnimatePresence } from "framer-motion"
 import loginBanner from "@food/assets/loginbanner.png"
 
@@ -32,7 +32,7 @@ export default function OTP() {
 
   useEffect(() => {
     // Redirect to home if already authenticated
-    const isAuthenticated = localStorage.getItem("user_authenticated") === "true"
+    const isAuthenticated = isModuleAuthenticated("user")
     if (isAuthenticated) {
       navigate("/food/user", { replace: true })
       return

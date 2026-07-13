@@ -180,15 +180,29 @@ export function ProfileProvider({ children }) {
           }
         }
       } catch (error) {
-        // Silently handle error - use existing profile from localStorage
         debugError("Error fetching user profile:", error)
-        // Try to load from localStorage as fallback
-        const saved = localStorage.getItem("userAddresses")
-        if (saved) {
-          try {
-            setAddresses(dedupeAddressesByLabel(JSON.parse(saved)))
-          } catch (e) {
-            debugError("Error parsing saved addresses:", e)
+        if (error?.response?.status === 401 || error?.response?.status === 403) {
+          // Token is invalid/expired, clear auth data to prevent infinite 401s and redirect loops
+          localStorage.removeItem("user_accessToken")
+          localStorage.removeItem("user_refreshToken")
+          localStorage.removeItem("user_authenticated")
+          localStorage.removeItem("user_user")
+          localStorage.removeItem("userProfile")
+          setUserProfile(null)
+          setAddresses([])
+          setPaymentMethods([])
+          setFavorites([])
+          setDishFavorites([])
+          setVegMode(false)
+        } else {
+          // Try to load from localStorage as fallback
+          const saved = localStorage.getItem("userAddresses")
+          if (saved) {
+            try {
+              setAddresses(dedupeAddressesByLabel(JSON.parse(saved)))
+            } catch (e) {
+              debugError("Error parsing saved addresses:", e)
+            }
           }
         }
       } finally {
