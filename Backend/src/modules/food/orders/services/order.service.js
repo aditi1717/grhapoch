@@ -13,6 +13,7 @@ import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
 import { FoodDeliveryCommissionRule } from '../../admin/models/deliveryCommissionRule.model.js';
 import { FoodRestaurantCommission } from '../../admin/models/restaurantCommission.model.js';
 import { FoodBusinessSettings } from '../../admin/models/businessSettings.model.js';
+import { FEATURE_KEYS, isFeatureEnabled } from '../../admin/services/featureSettings.service.js';
 import { FoodTransaction } from '../models/foodTransaction.model.js';
 import { FoodSupportTicket } from '../../user/models/supportTicket.model.js';
 import { config } from '../../../../config/env.js';
@@ -447,7 +448,10 @@ export async function createOrder(userId, dto) {
     const paymentMethod =
       dto.paymentMethod === "card" ? "razorpay" : dto.paymentMethod;
     if (paymentMethod === "cash") {
-      throw new ValidationError("Cash on Delivery is no longer available. Please pay online.");
+      const isCodEnabled = await isFeatureEnabled(FEATURE_KEYS.COD_CONTROL, true);
+      if (!isCodEnabled) {
+        throw new ValidationError("Cash on Delivery is no longer available. Please pay online.");
+      }
     }
     const isCash = paymentMethod === "cash";
     const isWallet = paymentMethod === "wallet";

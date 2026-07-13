@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import { logger } from '../../../../utils/logger.js';
 import { config } from '../../../../config/env.js';
@@ -189,12 +190,28 @@ export async function tryAutoAssign(orderId, options = {}) {
       }
     }
 
-    const eligible = partners.filter((partner) => {
+    const eligible = [];
+    for (const partner of partners) {
       const partnerKey = partner.partnerId.toString();
-      if (offeredIds.includes(partnerKey)) return false;
-      if (busyPartnerIds.has(partnerKey)) return false;
-      return true;
-    });
+      if (offeredIds.includes(partnerKey)) continue;
+      if (busyPartnerIds.has(partnerKey)) continue;
+
+      if (order.payment?.method === 'cash') {
+        try {
+          const wallet = await getDeliveryPartnerWalletEnhanced(partner.partnerId);
+          const orderTotal = Number(order.pricing?.total) || 0;
+          if (wallet.availableCashLimit < orderTotal) {
+            logger.info(`tryAutoAssign: Skipping partner ${partnerKey} due to insufficient available cash limit (${wallet.availableCashLimit} < ${orderTotal}).`);
+            continue;
+          }
+        } catch (err) {
+          logger.error(`tryAutoAssign: Error checking wallet for partner ${partnerKey}: ${err.message}`);
+          continue;
+        }
+      }
+
+      eligible.push(partner);
+    }
 
     if (eligible.length === 0) {
       logger.info(`tryAutoAssign: No NEW eligible partners in ${maxKm}km for order ${order._id}. Restarting hunt...`);

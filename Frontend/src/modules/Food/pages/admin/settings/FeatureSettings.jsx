@@ -8,6 +8,7 @@ import { toast } from 'sonner';
 
 const FEATURE_KEYS = {
     RESTAURANT_SUBSCRIPTION: 'restaurant_subscription',
+    COD_CONTROL: 'cod_control',
     ADMIN_ACCESS_SECTION: 'admin_access_section',
     ROOT_LANDING_AND_UNREGISTERED_CONTROL: 'root_landing_and_unregistered_control'
 };
@@ -19,6 +20,11 @@ export default function FeatureSettings() {
 
     const restaurantSubscription = useMemo(
         () => features.find((item) => item.key === FEATURE_KEYS.RESTAURANT_SUBSCRIPTION) || null,
+        [features]
+    );
+
+    const codControl = useMemo(
+        () => features.find((item) => item.key === FEATURE_KEYS.COD_CONTROL) || null,
         [features]
     );
 
@@ -57,7 +63,7 @@ export default function FeatureSettings() {
     };
 
     const handleSave = async () => {
-        const updates = [restaurantSubscription, adminAccessSection, rootLandingAndUnregisteredControl].filter(Boolean);
+        const updates = [restaurantSubscription, codControl, adminAccessSection, rootLandingAndUnregisteredControl].filter(Boolean);
         if (updates.length === 0) return;
         try {
             setSaving(true);
@@ -121,6 +127,26 @@ export default function FeatureSettings() {
 
             <Card className="border-slate-200">
                 <CardHeader>
+                    <CardTitle className="text-lg">Cash On Delivery (COD)</CardTitle>
+                    <CardDescription>
+                        Controls COD option visibility and delivery cash-limit related UI sections.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between gap-4">
+                    <div className="text-sm text-gray-700">
+                        {codControl?.isEnabled
+                            ? 'Enabled: Cash on Delivery option is available'
+                            : 'Disabled: Cash on Delivery option is hidden'}
+                    </div>
+                    <Switch
+                        checked={Boolean(codControl?.isEnabled)}
+                        onCheckedChange={(checked) => setToggle(FEATURE_KEYS.COD_CONTROL, checked)}
+                    />
+                </CardContent>
+            </Card>
+
+            <Card className="border-slate-200">
+                <CardHeader>
                     <CardTitle className="text-lg">Admin Access Section</CardTitle>
                     <CardDescription>
                         Controls visibility of the Admin Access sidebar section, including Sub Admin List.
@@ -160,7 +186,7 @@ export default function FeatureSettings() {
             </Card>
 
             <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving || (!restaurantSubscription && !adminAccessSection && !rootLandingAndUnregisteredControl)}>
+                <Button onClick={handleSave} disabled={saving || (!restaurantSubscription && !codControl && !adminAccessSection && !rootLandingAndUnregisteredControl)}>
                     {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                     Save Changes
                 </Button>

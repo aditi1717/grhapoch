@@ -8,6 +8,7 @@ import { authAPI } from "@food/api"
 import { motion } from "framer-motion"
 import loginBanner from "@food/assets/loginbanner.png"
 import logoImg from "@food/assets/switcheats-logo copy.png"
+import { loadBusinessSettings, getModuleLogoUrl, getCompanyName } from "@food/utils/businessSettings"
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
 const debugError = (...args) => { }
@@ -16,6 +17,26 @@ const debugError = (...args) => { }
 export default function SignIn() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
+
+  const [logoUrl, setLogoUrl] = useState(() => getModuleLogoUrl("user") || logoImg)
+  const [companyName, setCompanyName] = useState(() => getCompanyName() || "SwitchEats")
+
+  const renderBrandedName = () => {
+    const name = companyName || "SwitchEats";
+    const upper = name.toUpperCase();
+    if (upper === "SWITCHEATS") {
+      return (
+        <h1 className="text-white font-black text-4xl tracking-tighter leading-none mb-1 italic">
+          SWITCH<span className="opacity-60">EATS</span>
+        </h1>
+      );
+    }
+    return (
+      <h1 className="text-white font-black text-4xl tracking-tighter leading-none mb-1 italic uppercase">
+        {name}
+      </h1>
+    );
+  };
 
   const [formData, setFormData] = useState({
     phone: "",
@@ -27,6 +48,19 @@ export default function SignIn() {
   const submittingRef = useRef(false)
 
   useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await loadBusinessSettings()
+        if (settings) {
+          if (settings.logo?.url) setLogoUrl(settings.logo.url)
+          if (settings.companyName) setCompanyName(settings.companyName)
+        }
+      } catch (err) {
+        debugError("Error fetching business settings:", err)
+      }
+    }
+    fetchSettings()
+
     const stored = sessionStorage.getItem("userAuthData")
     if (!stored) return
 
@@ -133,12 +167,10 @@ export default function SignIn() {
           className="relative z-10 flex flex-col items-center gap-4"
         >
           <div className="w-24 h-24 bg-white rounded-[2.2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border-4 border-white/10 overflow-hidden p-2">
-            <img src={logoImg} alt="Logo" className="w-full h-full object-contain" />
+            <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
           </div>
           <div className="text-center">
-            <h1 className="text-white font-black text-4xl tracking-tighter leading-none mb-1 italic">
-              SWITCH<span className="opacity-60">EATS</span>
-            </h1>
+            {renderBrandedName()}
             <div className="h-0.5 w-12 bg-white/40 mx-auto rounded-full" />
           </div>
         </motion.div>

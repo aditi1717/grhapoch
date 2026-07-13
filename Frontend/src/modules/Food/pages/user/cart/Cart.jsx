@@ -18,7 +18,7 @@ import { API_BASE_URL } from "@food/api/config"
 import { initRazorpayPayment } from "@food/utils/razorpay"
 import { toast } from "sonner"
 import { getCompanyNameAsync } from "@food/utils/businessSettings"
-import { getCachedFeeSettings, loadCorePublicAppConfig } from "@food/services/publicAppConfig"
+import { getCachedFeeSettings, loadCorePublicAppConfig, isFeatureEnabled } from "@food/services/publicAppConfig"
 import { useCompanyName } from "@food/hooks/useCompanyName"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
@@ -364,9 +364,9 @@ export default function Cart() {
     gstRate: 0,
   })
 
-  // Cash on Delivery has been removed; coerce any stale selection to online payment.
+  // Cash on Delivery has been removed; coerce any stale selection to online payment if the feature setting is disabled.
   useEffect(() => {
-    if (selectedPaymentMethod === "cash") {
+    if (selectedPaymentMethod === "cash" && !isFeatureEnabled("cod_control", true)) {
       setSelectedPaymentMethod("razorpay")
     }
   }, [selectedPaymentMethod])
@@ -2907,7 +2907,7 @@ export default function Cart() {
                 boxShadow: "0 12px 24px rgba(var(--module-theme-rgb,250,2,114),0.28)",
               }}
             >
-              {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet") && (
+              {(selectedPaymentMethod === "razorpay" || selectedPaymentMethod === "wallet" || selectedPaymentMethod === "cash") && (
                 <div className="text-left flex flex-col justify-center border-r-[1.5px] border-white/20 pr-4">
                   <span className="text-xs md:text-sm font-semibold text-white/90">{RUPEE_SYMBOL}{total.toFixed(2)}</span>
                   <span className="text-[9px] md:text-[10px] uppercase font-bold tracking-wider text-white/80 mt-[-2px]">Total</span>
@@ -3189,6 +3189,14 @@ export default function Cart() {
                           disabled: walletBalance < total,
                           disabledText: 'Low Balance'
                         },
+                        ...(isFeatureEnabled("cod_control", true) ? [{
+                          id: 'cash',
+                          name: 'Cash on Delivery',
+                          description: 'Pay with cash upon delivery',
+                          icon: <Banknote className="w-5 h-5" />,
+                          color: 'bg-orange-50 text-orange-600 dark:bg-orange-900/40 dark:text-orange-400',
+                          selectedColor: 'bg-[#EB590E] text-white',
+                        }] : [])
                       ].map((option) => (
                         <button
                           key={option.id}
