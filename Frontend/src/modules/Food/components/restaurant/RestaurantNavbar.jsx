@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Search, ChevronRight, MapPin, X, Bell } from "lucide-react"
+import { Search, ChevronRight, MapPin, X, Bell, Utensils } from "lucide-react"
 import { restaurantAPI } from "@food/api"
 import { getCachedSettings, getModuleLogoUrl, loadBusinessSettings } from "@food/utils/businessSettings"
 import useNotificationInbox from "@food/hooks/useNotificationInbox"
+import { useRestaurantNotifications } from "@food/hooks/useRestaurantNotifications"
 
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -34,6 +35,7 @@ export default function RestaurantNavbar({
   const [companyName, setCompanyName] = useState("")
   const [logoUrl, setLogoUrl] = useState(null)
   const { unreadCount } = useNotificationInbox("restaurant", { limit: 20, pollMs: 5 * 60 * 1000 })
+  const { newReservation, clearNewReservation } = useRestaurantNotifications()
 
   // Load business settings for branding
   useEffect(() => {
@@ -77,11 +79,9 @@ export default function RestaurantNavbar({
           setRestaurantData(data)
         }
       } catch (error) {
-        // Only log error if it's not a network/timeout error (backend might be down/slow)
         if (error.code !== 'ERR_NETWORK' && error.code !== 'ECONNABORTED' && !error.message?.includes('timeout')) {
           debugError("Error fetching restaurant data:", error)
         }
-        // Continue with default values if fetch fails
       } finally {
         setLoading(false)
       }
@@ -90,70 +90,57 @@ export default function RestaurantNavbar({
     fetchRestaurantData()
   }, [])
 
-  // Format full address from location object - using stored data only, no live fetching
+  // Format full address from location object
   const formatAddress = (location) => {
     if (!location) return ""
     
-    // Priority 1: Use formattedAddress if available (stored address from database)
     if (location.formattedAddress && location.formattedAddress.trim() !== "" && location.formattedAddress !== "Select location") {
-      // Check if it's just coordinates (latitude, longitude format)
       const isCoordinates = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(location.formattedAddress.trim())
       if (!isCoordinates) {
         return location.formattedAddress.trim()
       }
     }
     
-    // Priority 2: Use address field if available
     if (location.address && location.address.trim() !== "") {
       return location.address.trim()
     }
     
-    // Priority 3: Build from individual components
     const parts = []
     
-    // Add street address (addressLine1 or street)
     if (location.addressLine1) {
       parts.push(location.addressLine1.trim())
     } else if (location.street) {
       parts.push(location.street.trim())
     }
     
-    // Add addressLine2 if available
     if (location.addressLine2) {
       parts.push(location.addressLine2.trim())
     }
     
-    // Add area if available
     if (location.area) {
       parts.push(location.area.trim())
     }
     
-    // Add landmark if available
     if (location.landmark) {
       parts.push(location.landmark.trim())
     }
     
-    // Add city if available and not already in area
     if (location.city) {
       const city = location.city.trim()
-      // Only add city if it's not already included in previous parts
       const cityAlreadyIncluded = parts.some(part => part.toLowerCase().includes(city.toLowerCase()))
       if (!cityAlreadyIncluded) {
         parts.push(city)
       }
     }
     
-    // Add state if available
     if (location.state) {
       const state = location.state.trim()
-      // Only add state if it's not already included
       const stateAlreadyIncluded = parts.some(part => part.toLowerCase().includes(state.toLowerCase()))
       if (!stateAlreadyIncluded) {
         parts.push(state)
       }
     }
     
-    // Add zipCode/pincode if available
     if (location.zipCode || location.pincode || location.postalCode) {
       const zip = (location.zipCode || location.pincode || location.postalCode).trim()
       parts.push(zip)
@@ -162,74 +149,44 @@ export default function RestaurantNavbar({
     return parts.length > 0 ? parts.join(", ") : ""
   }
 
-  // Get restaurant name (use prop if provided, otherwise use fetched data)
   const restaurantName = propRestaurantName || restaurantData?.name || "Restaurant"
-
   const [location, setLocation] = useState("")
 
-  // Update location when restaurantData or propLocation changes
   useEffect(() => {
     let newLocation = ""
     
-    // Priority 1: Explicit prop takes highest priority
     if (propLocation && propLocation.trim() !== "") {
       newLocation = propLocation.trim()
     }
-    // Priority 2: Check restaurantData location
     else if (restaurantData) {
-      debugLog('?? Checking restaurant data for address:', {
-        hasLocation: !!restaurantData.location,
-        locationKeys: restaurantData.location ? Object.keys(restaurantData.location) : [],
-        formattedAddress: restaurantData.location?.formattedAddress,
-        address: restaurantData.location?.address,
-        directAddress: restaurantData.address,
-        fullLocation: restaurantData.location
-      })
-      
       if (restaurantData.location) {
-        // Use stored formattedAddress first (from database)
         if (restaurantData.location.formattedAddress && 
             restaurantData.location.formattedAddress.trim() !== "" && 
             restaurantData.location.formattedAddress !== "Select location") {
-          // Check if it's just coordinates (latitude, longitude format)
           const isCoordinates = /^-?\d+\.\d+,\s*-?\d+\.\d+$/.test(restaurantData.location.formattedAddress.trim())
           if (!isCoordinates) {
             newLocation = restaurantData.location.formattedAddress.trim()
-            debugLog('? Using formattedAddress:', newLocation)
           }
         }
         
-        // If formattedAddress is not available or is coordinates, try formatAddress function
         if (!newLocation) {
           const formatted = formatAddress(restaurantData.location)
           if (formatted && formatted.trim() !== "") {
             newLocation = formatted.trim()
-            debugLog('? Using formatAddress result:', newLocation)
           }
         }
         
-        // Additional fallback: check if address is directly on location
         if (!newLocation && restaurantData.location.address && restaurantData.location.address.trim() !== "") {
           newLocation = restaurantData.location.address.trim()
-          debugLog('? Using location.address:', newLocation)
         }
       }
       
-      // Priority 3: Fallback - check if address is directly on restaurantData (not in location object)
       if (!newLocation && restaurantData.address && restaurantData.address.trim() !== "") {
         newLocation = restaurantData.address.trim()
-        debugLog('? Using restaurantData.address:', newLocation)
       }
     }
     
     setLocation(newLocation)
-    
-    // Debug log
-    if (newLocation) {
-      debugLog('?? Restaurant address displayed:', newLocation)
-    } else if (restaurantData) {
-      debugLog('?? Restaurant data available but no address found')
-    }
   }, [restaurantData, propLocation])
 
   // Load status from localStorage on mount and listen for changes
@@ -290,17 +247,13 @@ export default function RestaurantNavbar({
     setSearchValue(e.target.value)
   }
 
-
-
   const handleNotificationsClick = () => {
     navigate("/restaurant/notifications")
   }
 
-  // Show search input when search is active
   if (isSearchActive) {
     return (
       <div className="w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center gap-3">
-        {/* Search Input */}
         <div className="flex-1 relative">
           <input
             type="text"
@@ -312,7 +265,6 @@ export default function RestaurantNavbar({
           />
         </div>
 
-        {/* Close Button */}
         <button
           onClick={handleSearchClose}
           className="w-6 h-6 bg-black rounded-full flex items-center justify-center shrink-0"
@@ -341,7 +293,6 @@ export default function RestaurantNavbar({
             <h1 className="text-[14px] font-bold text-gray-900 truncate leading-none">
               {loading ? "Loading..." : (restaurantName || "Restaurant")}
             </h1>
-
           </div>
           {!loading && location && location.trim() !== "" && (
             <div className="flex items-center gap-1 mt-1 opacity-70">
@@ -402,10 +353,50 @@ export default function RestaurantNavbar({
               )}
             </button>
           )}
-
-
         </div>
       </div>
+
+      {/* Real-time Dining Booking Popup */}
+      {newReservation && (
+        <div className="fixed top-20 left-4 right-4 z-[100] animate-in slide-in-from-top duration-300">
+          <div className="bg-white rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-amber-500/10 overflow-hidden">
+            <div className="p-4 flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shrink-0">
+                <Utensils className="w-6 h-6 text-amber-500" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h4 className="font-black text-slate-900 text-sm">New Table Request!</h4>
+                <p className="text-xs text-slate-500 font-medium truncate mt-0.5">
+                  {newReservation.user?.name || "A Guest"} has requested a table for {newReservation.guests} people.
+                </p>
+              </div>
+              <button 
+                onClick={clearNewReservation}
+                className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="bg-slate-50 p-3 flex gap-2">
+              <button 
+                onClick={() => {
+                  clearNewReservation();
+                  navigate("/food/restaurant/reservations");
+                }}
+                className="flex-1 h-10 bg-amber-500 text-slate-950 text-xs font-bold rounded-xl uppercase tracking-widest"
+              >
+                View Request
+              </button>
+              <button 
+                onClick={clearNewReservation}
+                className="px-4 h-10 bg-white border border-slate-200 text-slate-600 text-xs font-bold rounded-xl uppercase tracking-widest"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

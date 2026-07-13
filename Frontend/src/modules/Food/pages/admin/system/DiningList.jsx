@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
 import { useNavigate } from "react-router-dom"
-import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, Star, Building2, User, FileText, Phone, Mail, MapPin, ShieldX, Trash2, ArrowRight } from "lucide-react"
+import { Search, Download, ChevronDown, Eye, Settings, ArrowUpDown, Loader2, Star, Building2, User, FileText, Phone, Mail, MapPin, ShieldX, Trash2, ArrowRight, Plus } from "lucide-react"
 import { adminAPI } from "@food/api"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 const debugLog = (...args) => {}
@@ -45,9 +45,13 @@ export default function DiningList() {
 
     // Fetch restaurants from backend API
     useEffect(() => {
+        let isInitialLoad = true;
+        
         const fetchRestaurants = async () => {
             try {
-                setLoading(true)
+                if (isInitialLoad) {
+                    setLoading(true)
+                }
                 setError(null)
 
                 const response = await adminAPI.getDiningRestaurants()
@@ -74,18 +78,30 @@ export default function DiningList() {
 
                     setRestaurants(mappedRestaurants)
                 } else {
-                    setRestaurants([])
+                    if (isInitialLoad) setRestaurants([])
                 }
             } catch (err) {
                 debugError("Error fetching restaurants:", err)
-                setError(err.message || "Failed to fetch restaurants")
-                setRestaurants([])
+                if (isInitialLoad) {
+                    setError(err.message || "Failed to fetch restaurants")
+                    setRestaurants([])
+                }
             } finally {
-                setLoading(false)
+                if (isInitialLoad) {
+                    setLoading(false)
+                    isInitialLoad = false;
+                }
             }
         }
 
         fetchRestaurants()
+        
+        // Setup polling for real-time reflection
+        const intervalId = setInterval(() => {
+            fetchRestaurants()
+        }, 3000)
+        
+        return () => clearInterval(intervalId)
     }, [])
 
     // Fetch categories
@@ -170,7 +186,6 @@ export default function DiningList() {
                 categoryIds: restaurant.categoryIds || [],
                 primaryCategoryId: restaurant.primaryCategoryId || restaurant.categoryIds?.[0] || null,
             })
-            // Could show success toast here
         } catch (error) {
             debugError("Failed to update dining settings", error)
             // Revert on error
@@ -205,7 +220,6 @@ export default function DiningList() {
             })
         } catch (error) {
             debugError("Failed to update max guests", error)
-            // Revert would require tracking previous value better
         }
     }
 
@@ -378,7 +392,7 @@ export default function DiningList() {
                                                         <button
                                                             onClick={() => {
                                                                 setEditingRestaurant({ ...restaurant })
-                                                                setIsEditModalOpen(true)
+                                                                 setIsEditModalOpen(true)
                                                             }}
                                                             className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
                                                         >
@@ -492,7 +506,6 @@ export default function DiningList() {
                                         ))
 
                                         setIsEditModalOpen(false)
-                                        // toast.success("Settings updated")
                                     } catch (err) {
                                         debugError("Update failed", err)
                                     } finally {

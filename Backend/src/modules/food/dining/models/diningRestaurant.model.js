@@ -26,7 +26,11 @@ const diningRestaurantSchema = new mongoose.Schema(
         maxGuests: {
             type: Number,
             default: 6,
-            min: 1
+            min: 0
+        },
+        mealPeriods: {
+            type: [String],
+            default: ['breakfast', 'lunch', 'dinner']
         },
         pureVegRestaurant: {
             type: Boolean,

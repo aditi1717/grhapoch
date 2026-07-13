@@ -1086,6 +1086,12 @@ export default function Home() {
         href: "/food/user/gourmet",
       },
       {
+        id: "dining",
+        label: "Dining",
+        image: exploreTop10,
+        href: "/food/user/dining",
+      },
+      {
         id: "collection",
         label: "Collections",
         image: exploreCollection,

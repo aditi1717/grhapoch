@@ -52,14 +52,18 @@ const getDayName = (date) => date.toLocaleDateString("en-US", { weekday: "long" 
 const buildSlots = (timing) => {
   if (!timing || timing.isOpen === false) return []
   const opening = parseTimeToMinutes(timing.openingTime)
-  const closing = parseTimeToMinutes(timing.closingTime)
+  let closing = parseTimeToMinutes(timing.closingTime)
   if (opening === null || closing === null) return []
+
+  // Handle case where closing time is earlier than opening time (e.g., 2:00 AM next day)
+  if (closing <= opening) {
+    closing += 24 * 60
+  }
 
   const slots = []
   let cursor = opening
-  const end = closing > opening ? closing : opening + 240
 
-  while (cursor <= end && slots.length < 16) {
+  while (cursor <= closing) {
     const hours = Math.floor((cursor % (24 * 60)) / 60)
     const minutes = cursor % 60
     slots.push(formatTimeValue(`${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`))
@@ -102,13 +106,41 @@ const getMealPeriod = (slot) => {
   if (meridiem === "AM" && hour === 12) hour = 0
 
   const totalMinutes = hour * 60 + minute
+  if (totalMinutes < 11 * 60) return "breakfast"
   if (totalMinutes < 17 * 60) return "lunch"
   return "dinner"
 }
 
-const getOfferLabel = (slot) => {
-  const period = getMealPeriod(slot)
-  return period === "lunch" ? "Lunch" : "Carnival"
+const getMealLabel = (period) => {
+  const normalized = String(period || "").toLowerCase()
+  if (normalized === "breakfast") return "Breakfast"
+  if (normalized === "lunch") return "Lunch"
+  if (normalized === "dinner") return "Dinner"
+  return "Meal"
+}
+
+const normalizeMealPeriods = (value, fallback = ["breakfast", "lunch", "dinner"]) => {
+  const allowed = new Set(["breakfast", "lunch", "dinner"])
+  const source = Array.isArray(value)
+    ? value
+    : String(value || "")
+        .split(",")
+        .map((item) => item.trim())
+
+  const normalized = [...new Set(
+    source
+      .map((item) => String(item || "").trim().toLowerCase())
+      .filter((item) => allowed.has(item))
+  )]
+
+  return normalized.length > 0 ? normalized : [...fallback]
+}
+
+const buildMealOptions = (slots = [], allowedPeriods = ["breakfast", "lunch", "dinner"]) => {
+  const order = ["breakfast", "lunch", "dinner"]
+  const allowed = new Set(normalizeMealPeriods(allowedPeriods))
+  const availablePeriods = new Set(slots.map((slot) => getMealPeriod(slot)).filter((period) => period !== "all"))
+  return order.filter((period) => allowed.has(period) && availablePeriods.has(period))
 }
 
 export default function TableBooking() {
@@ -127,33 +159,62 @@ export default function TableBooking() {
   })
   const [selectedSlot, setSelectedSlot] = useState(location.state?.selectedTime || null)
   const [selectedMealPeriod, setSelectedMealPeriod] = useState("lunch")
+  const [currentBookings, setCurrentBookings] = useState([])
+  const [currentTime, setCurrentTime] = useState(new Date())
+
+  // Real-time update for slots filtering
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentTime(new Date())
+    }, 60000) // Update every minute
+    return () => clearInterval(timer)
+  }, [])
+
+  const fetchRestaurant = async () => {
+    try {
+      setLoading(true)
+      const response = await diningAPI.getRestaurantBySlug(slug)
+      if (response?.data?.success) {
+        const apiRestaurant = response?.data?.data?.restaurant || response?.data?.data
+        setRestaurant(apiRestaurant || null)
+
+        const restaurantId = apiRestaurant?._id || apiRestaurant?.id || slug
+        
+        // Fetch Bookings for Availability check
+        try {
+            const bookingsRes = await diningAPI.getRestaurantBookingsPublic(restaurantId)
+            if (bookingsRes.data.success) {
+                setCurrentBookings(Array.isArray(bookingsRes.data.data) ? bookingsRes.data.data : [])
+            }
+        } catch (err) {
+            console.error("Error fetching bookings:", err)
+        }
+
+        const timingsResponse = await restaurantAPI.getOutletTimingsByRestaurantId(restaurantId)
+        setOutletTimings(timingsResponse?.data?.data?.outletTimings || {})
+      }
+    } catch {
+      setRestaurant(null)
+    } finally {
+      setLoading(false)
+    }
+  }
 
   useEffect(() => {
-    const fetchRestaurant = async () => {
-      try {
-        setLoading(true)
-        const response = await diningAPI.getRestaurantBySlug(slug)
-        if (response?.data?.success) {
-          const apiRestaurant = response?.data?.data?.restaurant || response?.data?.data
-          setRestaurant(apiRestaurant || null)
-
-          const restaurantId = apiRestaurant?._id || apiRestaurant?.id || slug
-          const timingsResponse = await restaurantAPI.getOutletTimingsByRestaurantId(restaurantId)
-          setOutletTimings(timingsResponse?.data?.data?.outletTimings || {})
-        }
-      } catch {
-        setRestaurant(null)
-      } finally {
-        setLoading(false)
-      }
-    }
-
     if (location.state?.restaurant) {
       const restaurantId = location.state.restaurant?._id || location.state.restaurant?.id || slug
       restaurantAPI
         .getOutletTimingsByRestaurantId(restaurantId)
         .then((response) => setOutletTimings(response?.data?.data?.outletTimings || {}))
         .catch(() => setOutletTimings({}))
+      
+      // Still fetch bookings even if restaurant is in state
+      diningAPI.getRestaurantBookingsPublic(restaurantId)
+        .then(res => {
+            if (res.data.success) setCurrentBookings(Array.isArray(res.data.data) ? res.data.data : [])
+        })
+        .catch(() => {})
+
       setLoading(false)
       return
     }
@@ -162,6 +223,10 @@ export default function TableBooking() {
   }, [location.state?.restaurant, slug])
 
   const dates = useMemo(() => buildDates(7), [])
+  const restaurantMealPeriods = useMemo(
+    () => normalizeMealPeriods(restaurant?.diningSettings?.mealPeriods),
+    [restaurant?.diningSettings?.mealPeriods]
+  )
   const selectedDayTiming = useMemo(() => {
     const fromOutletTimings = outletTimings?.[getDayName(selectedDate)] || null
     if (fromOutletTimings && fromOutletTimings.isOpen !== false) {
@@ -170,10 +235,110 @@ export default function TableBooking() {
     return buildFallbackTiming(restaurant)
   }, [outletTimings, selectedDate, restaurant])
   const allSlots = useMemo(() => buildSlots(selectedDayTiming), [selectedDayTiming])
-  const filteredSlots = useMemo(
-    () => allSlots.filter((slot) => getMealPeriod(slot) === selectedMealPeriod),
-    [allSlots, selectedMealPeriod]
+
+  const maxCapacity = restaurant?.diningSettings?.maxGuests || 10
+
+  const maxAvailableSeatsOnSelectedDate = useMemo(() => {
+    const targetDateStr = selectedDate.toDateString()
+
+    // ── DEBUG ──────────────────────────────────────────────────────────────
+    console.log('[SeatCalc] selectedDate:', selectedDate.toISOString(), '| targetDateStr:', targetDateStr)
+    console.log('[SeatCalc] maxCapacity:', maxCapacity, '| selectedSlot:', selectedSlot)
+    console.log('[SeatCalc] currentBookings count:', currentBookings.length)
+    currentBookings.forEach((b, i) => {
+      console.log(`  Booking[${i}]: date=${new Date(b.date).toISOString()} (local=${new Date(b.date).toDateString()}) | slot="${b.timeSlot}" | guests=${b.guests} | status=${b.status}`)
+    })
+    // ──────────────────────────────────────────────────────────────────────
+
+    if (allSlots.length === 0) return maxCapacity
+
+    const getSlotRemaining = (slot) => {
+      const slotOccupiedSeats = currentBookings
+        .filter(b => {
+          const bookingDateStr = new Date(b.date).toDateString()
+          if (bookingDateStr !== targetDateStr) return false
+
+          const bookingSlot = String(b.timeSlot || '').trim().toLowerCase()
+          const targetSlot = String(slot).trim().toLowerCase()
+          if (bookingSlot !== targetSlot) return false
+
+          // Only count confirmed bookings — pending are not yet approved by restaurant
+          const status = String(b.status || '').toLowerCase()
+          return ['accepted', 'confirmed', 'checked-in'].includes(status)
+        })
+        .reduce((sum, b) => sum + (Number(b.guests) || 0), 0)
+
+      console.log(`[SeatCalc] slot="${slot}" → occupied=${slotOccupiedSeats}, remaining=${Math.max(0, maxCapacity - slotOccupiedSeats)}`)
+      return Math.max(0, maxCapacity - slotOccupiedSeats)
+    }
+
+    // If a slot is selected, show remaining for that specific slot
+    if (selectedSlot) {
+      return getSlotRemaining(selectedSlot)
+    }
+
+    // When no slot is selected, show full capacity — each slot enforces its own
+    // remaining seats once the user picks one.
+    return maxCapacity
+  }, [allSlots, selectedDate, currentBookings, maxCapacity, selectedSlot])
+
+  const remainingSeats = maxAvailableSeatsOnSelectedDate
+  const occupiedSeats = Math.max(0, maxCapacity - remainingSeats)
+
+  const availableSlots = useMemo(() => {
+    const isToday = selectedDate.toDateString() === currentTime.toDateString()
+    
+    // 1. Filter out past slots for today
+    let baseSlots = allSlots
+    if (isToday) {
+      const currentMinutes = currentTime.getHours() * 60 + currentTime.getMinutes()
+      const buffer = 15 // Allow booking at least 15 minutes ahead
+      baseSlots = allSlots.filter((slot) => {
+        const slotMinutes = parseTimeToMinutes(slot)
+        return slotMinutes > currentMinutes + buffer
+      })
+    }
+
+    // 2. Filter slots based on remaining seat capacity vs requested guests
+    return baseSlots.filter((slot) => {
+      const targetDateStr = selectedDate.toDateString()
+
+      const slotOccupiedSeats = currentBookings
+        .filter(b => {
+          const bookingDateStr = new Date(b.date).toDateString()
+          if (bookingDateStr !== targetDateStr) return false
+
+          const bookingSlot = String(b.timeSlot || '').trim().toLowerCase()
+          const targetSlot = String(slot).trim().toLowerCase()
+          if (bookingSlot !== targetSlot) return false
+
+          // Only count confirmed bookings — pending are not yet approved by restaurant
+          const status = String(b.status || '').toLowerCase()
+          return ['accepted', 'confirmed', 'checked-in'].includes(status)
+        })
+        .reduce((sum, b) => sum + (Number(b.guests) || 0), 0)
+
+      const slotRemainingSeats = Math.max(0, maxCapacity - slotOccupiedSeats)
+      return slotRemainingSeats >= selectedGuests
+    })
+  }, [allSlots, selectedDate, currentTime, currentBookings, maxCapacity, selectedGuests])
+
+  const mealOptions = useMemo(
+    () => buildMealOptions(availableSlots, restaurantMealPeriods),
+    [availableSlots, restaurantMealPeriods]
   )
+
+  const filteredSlots = useMemo(
+    () => availableSlots.filter((slot) => getMealPeriod(slot) === selectedMealPeriod),
+    [availableSlots, selectedMealPeriod]
+  )
+
+  useEffect(() => {
+    if (mealOptions.length === 0) return
+    if (!mealOptions.includes(selectedMealPeriod)) {
+      setSelectedMealPeriod(mealOptions[0])
+    }
+  }, [mealOptions, selectedMealPeriod])
 
   useEffect(() => {
     if (!selectedSlot && filteredSlots.length > 0) {
@@ -190,19 +355,6 @@ export default function TableBooking() {
       setSelectedSlot(null)
     }
   }, [filteredSlots, selectedSlot])
-
-  useEffect(() => {
-    if (allSlots.length === 0) return
-    const hasLunch = allSlots.some((slot) => getMealPeriod(slot) === "lunch")
-    const hasDinner = allSlots.some((slot) => getMealPeriod(slot) === "dinner")
-
-    if (selectedMealPeriod === "lunch" && !hasLunch && hasDinner) {
-      setSelectedMealPeriod("dinner")
-    }
-    if (selectedMealPeriod === "dinner" && !hasDinner && hasLunch) {
-      setSelectedMealPeriod("lunch")
-    }
-  }, [allSlots, selectedMealPeriod])
 
   if (loading) return <Loader />
   if (!restaurant) return <div className="p-6 text-center">Restaurant not found</div>
@@ -235,7 +387,11 @@ export default function TableBooking() {
       guests: selectedGuests,
       date: selectedDate,
       timeSlot: selectedSlot,
+      mealPreference: selectedMealPeriod,
+      mealPeriods: restaurantMealPeriods,
       discount: selectedSlot,
+      specialRequest: location.state?.specialRequest || "",
+      user: location.state?.user || null
     }
 
     try {
@@ -246,73 +402,89 @@ export default function TableBooking() {
   }
 
   return (
-    <AnimatedPage className="min-h-screen bg-[#f5f6fb] pb-40">
-      <div className="relative overflow-hidden bg-gradient-to-b from-[#ffe7c6] via-[#fff1d7] to-[#f5f6fb] px-4 pb-10 pt-5">
-        <div className="absolute inset-x-0 top-0 h-24 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)]" />
+    <AnimatedPage className="min-h-screen bg-[#f5f6fb] pb-32">
+      {/* Compact header */}
+      <div className="relative overflow-hidden bg-gradient-to-b from-[#ffe7c6] via-[#fff1d7] to-[#f5f6fb] px-4 pb-5 pt-4">
+        <div className="absolute inset-x-0 top-0 h-16 bg-[radial-gradient(circle_at_top,rgba(255,255,255,0.65),transparent_65%)]" />
 
         <div className="relative z-10">
           <button
             onClick={goBack}
-            className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#383838] shadow-sm"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-[#383838] shadow-sm"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-4 w-4" />
           </button>
 
-          <div className="mt-6 text-center">
-            <h1 className="text-[30px] font-black tracking-tight text-[#25314a]">Book a table</h1>
-            <p className="mt-1 text-sm font-medium text-[#636363]">{restaurant.name || restaurant.restaurantName}</p>
+          <div className="mt-3 text-center">
+            <h1 className="text-2xl font-black tracking-tight text-[#25314a]">Book a table</h1>
+            <p className="mt-0.5 text-xs font-medium text-[#636363]">{restaurant.name || restaurant.restaurantName}</p>
           </div>
         </div>
       </div>
 
-      <div className="mx-auto -mt-4 max-w-md space-y-4 px-4">
+      <div className="mx-auto -mt-3 max-w-md space-y-3 px-4">
         {!isDiningEnabled && (
-          <section className="rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 shadow-[0_8px_24px_rgba(15,23,42,0.04)]">
-            <p className="text-sm font-semibold text-amber-900">Dining bookings are paused by this restaurant.</p>
-            <p className="mt-1 text-xs text-amber-800">You can still view details, but new table bookings are disabled right now.</p>
+          <section className="rounded-[18px] border border-amber-200 bg-amber-50 px-3 py-3 shadow-[0_4px_12px_rgba(15,23,42,0.04)]">
+            <p className="text-xs font-semibold text-amber-900">Dining bookings are paused by this restaurant.</p>
+            <p className="mt-0.5 text-xs text-amber-800">You can still view details, but new table bookings are disabled right now.</p>
           </section>
         )}
 
-        <section className="rounded-[22px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-medium text-[#2f3545]">Select number of guests</span>
-            <div className="relative">
-              <select
-                value={selectedGuests}
-                onChange={(event) => setSelectedGuests(parseInt(event.target.value, 10))}
-                className="appearance-none rounded-full bg-[#f7f7fb] py-2 pl-4 pr-9 text-sm font-semibold text-[#404040] outline-none"
-              >
-                {Array.from({ length: restaurant.diningSettings?.maxGuests || 10 }, (_, index) => index + 1).map((count) => (
-                  <option key={count} value={count}>
-                    {count}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#808080]" />
-            </div>
+        {/* Guests */}
+        <section className="rounded-[18px] bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <span className="text-xs font-semibold text-[#2f3545]">Select number of guests</span>
+            <span className="text-xs font-bold text-[#FFC107] bg-[#fdfafc] px-2 py-0.5 rounded-lg">
+              {remainingSeats} left{selectedSlot ? ` · ${selectedSlot}` : ''}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-5 gap-1.5">
+            {Array.from({ length: maxCapacity }, (_, index) => {
+              const count = index + 1
+              const isTooLarge = count > remainingSeats
+
+              return (
+                <button
+                  key={count}
+                  disabled={isTooLarge}
+                  onClick={() => setSelectedGuests(count)}
+                  className={`flex h-9 items-center justify-center rounded-xl border text-sm font-bold transition-all ${
+                    selectedGuests === count
+                      ? "border-[#ef8f98] bg-[#fffaf9] text-[#d64f63] shadow-sm"
+                      : isTooLarge
+                        ? "border-gray-50 bg-gray-50 text-gray-200 cursor-not-allowed"
+                        : "border-[#ececf2] bg-white text-[#444b5f] hover:border-[#ef8f98]/30"
+                  }`}
+                >
+                  {count}
+                </button>
+              )
+            })}
           </div>
         </section>
 
-        <section className="rounded-[22px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-          <h3 className="text-sm font-medium text-[#2f3545]">Select date</h3>
+        {/* Date */}
+        <section className="rounded-[18px] bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
+          <h3 className="text-xs font-semibold text-[#2f3545]">Select date</h3>
 
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
             {dates.slice(0, 3).map((date, index) => {
               const active = selectedDate.toDateString() === date.toDateString()
               return (
                 <button
                   key={date.toISOString()}
                   onClick={() => setSelectedDate(date)}
-                  className={`rounded-[18px] border px-3 py-4 text-center transition-colors ${
+                  className={`rounded-[14px] border px-2 py-2.5 text-center transition-colors ${
                     active
                       ? "border-[#ef8f98] bg-[#fffaf9]"
                       : "border-[#ececf2] bg-white"
                   }`}
                 >
-                  <span className="block text-sm font-medium text-[#444b5f]">
-                    {index === 0 ? "Today" : index === 1 ? "Tomorrow" : date.toLocaleDateString("en-IN", { weekday: "long" })}
+                  <span className="block text-xs font-semibold text-[#444b5f]">
+                    {index === 0 ? "Today" : index === 1 ? "Tomorrow" : date.toLocaleDateString("en-IN", { weekday: "short" })}
                   </span>
-                  <span className="mt-1 block text-sm text-[#7b8191]">
+                  <span className="mt-0.5 block text-xs text-[#7b8191]">
                     {date.toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
                   </span>
                 </button>
@@ -321,35 +493,38 @@ export default function TableBooking() {
           </div>
         </section>
 
-        <section className="rounded-[22px] bg-white p-4 shadow-[0_8px_24px_rgba(15,23,42,0.06)]">
-          <h3 className="text-sm font-medium text-[#2f3545]">Select time of day</h3>
+        {/* Meal preference */}
+        <section className="rounded-[18px] bg-white p-3 shadow-[0_4px_16px_rgba(15,23,42,0.06)]">
+          <h3 className="text-xs font-semibold text-[#2f3545]">Choose meal preference</h3>
 
-          <div className="mt-4 flex gap-2">
-            {[
-              { id: "lunch", label: "Lunch" },
-              { id: "dinner", label: "Dinner" },
-            ].map((period) => {
-              const active = selectedMealPeriod === period.id
+          <p className="mt-1 text-[10px] font-medium text-[#7b8191]">
+            Available options are based on the restaurant's serving hours.
+          </p>
+
+          <div className="mt-2.5 flex gap-2">
+            {(mealOptions.length > 0 ? mealOptions : restaurantMealPeriods).map((period) => {
+              const label = getMealLabel(period)
+              const active = selectedMealPeriod === period
               return (
                 <button
-                  key={period.id}
-                  onClick={() => setSelectedMealPeriod(period.id)}
-                  className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  key={period}
+                  onClick={() => setSelectedMealPeriod(period)}
+                  className={`rounded-full border px-4 py-1.5 text-xs font-medium transition-colors ${
                     active
                       ? "border-[#ef8f98] bg-white text-[#d64f63]"
                       : "border-[#ececf2] bg-[#fafafc] text-[#666f82]"
                   }`}
                 >
-                  {period.label}
+                  {label}
                 </button>
               )
             })}
           </div>
 
-          <div className="mt-4 grid grid-cols-3 gap-3">
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
             {filteredSlots.length === 0 ? (
-              <div className="col-span-3 rounded-[18px] border border-dashed border-[#e5e7ef] px-4 py-8 text-center text-sm text-[#7c8394]">
-                No {selectedMealPeriod} slots available for the selected date.
+              <div className="col-span-3 rounded-[14px] border border-dashed border-[#e5e7ef] px-4 py-5 text-center text-xs text-[#7c8394]">
+                No {getMealLabel(selectedMealPeriod).toLowerCase()} slots available for the selected date.
               </div>
             ) : (
               filteredSlots.map((slot) => {
@@ -358,15 +533,15 @@ export default function TableBooking() {
                   <button
                     key={slot}
                     onClick={() => setSelectedSlot(slot)}
-                    className={`rounded-[16px] border px-3 py-4 text-center transition-colors ${
+                    className={`rounded-[12px] border px-2 py-2.5 text-center transition-colors ${
                       active
                         ? "border-[#ef8f98] bg-[#fffaf9]"
                         : "border-[#ececf2] bg-white"
                     }`}
                   >
-                    <span className="block text-sm font-medium text-[#334155]">{slot}</span>
-                    <span className="mt-1 block text-xs font-medium text-[#2d5ea8]">
-                      {getOfferLabel(slot)}
+                    <span className="block text-xs font-semibold text-[#334155]">{slot}</span>
+                    <span className="mt-0.5 block text-[10px] font-medium text-[#2d5ea8]">
+                      {getMealLabel(getMealPeriod(slot))}
                     </span>
                   </button>
                 )
@@ -375,19 +550,19 @@ export default function TableBooking() {
           </div>
         </section>
 
-        <section className="rounded-[18px] bg-white px-4 py-5 text-center shadow-[0_8px_24px_rgba(15,23,42,0.05)]">
-          <p className="text-sm text-[#6f7687]">
+        <section className="rounded-[14px] bg-white px-4 py-3 text-center shadow-[0_4px_12px_rgba(15,23,42,0.05)]">
+          <p className="text-xs text-[#6f7687]">
             Select your preferred time slot to view available booking options
           </p>
         </section>
       </div>
 
-      <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-[#e6e7ef] bg-[#f5f6fb]/95 p-4 pb-[max(1rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
+      <div className="fixed bottom-0 left-0 right-0 z-[70] border-t border-[#e6e7ef] bg-[#f5f6fb]/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl">
         <div className="mx-auto max-w-md">
           <Button
             disabled={!canProceed}
             onClick={handleProceed}
-            className={`h-14 w-full rounded-2xl text-lg font-bold ${
+            className={`h-12 w-full rounded-xl text-base font-bold ${
               canProceed
                 ? "bg-[#eb4d60] text-white hover:bg-[#d73f52]"
                 : "bg-[#a4abba] text-white/95"

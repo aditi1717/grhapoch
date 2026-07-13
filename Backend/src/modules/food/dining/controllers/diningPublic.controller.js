@@ -17,3 +17,13 @@ export async function getPublicDiningRestaurants(req, res, next) {
         next(error);
     }
 }
+
+export async function getPublicRestaurantOccupiedSeats(req, res, next) {
+    try {
+        const { restaurantId } = req.params;
+        const occupiedSeats = await diningService.getRestaurantOccupiedSeats(restaurantId);
+        res.status(200).json({ success: true, message: 'Occupied seats fetched successfully', data: { occupiedSeats } });
+    } catch (error) {
+        next(error);
+    }
+}

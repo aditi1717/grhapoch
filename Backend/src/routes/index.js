@@ -3,7 +3,8 @@ import authRoutes from '../core/auth/auth.routes.js';
 import deliveryRoutes from '../modules/food/delivery/routes/delivery.routes.js';
 import restaurantRoutes from '../modules/food/restaurant/routes/restaurant.routes.js';
 import landingRoutes from '../modules/food/landing/routes/landing.routes.js';
-import { getPublicDiningCategories, getPublicDiningRestaurants } from '../modules/food/dining/controllers/diningPublic.controller.js';
+import { getPublicDiningCategories, getPublicDiningRestaurants, getPublicRestaurantOccupiedSeats } from '../modules/food/dining/controllers/diningPublic.controller.js';
+import { createBooking, getMyBookings, createReview, getRestaurantBookings, updateBookingStatus, getPublicRestaurantBookings } from '../modules/food/dining/controllers/diningBooking.controller.js';
 import uploadRoutes from '../modules/uploads/routes/upload.routes.js';
 import restaurantAdminRoutes from '../modules/food/admin/routes/admin.routes.js';
 import userRoutes from '../modules/food/user/routes/user.routes.js';
@@ -45,6 +46,16 @@ router.use('/v1/food', landingRoutes);
 router.use('/v1/food/search', searchRoutes);
 router.get('/v1/food/dining/categories/public', getPublicDiningCategories);
 router.get('/v1/food/dining/restaurants/public', getPublicDiningRestaurants);
+router.get('/v1/food/dining/restaurants/:restaurantId/occupied-seats/public', getPublicRestaurantOccupiedSeats);
+router.get('/v1/food/dining/restaurants/:restaurantId/bookings/public', getPublicRestaurantBookings);
+
+// Dining Booking Routes
+router.post('/v1/food/dining/bookings', authMiddleware, requireRoles('USER'), createBooking);
+router.get('/v1/food/dining/bookings/my', authMiddleware, requireRoles('USER'), getMyBookings);
+router.post('/v1/food/dining/bookings/:bookingId/review', authMiddleware, requireRoles('USER'), createReview);
+router.get('/v1/food/dining/bookings/restaurant/:restaurantId', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), getRestaurantBookings);
+router.patch('/v1/food/dining/bookings/:bookingId/status', authMiddleware, requireRoles('RESTAURANT', 'ADMIN'), updateBookingStatus);
+
 router.use('/v1/uploads', uploadRoutes);
 
 // Mark business-settings/public as truly public (must be before protected admin block)

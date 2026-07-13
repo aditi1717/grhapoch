@@ -102,7 +102,7 @@ export default function DiningManagement() {
             let imageUrl = editingCategoryImageUrl
 
             if (categoryFile) {
-                const uploadResponse = await uploadAPI.uploadMedia(categoryFile, { folder: "switcheats/dining/categories" })
+                const uploadResponse = await uploadAPI.uploadMedia(categoryFile, { folder: "truorder/dining/categories" })
                 imageUrl = uploadResponse?.data?.data?.url || ""
             }
 
@@ -373,4 +373,3 @@ export default function DiningManagement() {
         </div>
     )
 }
-
