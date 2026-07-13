@@ -107,21 +107,15 @@ export default function HubFinance() {
   const [withdrawalAmount, setWithdrawalAmount] = useState('')
   const [submittingWithdrawal, setSubmittingWithdrawal] = useState(false)
   const [withdrawalRequests, setWithdrawalRequests] = useState([])
-  const [subscriptionHistory, setSubscriptionHistory] = useState([])
-  const [loadingSubscriptionHistory, setLoadingSubscriptionHistory] = useState(false)
-  const isRestaurantSubscriptionEnabled = financeData?.features?.restaurantSubscriptionEnabled !== false
-  // Locked = total outstanding calendar-month subscription dues; the full balance stays visible.
-  const subscriptionDueAmount = Number(financeData?.subscription?.lockedAmount ?? financeData?.restaurant?.subscriptionDueAmount ?? 0)
-  const subscriptionLockedMonths = String(financeData?.subscription?.lockedMonths || '')
+  const isRestaurantSubscriptionEnabled = false
+  const subscriptionDueAmount = 0
+  const subscriptionLockedMonths = ""
   const walletSummary = financeData?.wallet ?? financeData?.currentCycle ?? {}
   const walletAvailableBalance = Number(walletSummary?.withdrawableBalance ?? 0)
   const walletTotalEarnings = Number(walletSummary?.totalEarnings ?? walletSummary?.estimatedPayout ?? 0)
   const walletTotalWithdrawn = Number(walletSummary?.totalWithdrawn ?? 0)
-  const walletNetAvailable = Number(
-    walletSummary?.netAvailable ??
-    walletAvailableBalance
-  )
-  const lockedReasonText = `₹${subscriptionDueAmount.toLocaleString('en-IN')} is locked against your subscription due${subscriptionLockedMonths ? ` for ${subscriptionLockedMonths}` : ''}. It will be released once the due is settled or waived.`
+  const walletNetAvailable = walletAvailableBalance
+  const lockedReasonText = ""
 
   const [loadingWithdrawals, setLoadingWithdrawals] = useState(false)
   const [ordersPage, setOrdersPage] = useState(1)
@@ -178,24 +172,7 @@ export default function HubFinance() {
     fetchWithdrawals()
   }, [])
 
-  useEffect(() => {
-    const fetchSubscriptionHistory = async () => {
-      try {
-        setLoadingSubscriptionHistory(true)
-        const response = await restaurantAPI.getSubscriptionTransactions({ limit: 20 })
-        const list = Array.isArray(response?.data?.data?.transactions) ? response.data.data.transactions : []
-        setSubscriptionHistory(list)
-      } catch (error) {
-        if (error?.response?.status !== 401) {
-          debugError("Error fetching subscription history:", error)
-        }
-        setSubscriptionHistory([])
-      } finally {
-        setLoadingSubscriptionHistory(false)
-      }
-    }
-    fetchSubscriptionHistory()
-  }, [])
+
 
   // Fetch restaurant data for header display
   useEffect(() => {
@@ -934,25 +911,7 @@ export default function HubFinance() {
       <div className="flex-1 overflow-y-auto px-4 pt-6 pb-28">
         {activeTab === "payouts" && (
           <div className="space-y-6">
-            {/* Subscription Dues Banner */}
-            {isRestaurantSubscriptionEnabled && subscriptionDueAmount > 0 && (
-              <motion.div
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-2xl p-5 flex items-start gap-4 mb-2 shadow-sm cursor-pointer"
-                onClick={() => navigate('/food/restaurant/subscription')}
-              >
-                <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm border border-amber-100">
-                  <Info className="w-6 h-6 text-amber-600" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-sm font-bold text-amber-900">Subscription Due Pending</h3>
-                  <p className="text-[11px] text-amber-800 mt-1 leading-relaxed font-medium">
-                    ₹{subscriptionDueAmount.toLocaleString('en-IN')} is locked against your subscription due{subscriptionLockedMonths ? ` for ${subscriptionLockedMonths}` : ''}. Tap to view your billing details.
-                  </p>
-                </div>
-              </motion.div>
-            )}
+
 
             {/* Wallet balance */}
             <div>
@@ -1298,49 +1257,7 @@ export default function HubFinance() {
               </div>
             </div>
 
-            {/* Subscription billing timeline */}
-            <div>
-              <div className="flex items-center justify-between mb-3">
-                <h2 className="text-base font-bold text-gray-900">Subscription billing</h2>
-                <button
-                  onClick={() => navigate('/food/restaurant/subscription')}
-                  className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-                >
-                  View all
-                </button>
-              </div>
-              <div className="bg-white rounded-lg p-4">
-                {loadingSubscriptionHistory ? (
-                  <div className="py-6 text-center text-sm text-gray-500">Loading subscription billing...</div>
-                ) : subscriptionHistory.length === 0 ? (
-                  <div className="py-6 text-center text-sm text-gray-500">No subscription billing activity yet.</div>
-                ) : (
-                  <div className="space-y-3">
-                    {subscriptionHistory.map((item, idx) => (
-                      <div key={item?._id || idx} className="border border-gray-200 rounded-lg p-3">
-                        <div className="flex items-center justify-between gap-3">
-                          <p className="text-sm font-semibold text-gray-900 capitalize">
-                            {String(item?.type || "").replaceAll("_", " ")}
-                          </p>
-                          <p className="text-sm font-bold text-gray-900">
-                            ₹{Number(item?.amount || 0).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </p>
-                        </div>
-                        <p className="text-xs text-gray-600 mt-1">
-                          {item?.billingMonthLabel || item?.billingMonth || "-"} • Remaining due: ₹{Number(item?.outstandingAfter || 0).toLocaleString("en-IN")}
-                        </p>
-                        {item?.remarks ? (
-                          <p className="text-xs text-gray-500 mt-1">{item.remarks}</p>
-                        ) : null}
-                        <p className="text-xs text-gray-500 mt-1">
-                          {item?.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
+
           </div>
         )}
 

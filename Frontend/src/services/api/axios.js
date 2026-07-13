@@ -27,8 +27,6 @@ const ADMIN_PERMISSION_PATH_MAP = [
   { prefix: "/food/admin/support-tickets", section: "customer_management" },
   { prefix: "/food/admin/restaurants", section: "restaurant_management" },
   { prefix: "/food/admin/restaurant-settings", section: "restaurant_management" },
-  { prefix: "/food/admin/restaurant-subscription-settings", section: "restaurant_management" },
-  { prefix: "/food/admin/restaurant-subscriptions", section: "restaurant_management" },
   { prefix: "/food/admin/zones", section: "restaurant_management" },
   { prefix: "/food/admin/categories", section: "food_management" },
   { prefix: "/food/admin/addons", section: "food_management" },

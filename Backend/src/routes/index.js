@@ -50,7 +50,6 @@ router.use('/v1/uploads', uploadRoutes);
 // Mark business-settings/public as truly public (must be before protected admin block)
 router.get('/v1/food/admin/business-settings/public', businessSettingsController.getBusinessSettings);
 router.get('/v1/food/admin/power-scanning/public', businessSettingsController.getPowerScanningSettings);
-router.get('/v1/food/admin/restaurant-subscription-settings/public', adminController.getRestaurantSubscriptionSettings);
 router.get('/v1/food/admin/feature-settings/public', adminController.getFeatureSettings);
 router.get('/v1/food/admin/fee-settings/public', adminController.getFeeSettings);
 

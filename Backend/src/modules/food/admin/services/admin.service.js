@@ -6,7 +6,6 @@ import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model
 import { DeliverySupportTicket } from '../../delivery/models/supportTicket.model.js';
 import { FoodNotification } from '../../../../core/notifications/models/notification.model.js';
 import { sendNotificationToOwner } from '../../../../core/notifications/firebase.service.js';
-import { FoodRestaurantSubscriptionSettings } from '../models/restaurantSubscriptionSettings.model.js';
 import { FoodZone } from '../models/zone.model.js';
 import { invalidateActiveZonesCache } from '../../landing/controllers/zonePublic.controller.js';
 import { FoodCategory } from '../models/category.model.js';
@@ -39,8 +38,6 @@ import { FoodDeliveryWallet } from '../../delivery/models/deliveryWallet.model.j
 import { FoodDeliveryCashDeposit } from '../../delivery/models/foodDeliveryCashDeposit.model.js';
 import { FoodUnregisteredRestaurant } from '../../restaurant/models/unregisteredRestaurant.model.js';
 import { FoodAdmin } from '../../../../core/admin/admin.model.js';
-import { getAdminRestaurantSubscriptionHistory as getAdminRestaurantSubscriptionHistoryFromRestaurant } from '../../restaurant/services/subscriptionHistory.service.js';
-import { FoodRestaurantSubscriptionHistory } from '../../restaurant/models/subscriptionHistory.model.js';
 import { ADMIN_FULL_PERMISSIONS, isValidPermissionPayload, sanitizeAdminPermissions } from '../../../../constants/permissions.js';
 import {
     backfillLegacyCategoryWorkflow,
@@ -4577,101 +4574,7 @@ export async function updateDeliverySupportTicket(id, body = {}) {
     return ticket.toObject();
 }
 
-/**
- * Subscription Settings
- */
-export const getRestaurantSubscriptionSettings = async () => {
-    const settings = await FoodRestaurantSubscriptionSettings.findOne();
-    const raw = settings ? settings.toObject() : {};
-    const starterPrice = Number(raw?.starterPrice ?? raw?.silverPrice ?? 999) || 999;
-    const growthPrice = Number(raw?.growthPrice ?? raw?.goldPrice ?? 1999) || 1999;
-    const premiumPrice = Number(raw?.premiumPrice ?? 2999) || 2999;
-    const starterMinGmv = Number(raw?.starterMinGmv ?? 0) || 0;
-    const starterMaxGmv = Number(raw?.starterMaxGmv ?? 30000) || 30000;
-    const growthMinGmv = Number(raw?.growthMinGmv ?? (starterMaxGmv + 0.01)) || (starterMaxGmv + 0.01);
-    const growthMaxGmv = Number(raw?.growthMaxGmv ?? 60000) || 60000;
-    const premiumMinGmv = Number(raw?.premiumMinGmv ?? (growthMaxGmv + 0.01)) || (growthMaxGmv + 0.01);
-    const onboardingFee = Math.max(0, Number(raw?.onboardingFee ?? 0) || 0);
 
-    let planCatalog = null;
-    try {
-        const { buildPlanCatalog, GST_RATE } = await import('../../restaurant/services/subscriptionPlan.service.js');
-        planCatalog = buildPlanCatalog({
-            starterPrice,
-            growthPrice,
-            premiumPrice,
-            starterMinGmv,
-            starterMaxGmv,
-            growthMinGmv,
-            growthMaxGmv,
-            premiumMinGmv,
-        });
-        return {
-            ...raw,
-            starterPrice,
-            growthPrice,
-            premiumPrice,
-            starterMinGmv,
-            starterMaxGmv,
-            growthMinGmv,
-            growthMaxGmv,
-            premiumMinGmv,
-            onboardingFee,
-            planCatalog,
-            gstRate: GST_RATE,
-        };
-    } catch {
-        return {
-            ...raw,
-            starterPrice,
-            growthPrice,
-            premiumPrice,
-            starterMinGmv,
-            starterMaxGmv,
-            growthMinGmv,
-            growthMaxGmv,
-            premiumMinGmv,
-            onboardingFee,
-        };
-    }
-};
-
-
-export const updateRestaurantSubscriptionSettings = async (data) => {
-    let settings = await FoodRestaurantSubscriptionSettings.findOne();
-    if (!settings) {
-        settings = new FoodRestaurantSubscriptionSettings();
-    }
-
-    if (data.starterPrice !== undefined) settings.starterPrice = Math.max(0, Number(data.starterPrice) || 0);
-    if (data.growthPrice !== undefined) settings.growthPrice = Math.max(0, Number(data.growthPrice) || 0);
-    if (data.premiumPrice !== undefined) settings.premiumPrice = Math.max(0, Number(data.premiumPrice) || 0);
-    if (data.starterMinGmv !== undefined) settings.starterMinGmv = Math.max(0, Number(data.starterMinGmv) || 0);
-    if (data.starterMaxGmv !== undefined) settings.starterMaxGmv = Math.max(0, Number(data.starterMaxGmv) || 0);
-    if (data.growthMinGmv !== undefined) settings.growthMinGmv = Math.max(0, Number(data.growthMinGmv) || 0);
-    if (data.growthMaxGmv !== undefined) settings.growthMaxGmv = Math.max(0, Number(data.growthMaxGmv) || 0);
-    if (data.premiumMinGmv !== undefined) settings.premiumMinGmv = Math.max(0, Number(data.premiumMinGmv) || 0);
-    if (data.onboardingFee !== undefined) settings.onboardingFee = Math.max(0, Number(data.onboardingFee) || 0);
-
-    // Keep ranges monotonic and contiguous by default.
-    settings.starterMinGmv = Math.min(Number(settings.starterMinGmv || 0), Number(settings.starterMaxGmv || 0));
-    if (Number(settings.growthMinGmv || 0) < Number(settings.starterMaxGmv || 0)) {
-        settings.growthMinGmv = Number(settings.starterMaxGmv || 0);
-    }
-    if (Number(settings.growthMaxGmv || 0) < Number(settings.growthMinGmv || 0)) {
-        settings.growthMaxGmv = Number(settings.growthMinGmv || 0);
-    }
-    if (Number(settings.premiumMinGmv || 0) < Number(settings.growthMaxGmv || 0)) {
-        settings.premiumMinGmv = Number(settings.growthMaxGmv || 0);
-    }
-
-    await settings.save();
-    return getRestaurantSubscriptionSettings();
-};
-
-export const getAdminRestaurantSubscriptionHistory = async (query = {}) => {
-    return getAdminRestaurantSubscriptionHistoryFromRestaurant(query);
-};
 
 // ----- Delivery partners (approved list) -----
 /**

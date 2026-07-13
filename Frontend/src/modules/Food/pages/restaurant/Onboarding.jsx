@@ -551,43 +551,21 @@ export default function RestaurantOnboarding() {
     errors: [],
   })
   const [subscriptionSettings, setSubscriptionSettings] = useState(null)
-  const [loadingSubscriptionSettings, setLoadingSubscriptionSettings] = useState(true)
+  const [loadingSubscriptionSettings, setLoadingSubscriptionSettings] = useState(false)
   const [registrationProcessing, setRegistrationProcessing] = useState(false)
   const [uploadingAttachments, setUploadingAttachments] = useState({})
 
   const goToStep = (targetStep) => {
-    const n = Math.min(4, Math.max(1, targetStep))
+    const n = Math.min(3, Math.max(1, targetStep))
     setStep(n)
     navigate(`?step=${n}`, { replace: false })
     window.scrollTo({ top: 0, behavior: "instant" })
   }
 
-  const onboardingFeeAmount = Math.max(0, Number(subscriptionSettings?.onboardingFee) || 0)
-  const requiresOnboardingFee = onboardingFeeAmount > 0
-  const planCatalog = subscriptionSettings?.planCatalog?.plans || []
-  const gstRate = Number(subscriptionSettings?.gstRate ?? 0.18)
-
-  useEffect(() => {
-    let cancelled = false
-    const loadSubscriptionSettings = async () => {
-      try {
-        setLoadingSubscriptionSettings(true)
-        const res = await restaurantAPI.getSubscriptionSettings()
-        const data = res?.data?.data || res?.data || null
-        if (!cancelled && data) {
-          setSubscriptionSettings(data)
-        }
-      } catch (err) {
-        debugWarn("Failed to load subscription settings:", err)
-      } finally {
-        if (!cancelled) setLoadingSubscriptionSettings(false)
-      }
-    }
-    loadSubscriptionSettings()
-    return () => {
-      cancelled = true
-    }
-  }, [])
+  const onboardingFeeAmount = 0
+  const requiresOnboardingFee = false
+  const planCatalog = []
+  const gstRate = 0.18
 
 
   const triggerBackgroundUpload = async (file, folder, fieldName, isArray = false, arrayIndex = -1) => {
@@ -1804,10 +1782,6 @@ export default function RestaurantOnboarding() {
       validationErrors = validateStep2()
     } else if (step === 3) {
       validationErrors = validateStep3()
-    } else if (step === 4) {
-      if (requiresOnboardingFee && !step4State.onboardingFeePaid) {
-        validationErrors = ["Please pay the onboarding fee to complete onboarding"]
-      }
     }
 
     if (validationErrors.length > 0) {
@@ -1826,8 +1800,6 @@ export default function RestaurantOnboarding() {
       } else if (step === 2) {
         goToStep(3)
       } else if (step === 3) {
-        goToStep(4)
-      } else if (step === 4) {
         await handleFinalSubmit()
       }
     } catch (err) {
@@ -3349,7 +3321,6 @@ export default function RestaurantOnboarding() {
     if (step === 1) return renderStep1()
     if (step === 2) return renderStep2()
     if (step === 3) return renderStep3()
-    if (step === 4) return renderStep4()
     return renderStep1()
   }
 
@@ -3357,23 +3328,18 @@ export default function RestaurantOnboarding() {
     saving ||
     paymentProcessing ||
     registrationProcessing ||
-    ((step === 3 || step === 4) && !isEditing) ||
-    Object.values(uploadingAttachments).some(Boolean) ||
-    (step === 4 && requiresOnboardingFee && !step4State.onboardingFeePaid)
+    (step === 3 && !isEditing) ||
+    Object.values(uploadingAttachments).some(Boolean)
 
   const continueLabel = Object.values(uploadingAttachments).some(Boolean)
     ? "Uploading..."
-    : step === 4
+    : step === 3
       ? saving || registrationProcessing
         ? "Submitting..."
         : "Submit for approval"
-      : step === 3
-        ? saving
-          ? "Saving..."
-          : "Continue"
-        : saving
-          ? "Saving..."
-          : "Continue"
+      : saving
+        ? "Saving..."
+        : "Continue"
 
   const handleOnboardingBack = () => {
     if (step > 1) goToStep(step - 1)

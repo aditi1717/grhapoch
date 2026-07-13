@@ -17,8 +17,7 @@ import {
     getRestaurantComplaintsController,
     uploadRestaurantAttachmentController,
     deleteCurrentRestaurantAccountController,
-    registerUnregisteredRestaurantController,
-    getRestaurantSubscriptionHistoryController
+    registerUnregisteredRestaurantController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantOfferController,
@@ -34,12 +33,6 @@ import {
     createWithdrawalRequestController,
     listMyWithdrawalsController
 } from '../controllers/withdrawal.controller.js';
-import {
-    getSubscriptionOverviewController,
-    listSubscriptionInvoicesController,
-    getSubscriptionInvoiceController,
-    listSubscriptionTransactionsController
-} from '../controllers/subscription.controller.js';
 import {
     listCategoriesController,
     createCategoryController,
@@ -133,12 +126,6 @@ router.put('/outlet-timings', authMiddleware, requireRestaurant, upsertCurrentRe
 router.get('/finance', authMiddleware, requireRestaurant, getRestaurantFinanceController);
 router.post('/withdraw', authMiddleware, requireRestaurant, createWithdrawalRequestController);
 router.get('/withdrawals', authMiddleware, requireRestaurant, listMyWithdrawalsController);
-router.get('/subscription-history', authMiddleware, requireRestaurant, getRestaurantSubscriptionHistoryController);
-// New calendar-month postpaid subscription endpoints
-router.get('/subscription/overview', authMiddleware, requireRestaurant, getSubscriptionOverviewController);
-router.get('/subscription/invoices', authMiddleware, requireRestaurant, listSubscriptionInvoicesController);
-router.get('/subscription/invoices/:invoiceId', authMiddleware, requireRestaurant, getSubscriptionInvoiceController);
-router.get('/subscription/transactions', authMiddleware, requireRestaurant, listSubscriptionTransactionsController);
 router.post(
     '/profile/profile-image',
     authMiddleware,

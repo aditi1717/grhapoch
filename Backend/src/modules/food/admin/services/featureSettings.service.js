@@ -1,19 +1,12 @@
 import { FoodFeatureSetting } from '../models/featureSetting.model.js';
 
 export const FEATURE_KEYS = {
-    RESTAURANT_SUBSCRIPTION: 'restaurant_subscription',
     COD_CONTROL: 'cod_control',
     ADMIN_ACCESS_SECTION: 'admin_access_section',
     ROOT_LANDING_AND_UNREGISTERED_CONTROL: 'root_landing_and_unregistered_control'
 };
 
 const DEFAULT_FEATURES = [
-    {
-        key: FEATURE_KEYS.RESTAURANT_SUBSCRIPTION,
-        name: 'Restaurant Subscription',
-        description: 'Controls monthly GMV-based subscription billing, wallet locking against dues, and subscription UI. Never blocks restaurant login.',
-        isEnabled: true
-    },
     {
         key: FEATURE_KEYS.COD_CONTROL,
         name: 'Cash On Delivery (COD)',
@@ -78,8 +71,10 @@ export async function updateFeatureSetting(key, payload = {}) {
 
 export async function isFeatureEnabled(key, fallback = true) {
     if (!key) return fallback;
+    const cleanKey = String(key).trim();
+    if (cleanKey === 'restaurant_subscription') return false;
     await ensureDefaultFeatureSettings();
-    const doc = await FoodFeatureSetting.findOne({ key: String(key).trim() }).select('isEnabled').lean();
+    const doc = await FoodFeatureSetting.findOne({ key: cleanKey }).select('isEnabled').lean();
     if (!doc) return fallback;
     return Boolean(doc.isEnabled);
 }

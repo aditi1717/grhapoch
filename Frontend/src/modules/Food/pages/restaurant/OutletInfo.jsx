@@ -1383,15 +1383,7 @@ export default function OutletInfo() {
             </div>
           </div>
 
-          <div
-            className="bg-gradient-to-r from-amber-50 to-orange-50 rounded-2xl p-4 border border-amber-200 shadow-sm cursor-pointer"
-            onClick={() => navigate("/food/restaurant/subscription")}
-          >
-            <h3 className="text-sm font-semibold text-slate-900 mb-1">Subscription</h3>
-            <p className="text-xs text-slate-600">
-              Your plan is assigned automatically each month based on your GMV. Tap to view current month estimate, invoices and dues.
-            </p>
-          </div>
+
         </div>
       </div>
 

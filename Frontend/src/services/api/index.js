@@ -278,10 +278,7 @@ export const adminAPI = {
       params,
       contextModule: "admin",
     }),
-  getRestaurantSubscriptionSettings: () =>
-    apiClient.get("/food/admin/restaurant-subscription-settings", {
-      contextModule: "admin",
-    }),
+
   getRestaurantOrderAcceptanceSettings: () =>
     apiClient.get("/food/admin/restaurant-settings/order-acceptance", {
       contextModule: "admin",
@@ -290,60 +287,8 @@ export const adminAPI = {
     apiClient.patch("/food/admin/restaurant-settings/order-acceptance", body ?? {}, {
       contextModule: "admin",
     }),
-  getRestaurantSubscriptionHistory: (params = {}) =>
-    apiClient.get("/food/admin/restaurant-subscriptions/history", {
-      params,
-      contextModule: "admin",
-    }),
-  updateRestaurantSubscriptionSettings: (body) =>
-    apiClient.patch("/food/admin/restaurant-subscription-settings", body, {
-      contextModule: "admin",
-    }),
-  /** Calendar-month postpaid subscription billing */
-  getSubscriptionInvoicesAdmin: (params = {}) =>
-    apiClient.get("/food/admin/restaurant-subscriptions/invoices", {
-      params,
-      contextModule: "admin",
-    }),
-  getSubscriptionInvoiceAdmin: (invoiceId) =>
-    apiClient.get(`/food/admin/restaurant-subscriptions/invoices/${String(invoiceId)}`, {
-      contextModule: "admin",
-    }),
-  getSubscriptionBillingSummary: (params = {}) =>
-    apiClient.get("/food/admin/restaurant-subscriptions/summary", {
-      params,
-      contextModule: "admin",
-    }),
-  getRestaurantSubscriptionOverviewAdmin: (restaurantId) =>
-    apiClient.get(`/food/admin/restaurant-subscriptions/restaurants/${String(restaurantId)}/overview`, {
-      contextModule: "admin",
-    }),
-  deductInvoiceFromWallet: (invoiceId, body = {}) =>
-    apiClient.post(`/food/admin/restaurant-subscriptions/invoices/${String(invoiceId)}/deduct-wallet`, body, {
-      contextModule: "admin",
-    }),
-  markInvoicePaid: (invoiceId, body = {}) =>
-    apiClient.post(`/food/admin/restaurant-subscriptions/invoices/${String(invoiceId)}/mark-paid`, body, {
-      contextModule: "admin",
-    }),
-  waiveInvoice: (invoiceId, body = {}) =>
-    apiClient.post(`/food/admin/restaurant-subscriptions/invoices/${String(invoiceId)}/waive`, body, {
-      contextModule: "admin",
-    }),
-  adjustInvoice: (invoiceId, body = {}) =>
-    apiClient.post(`/food/admin/restaurant-subscriptions/invoices/${String(invoiceId)}/adjust`, body, {
-      contextModule: "admin",
-    }),
-  runSubscriptionBilling: (billingMonth) =>
-    apiClient.post("/food/admin/restaurant-subscriptions/run-billing", { billingMonth }, {
-      contextModule: "admin",
-    }),
-  exportSubscriptionInvoices: (params = {}) =>
-    apiClient.get("/food/admin/restaurant-subscriptions/invoices/export", {
-      params,
-      responseType: "blob",
-      contextModule: "admin",
-    }),
+
+
   getFeatureSettings: () =>
     apiClient.get("/food/admin/feature-settings", {
       contextModule: "admin",
@@ -1226,25 +1171,7 @@ export const restaurantAPI = {
     apiClient.get("/food/restaurant/withdrawals", {
       contextModule: "restaurant"
     }),
-  /** Calendar-month postpaid subscription billing */
-  getSubscriptionOverview: () =>
-    apiClient.get("/food/restaurant/subscription/overview", {
-      contextModule: "restaurant"
-    }),
-  getSubscriptionInvoices: (params = {}) =>
-    apiClient.get("/food/restaurant/subscription/invoices", {
-      params,
-      contextModule: "restaurant"
-    }),
-  getSubscriptionInvoice: (invoiceId) =>
-    apiClient.get(`/food/restaurant/subscription/invoices/${String(invoiceId)}`, {
-      contextModule: "restaurant"
-    }),
-  getSubscriptionTransactions: (params = {}) =>
-    apiClient.get("/food/restaurant/subscription/transactions", {
-      params,
-      contextModule: "restaurant"
-    }),
+
   /** Update restaurant profile fields (name/cuisines/location/menuImages). */
   updateProfile: (body) =>
     apiClient
@@ -1412,10 +1339,7 @@ export const restaurantAPI = {
     }),
   getPendingPhone: (phone) =>
     apiClient.get(`/food/restaurant/auth/pending-phone?phone=${phone}`),
-  getSubscriptionSettings: () =>
-    apiClient.get("/food/admin/restaurant-subscription-settings/public", {
-      contextModule: "restaurant",
-    }),
+
   getFeatureSettingsPublic: (config = {}) =>
     publicConfigGetOnce("/food/admin/feature-settings/public", {
       contextModule: "restaurant",

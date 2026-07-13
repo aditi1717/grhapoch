@@ -16,7 +16,6 @@ import {
     deleteCurrentRestaurantAccount,
     createRestaurantOnboardingFeeOrder,
 } from '../services/restaurant.service.js';
-import { getRestaurantSubscriptionHistory } from '../services/subscriptionHistory.service.js';
 import { validateRestaurantRegisterDto } from '../validators/restaurant.validator.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodUnregisteredRestaurant } from '../models/unregisteredRestaurant.model.js';
@@ -181,15 +180,7 @@ export const deleteCurrentRestaurantAccountController = async (req, res, next) =
     }
 };
 
-export const getRestaurantSubscriptionHistoryController = async (req, res, next) => {
-    try {
-        const restaurantId = req.user?.userId;
-        const data = await getRestaurantSubscriptionHistory(restaurantId, req.query || {});
-        return sendResponse(res, 200, 'Subscription history fetched successfully', data);
-    } catch (error) {
-        next(error);
-    }
-};
+
 
 export const registerUnregisteredRestaurantController = async (req, res, next) => {
     try {

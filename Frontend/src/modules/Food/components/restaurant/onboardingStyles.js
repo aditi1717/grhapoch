@@ -9,7 +9,6 @@ export const ONBOARDING_STEPS = [
   { id: 1, title: "Restaurant Info", subtitle: "Name, owner & location" },
   { id: 2, title: "Menu & Hours", subtitle: "Photos & delivery timings" },
   { id: 3, title: "Legal Documents", subtitle: "PAN, GST, FSSAI & bank" },
-  { id: 4, title: "Subscription", subtitle: "Plans & onboarding fee" },
 ]
 
 export const ONBOARDING_SECTION =
