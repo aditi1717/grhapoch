@@ -679,7 +679,7 @@ export async function approveDiningRequest(requestId) {
                 diningSettings: {
                     isEnabled: request.requestedSettings.isEnabled,
                     maxGuests: request.requestedSettings.maxGuests,
-                    diningType: finalDiningType,
+                    diningType: finalDiningType.join(','),
                     mealPeriods: finalMealPeriods
                 }
             }

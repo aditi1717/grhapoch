@@ -17,7 +17,9 @@ import {
     getRestaurantComplaintsController,
     uploadRestaurantAttachmentController,
     deleteCurrentRestaurantAccountController,
-    registerUnregisteredRestaurantController
+    registerUnregisteredRestaurantController,
+    getCurrentRestaurantDiningRequestController,
+    createCurrentRestaurantDiningRequestController
 } from '../controllers/restaurant.controller.js';
 import {
     createRestaurantOfferController,
@@ -120,6 +122,8 @@ router.patch('/dining-settings', authMiddleware, requireRestaurant, async (req, 
     await invalidateCache('restaurants:*');
     next();
 }, updateCurrentRestaurantDiningSettingsController);
+router.get('/dining-settings/request/pending', authMiddleware, requireRestaurant, getCurrentRestaurantDiningRequestController);
+router.patch('/dining-settings/request', authMiddleware, requireRestaurant, createCurrentRestaurantDiningRequestController);
 
 router.get('/outlet-timings', authMiddleware, requireRestaurant, getCurrentRestaurantOutletTimingsController);
 router.put('/outlet-timings', authMiddleware, requireRestaurant, upsertCurrentRestaurantOutletTimingsController);

@@ -19,6 +19,7 @@ import {
 import { validateRestaurantRegisterDto } from '../validators/restaurant.validator.js';
 import { sendResponse, sendError } from '../../../../utils/response.js';
 import { FoodUnregisteredRestaurant } from '../models/unregisteredRestaurant.model.js';
+import * as diningService from '../../dining/services/dining.service.js';
 
 
 export const uploadRestaurantAttachmentController = async (req, res, next) => {
@@ -196,6 +197,26 @@ export const registerUnregisteredRestaurantController = async (req, res, next) =
             location
         });
         return sendResponse(res, 201, 'Restaurant details submitted successfully', newUnregistered);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const getCurrentRestaurantDiningRequestController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        const data = await diningService.getPendingDiningRequest(restaurantId);
+        return sendResponse(res, 200, 'Pending dining settings request fetched successfully', data);
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const createCurrentRestaurantDiningRequestController = async (req, res, next) => {
+    try {
+        const restaurantId = req.user?.userId;
+        const data = await diningService.createDiningRequest(restaurantId, req.body || {});
+        return sendResponse(res, 200, 'Dining settings request submitted successfully', data);
     } catch (error) {
         next(error);
     }

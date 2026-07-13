@@ -379,10 +379,14 @@ const toRestaurantProfile = (doc) => {
             Number.isFinite(Number(doc.estimatedDeliveryTimeMinutes))
                 ? Number(doc.estimatedDeliveryTimeMinutes)
                 : null,
+        featuredPrice: doc.featuredPrice !== undefined ? doc.featuredPrice : null,
+        costForTwo: doc.costForTwo !== undefined ? doc.costForTwo : null,
         diningSettings: {
             isEnabled: doc.diningSettings?.isEnabled !== false,
             maxGuests: Math.max(1, parseInt(doc.diningSettings?.maxGuests, 10) || 6),
-            diningType: String(doc.diningSettings?.diningType || 'family-dining').trim() || 'family-dining'
+            diningType: String(doc.diningSettings?.diningType || 'family-dining').trim() || 'family-dining',
+            mealPeriods: Array.isArray(doc.diningSettings?.mealPeriods) ? doc.diningSettings.mealPeriods : ['breakfast', 'lunch', 'dinner'],
+            pureVegRestaurant: doc.diningSettings?.pureVegRestaurant === true || doc.pureVegRestaurant === true
         },
         isAcceptingOrders: doc.isAcceptingOrders !== false,
         outsideHoursOverride: doc.outsideHoursOverride === true,
@@ -1304,6 +1308,21 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         update.estimatedDeliveryTimeMinutes = parseEstimatedDeliveryMinutes(estimatedDeliveryTimeText) ?? undefined;
     }
 
+    if (body.featuredPrice !== undefined) {
+        const fPrice = Number(body.featuredPrice);
+        if (Number.isFinite(fPrice) && fPrice >= 0) {
+            update.featuredPrice = fPrice;
+            update.costForTwo = fPrice;
+        }
+    }
+    if (body.costForTwo !== undefined) {
+        const cPrice = Number(body.costForTwo);
+        if (Number.isFinite(cPrice) && cPrice >= 0) {
+            update.costForTwo = cPrice;
+            update.featuredPrice = cPrice;
+        }
+    }
+
     const openingMinutes = body.openingTime !== undefined ? timeToMinutes(update.openingTime) : null;
     const closingMinutes = body.closingTime !== undefined ? timeToMinutes(update.closingTime) : null;
     if (openingMinutes !== null && closingMinutes !== null) {
@@ -1505,6 +1524,8 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
                     'upiQrImage',
                     'estimatedDeliveryTime',
                     'estimatedDeliveryTimeMinutes',
+                    'featuredPrice',
+                    'costForTwo',
                     'zoneId',
                     'pendingLocation',
                     'pendingZoneId',

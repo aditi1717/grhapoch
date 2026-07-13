@@ -1202,6 +1202,14 @@ export const restaurantAPI = {
         contextModule: "restaurant",
       })
       .then((res) => res),
+  getPendingDiningRequest: () =>
+    apiClient.get("/food/restaurant/dining-settings/request/pending", {
+      contextModule: "restaurant",
+    }),
+  requestDiningUpdate: (body) =>
+    apiClient.patch("/food/restaurant/dining-settings/request", body ?? {}, {
+      contextModule: "restaurant",
+    }),
   /** PATCH /food/restaurant/availability. Body: { isAcceptingOrders: boolean } */
   updateAcceptingOrders: (isAcceptingOrders) =>
     apiClient

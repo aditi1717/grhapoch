@@ -243,6 +243,7 @@ const restaurantSchema = new mongoose.Schema(
     estimatedDeliveryTimeMinutes: { type: Number, index: true },
     featuredDish: { type: String },
     featuredPrice: { type: Number },
+    costForTwo: { type: Number },
     offer: { type: String },
     /** Rating fields for filtering/sorting (defaults to 0 if never rated). */
     rating: {
@@ -257,7 +258,9 @@ const restaurantSchema = new mongoose.Schema(
     diningSettings: {
       isEnabled: { type: Boolean, default: false },
       maxGuests: { type: Number, default: 6 },
-      diningType: { type: String, default: "family-dining" },
+      diningType: { type: mongoose.Schema.Types.Mixed, default: "family-dining" },
+      mealPeriods: { type: [String], default: ["breakfast", "lunch", "dinner"] },
+      pureVegRestaurant: { type: Boolean },
     },
     menu: {
       sections: { type: Array, default: [] },

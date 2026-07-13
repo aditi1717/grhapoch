@@ -209,7 +209,7 @@ export default function DiningRequests() {
                                             <Button 
                                                 onClick={() => handleApprove(request._id)}
                                                 disabled={processingId === request._id}
-                                                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-1.5 shadow-sm shadow-emerald-200 transition-all text-xs"
+                                                className="bg-primary hover:bg-primary/90 text-black font-bold px-4 py-1.5 shadow-sm transition-all text-xs"
                                             >
                                                 {processingId === request._id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : "Approve"}
                                             </Button>

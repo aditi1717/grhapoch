@@ -612,18 +612,20 @@ export default function Dining() {
                     />
                     <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/25 to-transparent" />
                     <div className="absolute inset-x-0 bottom-0 p-4 sm:p-5 md:p-6 lg:p-8">
-                      <div className="max-w-[75%] rounded-2xl bg-black/20 px-3 py-3 text-white backdrop-blur-sm sm:px-4 md:px-5">
-                        {banner.promoCode && (
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/85 sm:text-xs">
-                            {banner.promoCode}
-                          </p>
-                        )}
-                        {banner.tagline && (
-                          <h2 className="mt-2 text-lg font-bold leading-tight sm:text-2xl md:text-3xl">
-                            {banner.tagline}
-                          </h2>
-                        )}
-                      </div>
+                      {(banner.promoCode || banner.tagline) && (
+                        <div className="max-w-[75%] rounded-2xl bg-black/20 px-3 py-3 text-white backdrop-blur-sm sm:px-4 md:px-5">
+                          {banner.promoCode && (
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.3em] text-white/85 sm:text-xs">
+                              {banner.promoCode}
+                            </p>
+                          )}
+                          {banner.tagline && (
+                            <h2 className="mt-2 text-lg font-bold leading-tight sm:text-2xl md:text-3xl">
+                              {banner.tagline}
+                            </h2>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))}

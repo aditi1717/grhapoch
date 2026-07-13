@@ -35,6 +35,7 @@ const STORAGE_KEY = "restaurant_online_status";
 // Top filter tabs
 const filterTabs = [
   { id: "all", label: "All" },
+  { id: "dining", label: "🍽️ Dining" },
   { id: "preparing", label: "Preparing" },
   { id: "ready", label: "Ready" },
   { id: "out-for-delivery", label: "Out for delivery" },
@@ -614,17 +615,22 @@ function TableBookings() {
     try {
       const response = await diningAPI.updateBookingStatusRestaurant(bookingId, status);
       if (response.data.success) {
-        toast.success(`Booking ${status === "confirmed" ? "confirmed" : "rejected"} successfully`);
-        // Force refresh
+        const labels = {
+          confirmed: "confirmed",
+          cancelled: "rejected",
+          "checked-in": "checked in",
+          completed: "completed",
+        };
+        toast.success(`Booking ${labels[status] || status} successfully`);
         setBookings((prev) =>
           prev.map((b) =>
-            b._id === bookingId ? { ...b, status: status === "confirmed" ? "confirmed" : "cancelled" } : b
+            b._id === bookingId ? { ...b, status } : b
           )
         );
       }
     } catch (error) {
       debugError("Error updating booking status:", error);
-      toast.error("Failed to update booking status");
+      toast.error(error?.response?.data?.message || "Failed to update booking status");
     }
   };
 
@@ -669,7 +675,9 @@ function TableBookings() {
                           ? "bg-orange-100 text-orange-700"
                           : booking.status === "completed"
                             ? "bg-blue-100 text-blue-700"
-                            : "bg-gray-100 text-gray-600"
+                            : booking.status === "cancelled"
+                              ? "bg-red-100 text-red-600"
+                              : "bg-gray-100 text-gray-600"
                     }`}>
                   {booking.status === "pending" ? "Request" : (booking.status === "accepted" ? "confirmed" : booking.status)}
                 </span>
@@ -706,17 +714,45 @@ function TableBookings() {
                 </div>
               )}
 
+              {/* Pending: Accept / Reject */}
               {booking.status === "pending" && (
                 <div className="mt-4 flex gap-2">
                   <button
                     onClick={() => handleStatusUpdate(booking._id, "confirmed")}
-                    className="flex-1 bg-green-600 text-white py-2 rounded-xl text-xs font-bold hover:bg-green-700 transition-colors">
+                    className="flex-1 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 active:bg-gray-900 transition-colors shadow-sm">
                     Accept
                   </button>
                   <button
                     onClick={() => handleStatusUpdate(booking._id, "cancelled")}
-                    className="flex-1 bg-white border border-red-200 text-red-600 py-2 rounded-xl text-xs font-bold hover:bg-red-50 transition-colors">
+                    className="flex-1 bg-white border-2 border-gray-800 text-gray-900 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 hover:text-white active:bg-gray-900 active:text-white transition-colors">
                     Reject
+                  </button>
+                </div>
+              )}
+
+              {/* Confirmed: Mark Checked-in / Cancel */}
+              {(booking.status === "confirmed" || booking.status === "accepted") && (
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => handleStatusUpdate(booking._id, "checked-in")}
+                    className="flex-1 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 active:bg-gray-900 transition-colors shadow-sm">
+                    Check In
+                  </button>
+                  <button
+                    onClick={() => handleStatusUpdate(booking._id, "cancelled")}
+                    className="flex-1 bg-white border-2 border-gray-800 text-gray-900 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 hover:text-white active:bg-gray-900 active:text-white transition-colors">
+                    Cancel
+                  </button>
+                </div>
+              )}
+
+              {/* Checked-in: Mark Completed */}
+              {booking.status === "checked-in" && (
+                <div className="mt-4 flex gap-2">
+                  <button
+                    onClick={() => handleStatusUpdate(booking._id, "completed")}
+                    className="flex-1 bg-black text-white py-2.5 rounded-xl text-xs font-bold hover:bg-gray-800 active:bg-gray-900 transition-colors shadow-sm">
+                    Mark Completed
                   </button>
                 </div>
               )}
@@ -2023,6 +2059,8 @@ export default function OrdersMain() {
             refreshToken={ordersRefreshToken}
           />
         );
+      case "dining":
+        return <TableBookings />;
       default:
         return <EmptyState />;
     }

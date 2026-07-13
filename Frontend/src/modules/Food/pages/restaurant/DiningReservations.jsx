@@ -1047,16 +1047,16 @@ export default function DiningReservations() {
                                             }}
                                             className={`group relative flex items-center justify-center p-2 rounded-xl border-2 transition-all ${
                                                 isSelected 
-                                                    ? "border-primary bg-primary/5 shadow-md scale-[1.02]" 
-                                                    : "border-slate-100 bg-white hover:border-slate-200 active:scale-95"
+                                                    ? "border-red-500 bg-red-50/50 shadow-md scale-[1.02]" 
+                                                    : "border-slate-200 bg-white hover:border-slate-300 active:scale-95"
                                             }`}
                                         >
-                                            <span className={`text-[11px] font-bold text-center leading-tight transition-colors ${isSelected ? "text-primary" : "text-slate-600"}`}>
+                                            <span className={`text-[11px] font-bold text-center leading-tight transition-colors ${isSelected ? "text-red-600" : "text-slate-500"}`}>
                                                 {cat.name}
                                             </span>
                                             {isSelected && (
                                                 <div className="absolute top-1.5 right-1.5 animate-in zoom-in duration-200">
-                                                    <div className="bg-primary rounded-full p-0.5 shadow-sm">
+                                                    <div className="bg-red-500 rounded-full p-0.5 shadow-sm">
                                                         <CheckCircle2 className="w-2.5 h-2.5 text-white" />
                                                     </div>
                                                 </div>
@@ -1103,7 +1103,7 @@ export default function DiningReservations() {
                                             }}
                                             className={`rounded-full border px-4 py-2 text-[11px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${
                                                 isSelected
-                                                    ? "border-primary bg-primary/5 text-primary shadow-sm"
+                                                    ? "border-red-500 bg-red-50/50 text-red-600 shadow-sm"
                                                     : "border-slate-200 bg-white text-slate-500 hover:border-slate-300"
                                             }`}
                                         >
