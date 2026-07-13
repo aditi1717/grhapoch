@@ -988,6 +988,42 @@ export const adminAPI = {
       {},
       { contextModule: "admin" },
     ),
+  getRestaurantSubscriptionPlans: (params = {}) =>
+    apiClient.get("/food/admin/restaurant-subscription-plans", {
+      params,
+      contextModule: "admin",
+    }),
+  getRestaurantSubscriptionPlanById: (id) =>
+    apiClient.get(`/food/admin/restaurant-subscription-plans/${String(id)}`, {
+      contextModule: "admin",
+    }),
+  createRestaurantSubscriptionPlan: (body) =>
+    apiClient.post("/food/admin/restaurant-subscription-plans", body ?? {}, {
+      contextModule: "admin",
+    }),
+  updateRestaurantSubscriptionPlan: (id, body) =>
+    apiClient.patch(
+      `/food/admin/restaurant-subscription-plans/${String(id)}`,
+      body ?? {},
+      { contextModule: "admin" },
+    ),
+  deleteRestaurantSubscriptionPlan: (id) =>
+    apiClient.delete(`/food/admin/restaurant-subscription-plans/${String(id)}`, {
+      contextModule: "admin",
+    }),
+  getRestaurantSubscriptions: (params = {}) =>
+    apiClient.get("/food/admin/restaurant-subscriptions", {
+      params,
+      contextModule: "admin",
+    }),
+  getRestaurantSubscriptionSettings: () =>
+    apiClient.get("/food/admin/restaurant-subscription-settings", {
+      contextModule: "admin",
+    }),
+  updateRestaurantSubscriptionSettings: (body) =>
+    apiClient.patch("/food/admin/restaurant-subscription-settings", body ?? {}, {
+      contextModule: "admin",
+    }),
   /** Backward-compatible alias used in UI */
   getApprovedRestaurants: (params = {}) =>
     apiClient.get("/food/admin/restaurants", {
@@ -1206,6 +1242,14 @@ export const restaurantAPI = {
     apiClient.get("/food/restaurant/dining-settings/request/pending", {
       contextModule: "restaurant",
     }),
+  getSubscriptionPlans: () =>
+    apiClient.get("/food/restaurant/subscription-plans", { contextModule: "restaurant" }),
+  getCurrentSubscription: () =>
+    apiClient.get("/food/restaurant/subscription/current", { contextModule: "restaurant" }),
+  subscribeToPlan: (planId) =>
+    apiClient.post("/food/restaurant/subscription/subscribe", { planId }, { contextModule: "restaurant" }),
+  verifySubscriptionPayment: (body) =>
+    apiClient.post("/food/restaurant/subscription/verify", body ?? {}, { contextModule: "restaurant" }),
   requestDiningUpdate: (body) =>
     apiClient.patch("/food/restaurant/dining-settings/request", body ?? {}, {
       contextModule: "restaurant",

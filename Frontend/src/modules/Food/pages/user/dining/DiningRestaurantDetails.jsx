@@ -403,7 +403,7 @@ export default function DiningRestaurantDetails() {
 
   const handleShare = async () => {
     const shareUrl = window.location.href
-    const shareText = `Check out ${restaurantName} on Switcheats!`
+    const shareText = `Check out ${restaurantName} on Grhapoch!`
 
     const payload = {
       title: restaurantName,

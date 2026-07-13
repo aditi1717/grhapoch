@@ -1976,21 +1976,46 @@ export async function updateSupportTicket(id, body = {}) {
 
 // ----- Restaurant Commission (admin) -----
 export async function getRestaurantCommissions() {
-    const list = await FoodRestaurantCommission.find({})
-        .sort({ createdAt: -1 })
-        .populate({ path: 'restaurantId', select: 'restaurantName' })
-        .lean();
+    const { FoodRestaurantSubscription } = await import('../../restaurant/models/restaurantSubscription.model.js');
+    
+    const [list, activeSubscriptions] = await Promise.all([
+        FoodRestaurantCommission.find({})
+            .sort({ createdAt: -1 })
+            .populate({ path: 'restaurantId', select: 'restaurantName' })
+            .lean(),
+        FoodRestaurantSubscription.find({
+            status: 'active',
+            endDate: { $gte: new Date() }
+        }).populate('planId').lean()
+    ]);
 
-    const commissions = list.map((c, index) => ({
-        _id: c._id,
-        sl: index + 1,
-        restaurantId: c.restaurantId?._id ? String(c.restaurantId._id) : String(c.restaurantId),
-        restaurantName: c.restaurantId?.restaurantName || '',
-        restaurant: c.restaurantId?._id ? { _id: c.restaurantId._id, name: c.restaurantId.restaurantName } : null,
-        defaultCommission: c.defaultCommission || { type: 'percentage', value: 0 },
-        notes: c.notes || '',
-        status: c.status !== false
-    }));
+    const subMap = new Map();
+    activeSubscriptions.forEach(sub => {
+        if (sub.restaurantId) {
+            subMap.set(String(sub.restaurantId), sub);
+        }
+    });
+
+    const commissions = list.map((c, index) => {
+        const rId = c.restaurantId?._id ? String(c.restaurantId._id) : String(c.restaurantId);
+        const activeSub = subMap.get(rId);
+
+        return {
+            _id: c._id,
+            sl: index + 1,
+            restaurantId: rId,
+            restaurantName: c.restaurantId?.restaurantName || '',
+            restaurant: c.restaurantId?._id ? { _id: c.restaurantId._id, name: c.restaurantId.restaurantName } : null,
+            defaultCommission: c.defaultCommission || { type: 'percentage', value: 0 },
+            notes: c.notes || '',
+            status: c.status !== false,
+            activeSubscription: activeSub ? {
+                planName: activeSub.planId?.name || 'Active Plan',
+                commissionRate: activeSub.planId?.commissionRate ?? 0,
+                endDate: activeSub.endDate
+            } : null
+        };
+    });
 
     return { commissions };
 }

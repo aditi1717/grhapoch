@@ -62,6 +62,26 @@ export async function getRestaurantCommissionSnapshot(orderDoc) {
     };
   }
 
+  // Check for active subscription first
+  try {
+    const { getCurrentSubscription } = await import('../../restaurant/services/restaurantSubscription.service.js');
+    const activeSubscription = await getCurrentSubscription(restaurantIdRaw);
+    if (activeSubscription) {
+      const rate = Number(activeSubscription.planId?.commissionRate ?? 0);
+      const commissionAmount = Math.round((baseAmount * (rate / 100)) * 100) / 100;
+      return {
+        commissionAmount,
+        commissionType: 'percentage',
+        commissionValue: rate,
+        baseAmount,
+        hasActiveSubscription: true,
+        subscriptionPlanName: activeSubscription.planId?.name
+      };
+    }
+  } catch (err) {
+    console.error('[SUBSCRIPTION_CHECK_ERROR] Failed to check restaurant subscription:', err);
+  }
+
   const rules = await getActiveRestaurantCommissionRules();
   const rule =
     rules.find((r) => String(r.restaurantId) === String(restaurantIdRaw)) ||

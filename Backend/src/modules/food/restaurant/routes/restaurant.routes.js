@@ -22,6 +22,12 @@ import {
     createCurrentRestaurantDiningRequestController
 } from '../controllers/restaurant.controller.js';
 import {
+    getSubscriptionPlansController as listActiveSubPlans,
+    getCurrentSubscriptionController as getMyCurrentSub,
+    subscribeToPlanController as createSubOrder,
+    verifySubscriptionPaymentController as verifySubPayment
+} from '../controllers/restaurantSubscription.controller.js';
+import {
     createRestaurantOfferController,
     listRestaurantOffersController,
     deleteRestaurantOfferController,
@@ -231,5 +237,11 @@ router.get('/my-offers', authMiddleware, requireRestaurant, listRestaurantOffers
 router.post('/my-offers', authMiddleware, requireRestaurant, createRestaurantOfferController);
 router.patch('/my-offers/:id/status', authMiddleware, requireRestaurant, updateRestaurantOfferStatusController);
 router.delete('/my-offers/:id', authMiddleware, requireRestaurant, deleteRestaurantOfferController);
+
+// Subscriptions (restaurant dashboard)
+router.get('/subscription-plans', authMiddleware, requireRestaurant, listActiveSubPlans);
+router.get('/subscription/current', authMiddleware, requireRestaurant, getMyCurrentSub);
+router.post('/subscription/subscribe', authMiddleware, requireRestaurant, createSubOrder);
+router.post('/subscription/verify', authMiddleware, requireRestaurant, verifySubPayment);
 
 export default router;

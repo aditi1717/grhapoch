@@ -7,7 +7,7 @@ import { Input } from "@food/components/ui/input"
 import { authAPI } from "@food/api"
 import { motion } from "framer-motion"
 import loginBanner from "@food/assets/loginbanner.png"
-import logoImg from "@food/assets/switcheats-logo copy.png"
+import logoImg from "@food/assets/grhapoch-logo copy.png"
 import { loadBusinessSettings, getModuleLogoUrl, getCompanyName } from "@food/utils/businessSettings"
 const debugLog = (...args) => { }
 const debugWarn = (...args) => { }
@@ -19,10 +19,10 @@ export default function SignIn() {
   const [searchParams] = useSearchParams()
 
   const [logoUrl, setLogoUrl] = useState(() => getModuleLogoUrl("user") || logoImg)
-  const [companyName, setCompanyName] = useState(() => getCompanyName() || "SwitchEats")
+  const [companyName, setCompanyName] = useState(() => getCompanyName() || "Grhapoch")
 
   const renderBrandedName = () => {
-    const name = companyName || "SwitchEats";
+    const name = companyName || "Grhapoch";
     const upper = name.toUpperCase();
     if (upper === "SWITCHEATS") {
       return (

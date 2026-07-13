@@ -1,6 +1,7 @@
 import express from 'express';
 import { AuthError } from '../../../../core/auth/errors.js';
 import * as adminController from '../controllers/admin.controller.js';
+import * as subscriptionAdminController from '../controllers/subscriptionAdmin.controller.js';
 import * as foodApprovalController from '../controllers/foodApproval.controller.js';
 import * as addonsApprovalController from '../controllers/addonsApproval.controller.js';
 import * as businessSettingsController from '../controllers/businessSettings.controller.js';
@@ -63,6 +64,7 @@ const resolveSectionFromRequest = (path = '', method = '') => {
         path.startsWith('/restaurants') ||
         path.startsWith('/restaurant-settings') ||
         path.startsWith('/restaurant-subscription-settings') ||
+        path.startsWith('/restaurant-subscription-plans') ||
         path.startsWith('/restaurant-subscriptions') ||
         path.startsWith('/zones')
     ) return 'restaurant_management';
@@ -221,6 +223,16 @@ router.get('/restaurant-commissions/:id', adminController.getRestaurantCommissio
 router.patch('/restaurant-commissions/:id', adminController.updateRestaurantCommission);
 router.delete('/restaurant-commissions/:id', adminController.deleteRestaurantCommission);
 router.patch('/restaurant-commissions/:id/toggle', adminController.toggleRestaurantCommissionStatus);
+
+// ----- Restaurant Subscriptions -----
+router.post('/restaurant-subscription-plans', subscriptionAdminController.createSubscriptionPlanController);
+router.get('/restaurant-subscription-plans', subscriptionAdminController.getSubscriptionPlansController);
+router.get('/restaurant-subscription-plans/:id', subscriptionAdminController.getSubscriptionPlanByIdController);
+router.patch('/restaurant-subscription-plans/:id', subscriptionAdminController.updateSubscriptionPlanController);
+router.delete('/restaurant-subscription-plans/:id', subscriptionAdminController.deleteSubscriptionPlanController);
+router.get('/restaurant-subscriptions', subscriptionAdminController.getRestaurantSubscriptionsController);
+router.get('/restaurant-subscription-settings', subscriptionAdminController.getSubscriptionSettingsController);
+router.patch('/restaurant-subscription-settings', subscriptionAdminController.updateSubscriptionSettingsController);
 
 // ----- Categories -----
 router.get('/categories', adminController.getCategories);

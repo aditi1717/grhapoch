@@ -4,16 +4,19 @@ import { connectRedis, closeRedis } from '../src/config/redis.js';
 import { config } from '../src/config/env.js';
 import { expireExpiredOffers } from '../src/modules/food/admin/services/admin.service.js';
 import { syncExpiredFssaiNotifications } from '../src/modules/food/restaurant/services/fssaiExpiry.service.js';
+import { checkAndSendSubscriptionExpiryWarnings } from '../src/modules/food/restaurant/services/restaurantSubscription.service.js';
 import { logger } from '../src/utils/logger.js';
 
 let expireOffersInterval = null;
 let fssaiExpiryInterval = null;
+let subscriptionExpiryInterval = null;
 
 
 const shutdown = async (signal) => {
     logger.info(`${signal} received, stopping scheduled jobs`);
     if (expireOffersInterval) clearInterval(expireOffersInterval);
     if (fssaiExpiryInterval) clearInterval(fssaiExpiryInterval);
+    if (subscriptionExpiryInterval) clearInterval(subscriptionExpiryInterval);
 
 
     try {
@@ -58,14 +61,24 @@ const start = async () => {
             }
         };
 
+        const runSubscriptionExpiryCheck = async () => {
+            try {
+                await checkAndSendSubscriptionExpiryWarnings();
+            } catch (err) {
+                logger.error(`Subscription expiry check error: ${err.message}`);
+            }
+        };
+
 
 
         await runExpire();
         await runFssaiExpirySync();
+        await runSubscriptionExpiryCheck();
 
 
         expireOffersInterval = setInterval(runExpire, 5 * 60 * 1000);
         fssaiExpiryInterval = setInterval(runFssaiExpirySync, 60 * 60 * 1000);
+        subscriptionExpiryInterval = setInterval(runSubscriptionExpiryCheck, 60 * 60 * 1000); // Check hourly
 
 
         logger.info('Scheduled jobs runner started');

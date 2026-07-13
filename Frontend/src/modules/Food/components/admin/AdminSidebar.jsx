@@ -54,7 +54,7 @@ import { adminAPI } from "@food/api"
 import { getCachedSettings, loadBusinessSettings } from "@food/utils/businessSettings"
 import { canAccessFeatureSettings, canAccessSuperPowers } from "@food/utils/adminPermissions"
 import { canAdminAccess, isSuperAdmin, resolvePermissionSectionByPath } from "@food/utils/adminRbac"
-import quickSpicyLogo from "@food/assets/switcheats-logo.png"
+import quickSpicyLogo from "@food/assets/grhapoch-logo.png"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -308,6 +308,9 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
               return null
             }
             if (item.type === "link" && item.path === featureSettingsPath && !canViewFeatureSettings) {
+              return null
+            }
+            if (item.type === "link" && item.path === "/admin/food/restaurants/subscriptions" && !restaurantSubscriptionEnabled) {
               return null
             }
             if (item.type === "link") {

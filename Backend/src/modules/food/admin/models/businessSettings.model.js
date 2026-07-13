@@ -50,7 +50,11 @@ const businessSettingsSchema = new mongoose.Schema(
                 fontFamily: { type: String, default: 'Poppins' }
             }
         },
-        orderAcceptanceTimeMinutes: { type: Number, default: 4, min: 1, max: 20 }
+        orderAcceptanceTimeMinutes: { type: Number, default: 4, min: 1, max: 20 },
+        subscriptionExpiryAlert: {
+            daysBefore: { type: Number, default: 3, min: 1 },
+            messageTemplate: { type: String, default: "Your subscription plan '{planName}' is expiring in {daysRemaining} days. Please renew to keep enjoying commission-free orders." }
+        }
     },
     { timestamps: true }
 );

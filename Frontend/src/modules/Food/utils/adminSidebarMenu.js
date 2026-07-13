@@ -58,8 +58,21 @@ export const adminSidebarMenu = [
           { label: "Unregistered Restaurants", path: "/admin/food/restaurants/unregistered" },
           { label: "Restaurant Reviews", path: "/admin/food/restaurants/reviews" },
           { label: "Restaurant Complaints", path: "/admin/food/restaurants/complaints" },
+          { label: "Restaurant Commission", path: "/admin/food/restaurants/commission" },
           { label: "Restaurant Settings", path: "/admin/food/restaurants/settings" },
         ],
+      },
+    ],
+  },
+  {
+    type: "section",
+    label: "SUBSCRIPTION MANAGEMENT",
+    items: [
+      {
+        type: "link",
+        label: "Subscriptions",
+        path: "/admin/food/restaurants/subscriptions",
+        icon: "Award",
       },
     ],
   },
