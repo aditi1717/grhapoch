@@ -172,6 +172,12 @@ export const notificationAPI = {
 
 /** Admin API - new backend only (GET /auth/me, PATCH /auth/admin/profile, POST /auth/admin/change-password) */
 export const adminAPI = {
+  getAdBannerRequests: () =>
+    apiClient.get("/food/advertising/admin/requests", { contextModule: "admin" }),
+  approveAdBannerRequest: (id) =>
+    apiClient.patch(`/food/advertising/admin/${id}/approve`, {}, { contextModule: "admin" }),
+  rejectAdBannerRequest: (id, reason) =>
+    apiClient.patch(`/food/advertising/admin/${id}/reject`, { reason }, { contextModule: "admin" }),
   getSidebarBadges: () =>
     apiClient.get("/food/admin/sidebar-badges", { contextModule: "admin" }),
   login: (email, password) => authService.adminLogin(email, password),
@@ -223,6 +229,26 @@ export const adminAPI = {
         : null);
     const fcmToken = typeof localStorage !== "undefined" ? localStorage.getItem("fcm_web_registered_token_admin") : null;
     return authService.logout(token, fcmToken, "web");
+  },
+  saveFcmToken: (token, platform = "web") => {
+    if (!token) return Promise.reject(new Error("FCM token is required"));
+    const path =
+      platform === "mobile" ? "/fcm-tokens/mobile/save" : "/fcm-tokens/save";
+    return apiClient.post(
+      path,
+      { token: String(token), platform },
+      { contextModule: "admin" },
+    );
+  },
+  removeFcmToken: (token, platform = "web") => {
+    if (!token) return Promise.reject(new Error("FCM token is required"));
+    return apiClient.delete(
+      `/fcm-tokens/remove/${encodeURIComponent(String(token))}`,
+      {
+        data: { token: String(token), platform },
+        contextModule: "admin",
+      },
+    );
   },
   // Restaurant approvals and join requests
   getPendingRestaurants: () =>
@@ -1178,6 +1204,16 @@ export const adminAPI = {
 
 /** Restaurant API - OTP login via new backend; no email/password. */
 export const restaurantAPI = {
+  getAdPricing: () =>
+    apiClient.get("/food/advertising/pricing", { contextModule: "restaurant" }),
+  requestAdCampaign: (body) =>
+    apiClient.post("/food/advertising/request", body, { contextModule: "restaurant" }),
+  verifyAdPayment: (body) =>
+    apiClient.post("/food/advertising/verify", body, { contextModule: "restaurant" }),
+  cancelAdCampaign: (id) =>
+    apiClient.post(`/food/advertising/${id}/cancel`, {}, { contextModule: "restaurant" }),
+  getMyAdCampaigns: () =>
+    apiClient.get("/food/advertising/my-ads", { contextModule: "restaurant" }),
   createUnregisteredRestaurant: (data) =>
     apiClient.post("/food/restaurant/unregistered", data),
   deleteAccount: () => apiClient.delete('/food/restaurant/profile/account', { contextModule: 'restaurant' }),
@@ -2373,6 +2409,16 @@ export const deliveryAPI = {
 };
 
 export const userAPI = {
+  getAdPricing: () =>
+    apiClient.get("/food/advertising/pricing", { contextModule: "user" }),
+  requestAdCampaign: (body) =>
+    apiClient.post("/food/advertising/request", body, { contextModule: "user" }),
+  verifyAdPayment: (body) =>
+    apiClient.post("/food/advertising/verify", body, { contextModule: "user" }),
+  cancelAdCampaign: (id) =>
+    apiClient.post(`/food/advertising/${id}/cancel`, {}, { contextModule: "user" }),
+  getMyAdCampaigns: () =>
+    apiClient.get("/food/advertising/my-ads", { contextModule: "user" }),
   deleteCurrentUserAccount: () =>
     apiClient
       .delete('/food/user/profile', { contextModule: 'user' })

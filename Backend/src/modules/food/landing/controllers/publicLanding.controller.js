@@ -8,6 +8,8 @@ import { HomePromotionBanner } from '../models/homePromotionBanner.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { getPublicHomePromotionBanners } from '../services/homePromotionBanner.service.js';
 import TopBanner from '../models/topBanner.model.js';
+import AdBanner from '../models/adBanner.model.js';
+import { isFeatureEnabled } from '../../admin/services/featureSettings.service.js';
 import { sendResponse } from '../../../../utils/response.js';
 import mongoose from 'mongoose';
 
@@ -39,7 +41,35 @@ export const getPublicHeroBannersController = async (req, res, next) => {
 export const getPublicTopBannersController = async (req, res, next) => {
     try {
         const docs = await TopBanner.find({ isActive: true }).sort('order').lean();
-        return sendResponse(res, 200, 'Top banners fetched', { banners: docs });
+        
+        const isAdEnabled = await isFeatureEnabled('banner_advertising', false);
+        let mappedAds = [];
+        if (isAdEnabled) {
+            const now = new Date();
+            const activeAds = await AdBanner.find({
+                status: 'approved',
+                paymentStatus: 'paid',
+                startDate: { $lte: now },
+                endDate: { $gte: now }
+            }).lean();
+
+            mappedAds = activeAds.map(ad => ({
+                _id: ad._id,
+                image: ad.image,
+                order: 999,
+                isActive: true,
+                isAd: true,
+                targetType: ad.targetType,
+                targetId: ad.targetId || (ad.targetType === 'restaurant' && ad.requesterType === 'FoodRestaurant' ? ad.requesterId.toString() : ''),
+                targetUrl: ad.targetUrl,
+                startDate: ad.startDate,
+                endDate: ad.endDate,
+                createdAt: ad.createdAt,
+                updatedAt: ad.updatedAt
+            }));
+        }
+
+        return sendResponse(res, 200, 'Top banners fetched', { banners: docs, ads: mappedAds });
     } catch (error) {
         next(error);
     }

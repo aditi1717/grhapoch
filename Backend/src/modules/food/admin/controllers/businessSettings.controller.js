@@ -189,7 +189,7 @@ export async function updateOrderAcceptanceSettings(req, res, next) {
 export async function updateBusinessSettings(req, res, next) {
     try {
         const data = req.body.data ? JSON.parse(req.body.data) : {};
-        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region } = data;
+        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, adBannerDays, adBannerPrice } = data;
 
         // Validation
         if (!companyName || companyName.trim().length < 2 || companyName.trim().length > 50) {
@@ -210,6 +210,18 @@ export async function updateBusinessSettings(req, res, next) {
         if (pincode && !/^\d{4,10}$/.test(pincode.trim())) {
             return res.status(400).json({ success: false, message: 'Invalid pincode (4-10 digits required)' });
         }
+        if (adBannerDays !== undefined) {
+            const days = Number(adBannerDays);
+            if (isNaN(days) || days <= 0) {
+                return res.status(400).json({ success: false, message: 'Campaign duration must be a positive number (greater than 0)' });
+            }
+        }
+        if (adBannerPrice !== undefined) {
+            const price = Number(adBannerPrice);
+            if (isNaN(price) || price < 0) {
+                return res.status(400).json({ success: false, message: 'Pricing charge cannot be negative' });
+            }
+        }
 
         let settings = await FoodBusinessSettings.findOne();
         if (!settings) {
@@ -228,6 +240,8 @@ export async function updateBusinessSettings(req, res, next) {
         if (state !== undefined) settings.state = state;
         if (pincode !== undefined) settings.pincode = pincode;
         if (region) settings.region = region;
+        if (adBannerDays !== undefined) settings.adBannerDays = Number(adBannerDays);
+        if (adBannerPrice !== undefined) settings.adBannerPrice = Number(adBannerPrice);
 
         // Handle file uploads
         if (req.files) {

@@ -3,7 +3,8 @@ import { FoodFeatureSetting } from '../models/featureSetting.model.js';
 export const FEATURE_KEYS = {
     COD_CONTROL: 'cod_control',
     ADMIN_ACCESS_SECTION: 'admin_access_section',
-    ROOT_LANDING_AND_UNREGISTERED_CONTROL: 'root_landing_and_unregistered_control'
+    ROOT_LANDING_AND_UNREGISTERED_CONTROL: 'root_landing_and_unregistered_control',
+    BANNER_ADVERTISING: 'banner_advertising'
 };
 
 const DEFAULT_FEATURES = [
@@ -24,6 +25,12 @@ const DEFAULT_FEATURES = [
         name: 'Root Landing & Unregistered Restaurants',
         description: 'Controls root URL behavior and Unregistered Restaurants visibility. When disabled, root redirects to /food/user and Unregistered Restaurants is hidden.',
         isEnabled: true
+    },
+    {
+        key: FEATURE_KEYS.BANNER_ADVERTISING,
+        name: 'Banner Advertising',
+        description: 'Controls visibility of banner advertising request forms, payment options, and display on user homepage.',
+        isEnabled: false
     }
 ];
 

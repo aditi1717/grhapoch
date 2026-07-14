@@ -45,6 +45,7 @@ const RestaurantStatus = lazy(() => import("@food/pages/restaurant/RestaurantSta
 const ExploreMore = lazy(() => import("@food/pages/restaurant/ExploreMore"))
 const RestaurantSubscription = lazy(() => import("@food/pages/restaurant/RestaurantSubscription"))
 const RestaurantPrivacy = lazy(() => import("@food/pages/restaurant/Privacy"))
+const AdCampaignManager = lazy(() => import("@food/pages/user/profile/AdCampaignManager"))
 const RestaurantTerms = lazy(() => import("@food/pages/restaurant/Terms"))
 const RestaurantCMSHelpSupport = lazy(() => import("@food/pages/restaurant/CMSHelpSupport"))
 const OrderDetailPage = lazy(() => import("@food/pages/restaurant/OrderDetailPage"))
@@ -136,6 +137,7 @@ export default function RestaurantRouter() {
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><UpdateBankDetails /></ProtectedRoute>} path="update-bank-details" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><DiningReservations /></ProtectedRoute>} path="reservations" />
         <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><ZoneSetup /></ProtectedRoute>} path="zone-setup" />
+        <Route element={<ProtectedRoute requiredRole="restaurant" loginPath="/food/restaurant/login"><AdCampaignManager /></ProtectedRoute>} path="advertisements" />
         
         {/* CMS Content Routes (Stay public-accessible but inside router) */}
         <Route path="privacy" element={<RestaurantPrivacy />} />

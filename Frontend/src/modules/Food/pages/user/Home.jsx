@@ -99,6 +99,7 @@ import HomeHeader from "@food/components/user/home/HomeHeader";
 import QuickSection from "@food/components/user/home/QuickSection";
 import PromoRow from "@food/components/user/home/PromoRow";
 import PromotionBannerCarousel from "@food/components/user/home/PromotionBannerCarousel";
+import AdBannersCarousel from "@food/components/user/home/AdBannersCarousel";
 import OutOfZoneScreen from "@food/components/user/OutOfZoneScreen";
 
 
@@ -760,6 +761,7 @@ export default function Home() {
   const [topBannersLoaded, setTopBannersLoaded] = useState(false);
   const {
     topBanners,
+    adBanners,
     heroBanners,
     exploreIcons,
     refreshUserHome,
@@ -767,7 +769,7 @@ export default function Home() {
   } = usePublicAppConfig();
 
   useEffect(() => {
-    void refreshUserHome();
+    void refreshUserHome(true);
   }, [refreshUserHome]);
 
   useEffect(() => {
@@ -2957,6 +2959,11 @@ export default function Home() {
         />
 
         <PromotionBannerCarousel zoneId={zoneId} />
+
+        {/* Self-serve Advertisements Carousel */}
+        {adBanners && adBanners.length > 0 && (
+          <AdBannersCarousel ads={adBanners} />
+        )}
 
         {CategoryRailHeader}
 

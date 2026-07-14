@@ -30,7 +30,8 @@ import {
   MapPin,
   LogOut,
   Trash2,
-  Award
+  Award,
+  Megaphone
 } from "lucide-react"
 import { Card, CardContent } from "@food/components/ui/card"
 import { DateRangeCalendar } from "@food/components/ui/date-range-calendar"
@@ -40,6 +41,7 @@ import { firebaseAuth, ensureFirebaseInitialized } from "@food/firebase"
 import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import DeleteAccountModal from "@food/components/DeleteAccountModal"
 import { toast } from "sonner"
+import { isFeatureEnabled, loadCorePublicAppConfig } from "@food/services/publicAppConfig"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -342,6 +344,13 @@ export default function ExploreMore() {
   const [profileOpen, setProfileOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
+  const [configLoaded, setConfigLoaded] = useState(false)
+
+  useEffect(() => {
+    loadCorePublicAppConfig()
+      .then(() => setConfigLoaded(true))
+      .catch((err) => console.error("Failed to load core public app config:", err))
+  }, [])
 
   // Schedule off states
   const [scheduleOffOpen, setScheduleOffOpen] = useState(false)
@@ -786,14 +795,27 @@ export default function ExploreMore() {
   }, [])
 
   // Section data
-  const manageOutletItems = [
-    { id: 1, label: "Outlet info", icon: Info, route: "/restaurant/outlet-info" },
-    { id: 2, label: "Outlet timings", icon: Clock, route: "/restaurant/outlet-timings" },
-    { id: 3, label: "Dining Reservations", icon: Calendar, route: "/restaurant/reservations" },
-    { id: 4, label: "Menu categories", icon: Settings, route: "/restaurant/menu-categories" },
-    { id: "coupons-nav", label: "Offers & Coupons", icon: FileCheck, route: "/restaurant/coupon" },
-    { id: "subscription-nav", label: "Subscription", icon: Award, route: "/restaurant/subscription" },
-  ]
+  const manageOutletItems = useMemo(() => {
+    const items = [
+      { id: 1, label: "Outlet info", icon: Info, route: "/restaurant/outlet-info" },
+      { id: 2, label: "Outlet timings", icon: Clock, route: "/restaurant/outlet-timings" },
+      { id: 3, label: "Dining Reservations", icon: Calendar, route: "/restaurant/reservations" },
+      { id: 4, label: "Menu categories", icon: Settings, route: "/restaurant/menu-categories" },
+      { id: "coupons-nav", label: "Offers & Coupons", icon: FileCheck, route: "/restaurant/coupon" },
+      { id: "subscription-nav", label: "Subscription", icon: Award, route: "/restaurant/subscription" },
+    ];
+
+    if (isFeatureEnabled("banner_advertising", false)) {
+      items.push({
+        id: "ads-nav",
+        label: "Advertisements",
+        icon: Megaphone,
+        route: "/restaurant/advertisements"
+      });
+    }
+
+    return items;
+  }, [configLoaded]);
 
   const settingsItems = [
     { id: 3, label: "Delivery settings", icon: Truck, route: "/restaurant/delivery-settings" },
@@ -818,13 +840,13 @@ export default function ExploreMore() {
   ]
 
   // All sections with their items
-  const allSections = [
+  const allSections = useMemo(() => [
     { title: "Manage outlet", items: manageOutletItems, key: "manage-outlet" },
     { title: "Settings", items: settingsItems, key: "settings" },
     { title: "Orders", items: ordersItems, key: "orders" },
     { title: "Help", items: helpItems, key: "help" },
     { title: "Finance", items: accountingItems, key: "accounting" },
-  ]
+  ], [manageOutletItems]);
 
   // Filter logic
   const getFilteredSections = () => {

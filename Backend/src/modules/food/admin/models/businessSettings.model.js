@@ -54,7 +54,9 @@ const businessSettingsSchema = new mongoose.Schema(
         subscriptionExpiryAlert: {
             daysBefore: { type: Number, default: 3, min: 1 },
             messageTemplate: { type: String, default: "Your subscription plan '{planName}' is expiring in {daysRemaining} days. Please renew to keep enjoying commission-free orders." }
-        }
+        },
+        adBannerDays: { type: Number, default: 30 },
+        adBannerPrice: { type: Number, default: 2000 }
     },
     { timestamps: true }
 );

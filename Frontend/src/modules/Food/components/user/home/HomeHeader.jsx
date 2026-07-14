@@ -205,10 +205,20 @@ export default function HomeHeader({
     setIsNotificationsOpen(false);
   };
 
+  const handleBannerClick = (banner) => {
+    if (!banner || !banner.isAd) return;
+    if (banner.targetType === "restaurant" && banner.targetId) {
+      navigate(`/user/restaurants/${banner.targetId}`);
+    } else if (banner.targetType === "url" && banner.targetUrl) {
+      window.open(banner.targetUrl, "_blank", "noopener,noreferrer");
+    }
+  };
+
   const displayBanners = hasDynamicBanners
     ? topBanners.map((banner, index) => ({
         id: index,
-        bg: "bg-gray-100 dark:bg-gray-800",
+        bg: `bg-gray-100 dark:bg-gray-800 ${banner.isAd ? 'cursor-pointer' : ''}`,
+        raw: banner,
         content: (
           <img 
             src={banner.image || banner.imageUrl} 
@@ -235,7 +245,11 @@ export default function HomeHeader({
             style={{ transform: `translateX(-${currentSlide * 100}%)` }}
           >
             {displayBanners.map((banner) => (
-              <div key={banner.id} className={`relative w-full h-full shrink-0 ${banner.bg}`}>
+              <div 
+                key={banner.id} 
+                className={`relative w-full h-full shrink-0 ${banner.bg}`}
+                onClick={() => handleBannerClick(banner.raw)}
+              >
                 {banner.content}
               </div>
             ))}

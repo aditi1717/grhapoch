@@ -229,6 +229,30 @@ export const adminSidebarMenu = [
     label: "SYSTEM SETTINGS",
     items: [
       { type: "link", label: "Broadcast Notification", path: "/admin/food/broadcast-notification", icon: "Bell" },
+      {
+        type: "expandable",
+        label: "Restaurant Advertisements",
+        icon: "Megaphone",
+        subItems: [
+          { label: "Pending Requests", path: "/admin/food/advertisement/restaurant/requests" },
+          { label: "Active Ads", path: "/admin/food/advertisement/restaurant/active" },
+          { label: "Rejected Ads", path: "/admin/food/advertisement/restaurant/rejected" },
+          { label: "History", path: "/admin/food/advertisement/restaurant/history" },
+          { label: "Ads Settings", path: "/admin/food/advertisement/restaurant/settings" },
+        ],
+      },
+      {
+        type: "expandable",
+        label: "User Advertisements",
+        icon: "Megaphone",
+        subItems: [
+          { label: "Pending Requests", path: "/admin/food/advertisement/user/requests" },
+          { label: "Active Ads", path: "/admin/food/advertisement/user/active" },
+          { label: "Rejected Ads", path: "/admin/food/advertisement/user/rejected" },
+          { label: "History", path: "/admin/food/advertisement/user/history" },
+          { label: "Ads Settings", path: "/admin/food/advertisement/user/settings" },
+        ],
+      },
       { type: "link", label: "Business Setup", path: "/admin/food/business-setup", icon: "Settings" },
     ],
   },

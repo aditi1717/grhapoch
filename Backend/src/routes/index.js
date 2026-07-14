@@ -3,6 +3,7 @@ import authRoutes from '../core/auth/auth.routes.js';
 import deliveryRoutes from '../modules/food/delivery/routes/delivery.routes.js';
 import restaurantRoutes from '../modules/food/restaurant/routes/restaurant.routes.js';
 import landingRoutes from '../modules/food/landing/routes/landing.routes.js';
+import advertisingRoutes from '../modules/food/landing/routes/adBanner.routes.js';
 import { getPublicDiningCategories, getPublicDiningRestaurants, getPublicRestaurantOccupiedSeats } from '../modules/food/dining/controllers/diningPublic.controller.js';
 import { createBooking, getMyBookings, createReview, getRestaurantBookings, updateBookingStatus, getPublicRestaurantBookings } from '../modules/food/dining/controllers/diningBooking.controller.js';
 import uploadRoutes from '../modules/uploads/routes/upload.routes.js';
@@ -43,6 +44,7 @@ router.use('/v1/food/delivery', deliveryRoutes);
 router.use('/v1/food/restaurant', restaurantRoutes);
 // Landing & hero-banners for Food user app (paths start with /food/hero-banners/...)
 router.use('/v1/food', landingRoutes);
+router.use('/v1/food/advertising', advertisingRoutes);
 router.use('/v1/food/search', searchRoutes);
 router.get('/v1/food/dining/categories/public', getPublicDiningCategories);
 router.get('/v1/food/dining/restaurants/public', getPublicDiningRestaurants);

@@ -28,6 +28,7 @@ const emptyStore = () => ({
   featureSettings: null,
   feeSettings: null,
   topBanners: null,
+  adBanners: null,
   heroBanners: null,
   exploreIcons: null,
   landingByZone: new Map(),
@@ -58,6 +59,11 @@ const parseFeeSettings = (response) =>
 const parseTopBanners = (response) => {
   const banners = response?.data?.data?.banners;
   return Array.isArray(banners) ? banners : [];
+};
+
+const parseAdBanners = (response) => {
+  const ads = response?.data?.data?.ads;
+  return Array.isArray(ads) ? ads : [];
 };
 
 const parseHeroBanners = (response) => {
@@ -163,7 +169,7 @@ export const loadCorePublicAppConfig = async ({ force = false } = {}) => {
 export const loadUserHomePublicConfig = async ({ force = false } = {}) => {
   await loadCorePublicAppConfig({ force });
 
-  if (!force && store.topBanners && store.heroBanners && store.exploreIcons) {
+  if (!force && store.topBanners && store.adBanners && store.heroBanners && store.exploreIcons) {
     return getPublicAppConfigSnapshot();
   }
 
@@ -180,6 +186,7 @@ export const loadUserHomePublicConfig = async ({ force = false } = {}) => {
     ]);
 
     store.topBanners = parseTopBanners(topRes);
+    store.adBanners = parseAdBanners(topRes);
     store.heroBanners = parseHeroBanners(heroRes);
     store.exploreIcons = parseExploreIcons(exploreRes);
     store.loadedAt = Date.now();

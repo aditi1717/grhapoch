@@ -24,6 +24,7 @@ import {
   MapPin,
   Share2,
   Trash2,
+  Megaphone,
 } from "lucide-react";
 
 import AnimatedPage from "@food/components/user/AnimatedPage";
@@ -50,6 +51,7 @@ import { authAPI, userAPI } from "@food/api";
 import { firebaseAuth } from "@food/firebase";
 import { clearModuleAuth } from "@food/utils/auth";
 import { toast } from "sonner";
+import { isFeatureEnabled, loadCorePublicAppConfig } from "@food/services/publicAppConfig";
 const debugLog = (...args) => { };
 const debugWarn = (...args) => { };
 const debugError = (...args) => { };
@@ -86,9 +88,14 @@ export default function Profile() {
   const [walletBalance, setWalletBalance] = useState(0);
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
 
-  // Trigger web push registration when profile mounts to ensure FCM token is saved
+  const [configLoaded, setConfigLoaded] = useState(false);
+
+  // Trigger web push registration and load feature settings when profile mounts
   useEffect(() => {
     registerWebPushForCurrentModule().catch(console.error);
+    loadCorePublicAppConfig()
+      .then(() => setConfigLoaded(true))
+      .catch(console.error);
   }, []);
 
   const handleVegModeUpdate = (nextValue) => {
@@ -552,6 +559,35 @@ export default function Profile() {
               </Card>
             </motion.div>
           </Link>
+
+          {isFeatureEnabled("banner_advertising", false) && (
+            <Link to="/user/profile/advertisements" className="block">
+              <motion.div
+                whileHover={{ x: 4, scale: 1.01 }}
+                transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>
+                <Card className="bg-white dark:bg-[#1a1a1a] py-0 rounded-xl shadow-sm border-0 dark:border-gray-800 cursor-pointer">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <motion.div
+                        className="bg-gray-100 dark:bg-gray-800 rounded-full p-2"
+                        whileHover={{ rotate: 15, scale: 1.1 }}
+                        transition={{ duration: 0.3 }}>
+                        <Megaphone className="h-5 w-5 text-gray-700 dark:text-gray-300" />
+                      </motion.div>
+                      <span className="text-base font-medium text-gray-900 dark:text-white">
+                        Self-Serve Ads
+                      </span>
+                    </div>
+                    <motion.div
+                      whileHover={{ x: 4 }}
+                      transition={{ duration: 0.2 }}>
+                      <ChevronRight className="h-5 w-5 text-gray-400 dark:text-gray-500" />
+                    </motion.div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Link>
+          )}
 
           <Link to="/user/cart" className="block">
             <motion.div

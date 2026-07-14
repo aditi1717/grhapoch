@@ -48,7 +48,7 @@ const Cashback = lazy(() => import("@food/pages/admin/Cashback"));
 const Banners = lazy(() => import("@food/pages/admin/Banners"));
 const PromotionalBanner = lazy(() => import("@food/pages/admin/PromotionalBanner"));
 const NewAdvertisement = lazy(() => import("@food/pages/admin/advertisement/NewAdvertisement"));
-const AdRequests = lazy(() => import("@food/pages/admin/advertisement/AdRequests"));
+const AdRequests = lazy(() => import("@food/pages/admin/system/AdBannerManagement"));
 const AdsList = lazy(() => import("@food/pages/admin/advertisement/AdsList"));
 
 // Help & Support
@@ -147,6 +147,33 @@ function FeatureSettingsRouteGuard() {
     return <Navigate to="/admin/food" replace />;
   }
   return <FeatureSettings />;
+}
+
+function AdvertisingRouteGuard({ children }) {
+  const [loading, setLoading] = useState(true);
+  const [isEnabled, setIsEnabled] = useState(false);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await adminAPI.getPublicFeatureSettings();
+        const rows = Array.isArray(res?.data?.data) ? res.data.data : [];
+        const feature = rows.find((row) => row.key === "banner_advertising");
+        if (feature) {
+          setIsEnabled(Boolean(feature.isEnabled));
+        }
+      } catch (_error) {
+        // fallback to disabled
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (loading) return <Loader />;
+  if (!isEnabled) return <Navigate to="/admin/food" replace />;
+  return children;
 }
 
 function SuperPowersRouteGuard({ children }) {
@@ -289,9 +316,11 @@ export default function AdminRouter() {
             <Route path="cashback" element={<Cashback />} />
             <Route path="banners" element={<Banners />} />
             <Route path="promotional-banner" element={<PromotionalBanner />} />
-            <Route path="advertisement" element={<AdsList />} />
-            <Route path="advertisement/new" element={<NewAdvertisement />} />
-            <Route path="advertisement/requests" element={<AdRequests />} />
+            <Route path="advertisement" element={<AdvertisingRouteGuard><AdsList /></AdvertisingRouteGuard>} />
+            <Route path="advertisement/new" element={<AdvertisingRouteGuard><NewAdvertisement /></AdvertisingRouteGuard>} />
+            <Route path="advertisement/requests" element={<AdvertisingRouteGuard><AdRequests /></AdvertisingRouteGuard>} />
+            <Route path="advertisement/restaurant/:subTab" element={<AdvertisingRouteGuard><AdRequests /></AdvertisingRouteGuard>} />
+            <Route path="advertisement/user/:subTab" element={<AdvertisingRouteGuard><AdRequests /></AdvertisingRouteGuard>} />
             
             <Route path="chattings" element={<Chattings />} />
             <Route path="contact-messages" element={<ContactMessages />} />

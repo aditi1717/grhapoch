@@ -10,7 +10,8 @@ const FEATURE_KEYS = {
     RESTAURANT_SUBSCRIPTION: 'restaurant_subscription',
     COD_CONTROL: 'cod_control',
     ADMIN_ACCESS_SECTION: 'admin_access_section',
-    ROOT_LANDING_AND_UNREGISTERED_CONTROL: 'root_landing_and_unregistered_control'
+    ROOT_LANDING_AND_UNREGISTERED_CONTROL: 'root_landing_and_unregistered_control',
+    BANNER_ADVERTISING: 'banner_advertising'
 };
 
 export default function FeatureSettings() {
@@ -35,6 +36,11 @@ export default function FeatureSettings() {
 
     const rootLandingAndUnregisteredControl = useMemo(
         () => features.find((item) => item.key === FEATURE_KEYS.ROOT_LANDING_AND_UNREGISTERED_CONTROL) || null,
+        [features]
+    );
+
+    const bannerAdvertising = useMemo(
+        () => features.find((item) => item.key === FEATURE_KEYS.BANNER_ADVERTISING) || null,
         [features]
     );
 
@@ -63,7 +69,7 @@ export default function FeatureSettings() {
     };
 
     const handleSave = async () => {
-        const updates = [restaurantSubscription, codControl, adminAccessSection, rootLandingAndUnregisteredControl].filter(Boolean);
+        const updates = [restaurantSubscription, codControl, adminAccessSection, rootLandingAndUnregisteredControl, bannerAdvertising].filter(Boolean);
         if (updates.length === 0) return;
         try {
             setSaving(true);
@@ -185,8 +191,28 @@ export default function FeatureSettings() {
                 </CardContent>
             </Card>
 
+            <Card className="border-slate-200">
+                <CardHeader>
+                    <CardTitle className="text-lg">Banner Advertising</CardTitle>
+                    <CardDescription>
+                        Controls visibility of banner advertising request portals for users & restaurants, online payment gateways, and rendering ads on the user homepage.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between gap-4">
+                    <div className="text-sm text-gray-700">
+                        {bannerAdvertising?.isEnabled
+                            ? 'Enabled: Banner advertising functionality is fully active'
+                            : 'Disabled: Advertising options are hidden and inactive'}
+                    </div>
+                    <Switch
+                        checked={Boolean(bannerAdvertising?.isEnabled)}
+                        onCheckedChange={(checked) => setToggle(FEATURE_KEYS.BANNER_ADVERTISING, checked)}
+                    />
+                </CardContent>
+            </Card>
+
             <div className="flex justify-end">
-                <Button onClick={handleSave} disabled={saving || (!restaurantSubscription && !codControl && !adminAccessSection && !rootLandingAndUnregisteredControl)}>
+                <Button onClick={handleSave} disabled={saving || (!restaurantSubscription && !codControl && !adminAccessSection && !rootLandingAndUnregisteredControl && !bannerAdvertising)}>
                     {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
                     Save Changes
                 </Button>

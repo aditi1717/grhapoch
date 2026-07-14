@@ -137,6 +137,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
   const [codControlEnabled, setCodControlEnabled] = useState(true)
   const [adminAccessSectionEnabled, setAdminAccessSectionEnabled] = useState(true)
   const [rootLandingAndUnregisteredControlEnabled, setRootLandingAndUnregisteredControlEnabled] = useState(true)
+  const [bannerAdvertisingEnabled, setBannerAdvertisingEnabled] = useState(false)
   const [canViewFeatureSettings, setCanViewFeatureSettings] = useState(false)
   const [adminUser, setAdminUser] = useState(() => {
     try {
@@ -206,6 +207,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
         const codFeature = rows.find((row) => row.key === "cod_control")
         const adminAccessFeature = rows.find((row) => row.key === "admin_access_section")
         const rootAndUnregisteredFeature = rows.find((row) => row.key === "root_landing_and_unregistered_control")
+        const bannerAdvertisingFeature = rows.find((row) => row.key === "banner_advertising")
         if (feature) {
           setRestaurantSubscriptionEnabled((prev) =>
             parseFeatureEnabled(feature.isEnabled, prev)
@@ -224,6 +226,11 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
         if (rootAndUnregisteredFeature) {
           setRootLandingAndUnregisteredControlEnabled((prev) =>
             parseFeatureEnabled(rootAndUnregisteredFeature.isEnabled, prev)
+          )
+        }
+        if (bannerAdvertisingFeature) {
+          setBannerAdvertisingEnabled((prev) =>
+            parseFeatureEnabled(bannerAdvertisingFeature.isEnabled, prev)
           )
         }
       } catch (error) {
@@ -251,6 +258,11 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
       }
       if (detail.key === "root_landing_and_unregistered_control") {
         setRootLandingAndUnregisteredControlEnabled((prev) =>
+          parseFeatureEnabled(detail.isEnabled, prev)
+        )
+      }
+      if (detail.key === "banner_advertising") {
+        setBannerAdvertisingEnabled((prev) =>
           parseFeatureEnabled(detail.isEnabled, prev)
         )
       }
@@ -313,6 +325,9 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
             if (item.type === "link" && item.path === "/admin/food/restaurants/subscriptions" && !restaurantSubscriptionEnabled) {
               return null
             }
+            if (item.type === "expandable" && (item.label === "Restaurant Advertisements" || item.label === "User Advertisements") && !bannerAdvertisingEnabled) {
+              return null
+            }
             if (item.type === "link") {
               const permissionSection = resolvePermissionSectionByPath(item.path)
               if (!permissionSection && !isSuperAdmin(adminUser)) return null
@@ -353,7 +368,7 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
       if (section?.type !== "section") return true
       return Array.isArray(section.items) && section.items.length > 0
     })
-  }, [adminAccessSectionEnabled, adminUser, canViewFeatureSettings, codControlEnabled, restaurantSubscriptionEnabled, rootLandingAndUnregisteredControlEnabled])
+  }, [adminAccessSectionEnabled, adminUser, canViewFeatureSettings, codControlEnabled, restaurantSubscriptionEnabled, rootLandingAndUnregisteredControlEnabled, bannerAdvertisingEnabled])
 
   const getBadgeCount = (label = "", path = "") => {
     const l = label.toLowerCase()
@@ -450,21 +465,22 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
 
   const [isCollapsed, setIsCollapsed] = useState(() => getInitialStates().isCollapsed)
   const [expandedSections, setExpandedSections] = useState(() => {
-    const initialState = getInitialStates().expandedSections
-    if (Object.keys(initialState || {}).length > 0) return initialState
-
-    // Generate defaults if empty
-    const state = {}
+    const initialState = getInitialStates().expandedSections || {}
+    
+    // Generate defaults from current menu
+    const defaults = {}
     adminSidebarMenu.forEach((item) => {
-      if (item.type === "section") {
+      if (item.type === "section" && Array.isArray(item.items)) {
         item.items.forEach((subItem) => {
           if (subItem.type === "expandable") {
-            state[subItem.label.toLowerCase().replace(/\s+/g, "")] = false
+            defaults[subItem.label.toLowerCase().replace(/\s+/g, "")] = false
           }
         })
       }
     })
-    return state
+    
+    // Merge defaults with initialState so new menu items are always present
+    return { ...defaults, ...initialState }
   })
 
   // Save states to consolidated localStorage and notify parent
@@ -628,9 +644,13 @@ export default function AdminSidebar({ isOpen = false, onClose, onCollapseChange
         }
       }
 
-      const next = {}
+      const next = {
+        [sectionKey]: true
+      }
       Object.keys(prev).forEach((key) => {
-        next[key] = key === sectionKey
+        if (key !== sectionKey) {
+          next[key] = false
+        }
       })
       return next
     })
