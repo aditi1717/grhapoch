@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: 'switcheats-api',
+      name: 'grhapoch-api',
       cwd: './Backend',
       script: 'server.js',
       instances: 'max',
@@ -17,7 +17,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-socket',
+      name: 'grhapoch-socket',
       cwd: './Backend',
       script: 'socket-server.js',
       instances: 1,
@@ -30,7 +30,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-scheduler',
+      name: 'grhapoch-scheduler',
       cwd: './Backend',
       script: 'scripts/run-scheduled-jobs.js',
       instances: 1,
@@ -42,7 +42,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-worker-otp',
+      name: 'grhapoch-worker-otp',
       cwd: './Backend',
       script: 'src/queues/workers/otp.worker.js',
       instances: 1,
@@ -54,7 +54,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-worker-notification',
+      name: 'grhapoch-worker-notification',
       cwd: './Backend',
       script: 'src/queues/workers/notification.worker.js',
       instances: 1,
@@ -66,7 +66,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-worker-order',
+      name: 'grhapoch-worker-order',
       cwd: './Backend',
       script: 'src/queues/workers/order.worker.js',
       instances: 1,
@@ -78,7 +78,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-worker-tracking',
+      name: 'grhapoch-worker-tracking',
       cwd: './Backend',
       script: 'src/queues/workers/tracking.worker.js',
       instances: 1,
@@ -90,7 +90,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-worker-payment',
+      name: 'grhapoch-worker-payment',
       cwd: './Backend',
       script: 'src/queues/workers/payment.worker.js',
       instances: 1,
@@ -102,7 +102,7 @@ module.exports = {
       }
     },
     {
-      name: 'switcheats-worker-maintenance',
+      name: 'grhapoch-worker-maintenance',
       cwd: './Backend',
       script: 'src/queues/workers/maintenance.worker.js',
       instances: 1,
