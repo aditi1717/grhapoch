@@ -401,15 +401,15 @@ export const updateFavicon = (url) => {
 };
 
 const resolveLogoByModule = (settings, moduleName = "user") => {
-  if (!settings || typeof settings !== "object") return "";
+  if (!settings || typeof settings !== "object") return "/grhapochlogo.jpeg";
   const moduleKey = String(moduleName || "").trim().toLowerCase();
   if (moduleKey === "restaurant") {
-    return settings.restaurantLogo?.url || settings.logo?.url || "";
+    return settings.restaurantLogo?.url || settings.logo?.url || "/grhapochlogo.jpeg";
   }
   if (moduleKey === "delivery") {
-    return settings.deliveryLogo?.url || settings.logo?.url || "";
+    return settings.deliveryLogo?.url || settings.logo?.url || "/grhapochlogo.jpeg";
   }
-  return settings.logo?.url || "";
+  return settings.logo?.url || "/grhapochlogo.jpeg";
 };
 
 const resolveFaviconByModule = (settings, moduleName = "user") => {
