@@ -189,7 +189,7 @@ export async function updateOrderAcceptanceSettings(req, res, next) {
 export async function updateBusinessSettings(req, res, next) {
     try {
         const data = req.body.data ? JSON.parse(req.body.data) : {};
-        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, adBannerDays, adBannerPrice } = data;
+        const { companyName, email, phoneCountryCode, phoneNumber, address, state, pincode, region, adBannerDays, adBannerPrice, deliveryBoyRadius, userVisibilityRadius } = data;
 
         // Validation
         if (!companyName || companyName.trim().length < 2 || companyName.trim().length > 50) {
@@ -222,6 +222,18 @@ export async function updateBusinessSettings(req, res, next) {
                 return res.status(400).json({ success: false, message: 'Pricing charge cannot be negative' });
             }
         }
+        if (deliveryBoyRadius !== undefined) {
+            const r = Number(deliveryBoyRadius);
+            if (isNaN(r) || r < 0.1) {
+                return res.status(400).json({ success: false, message: 'Delivery boy dispatch radius must be at least 0.1 KM' });
+            }
+        }
+        if (userVisibilityRadius !== undefined) {
+            const r = Number(userVisibilityRadius);
+            if (isNaN(r) || r < 0.1) {
+                return res.status(400).json({ success: false, message: 'User visibility radius must be at least 0.1 KM' });
+            }
+        }
 
         let settings = await FoodBusinessSettings.findOne();
         if (!settings) {
@@ -242,6 +254,8 @@ export async function updateBusinessSettings(req, res, next) {
         if (region) settings.region = region;
         if (adBannerDays !== undefined) settings.adBannerDays = Number(adBannerDays);
         if (adBannerPrice !== undefined) settings.adBannerPrice = Number(adBannerPrice);
+        if (deliveryBoyRadius !== undefined) settings.deliveryBoyRadius = Number(deliveryBoyRadius);
+        if (userVisibilityRadius !== undefined) settings.userVisibilityRadius = Number(userVisibilityRadius);
 
         // Handle file uploads
         if (req.files) {

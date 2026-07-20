@@ -12,6 +12,7 @@ import { FoodOrder } from '../../orders/models/order.model.js';
 import { FoodRestaurantOutletTimings } from '../models/outletTimings.model.js';
 import { attachOutletTimingsToRestaurants } from './outletTimings.service.js';
 import { normalizeRestaurantLocation } from '../../shared/geo.utils.js';
+import { FoodBusinessSettings } from '../../admin/models/businessSettings.model.js';
 import {
     createRazorpayOrder,
     getRazorpayKeyId,
@@ -637,7 +638,8 @@ export const registerRestaurant = async (payload, files) => {
         panImage: preUploadedPanImage,
         gstImage: preUploadedGstImage,
         fssaiImage: preUploadedFssaiImage,
-        menuImages: preUploadedMenuImages
+        menuImages: preUploadedMenuImages,
+        serviceRadius
     } = payload;
 
     if (!ownerPhone) {
@@ -730,6 +732,12 @@ export const registerRestaurant = async (payload, files) => {
     try {
         const latNum = toFiniteNumber(latitude);
         const lngNum = toFiniteNumber(longitude);
+
+        // Fetch global radius from admin settings (falls back to 10 KM)
+        const globalSettings = await FoodBusinessSettings.findOne().lean().catch(() => null);
+        // serviceRadius on restaurant = how far users can be from the restaurant to see/order
+        const globalRestaurantRadius = globalSettings?.userVisibilityRadius ?? 10;
+
         const restaurant = await FoodRestaurant.create({
             restaurantName,
             restaurantNameNormalized,
@@ -744,6 +752,7 @@ export const registerRestaurant = async (payload, files) => {
             zoneId: zoneId && mongoose.Types.ObjectId.isValid(String(zoneId).trim())
                 ? new mongoose.Types.ObjectId(String(zoneId).trim())
                 : undefined,
+            serviceRadius: globalRestaurantRadius,
             // Store unified location object (geo + address).
             location: {
                 type: 'Point',
@@ -1194,6 +1203,12 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         update.zoneId = zoneId && mongoose.Types.ObjectId.isValid(zoneId)
             ? new mongoose.Types.ObjectId(zoneId)
             : undefined;
+    }
+    if (body.serviceRadius !== undefined) {
+        const radiusVal = toFiniteNumber(body.serviceRadius);
+        if (radiusVal !== null && radiusVal > 0) {
+            update.serviceRadius = radiusVal;
+        }
     }
 
     // Bank + UPI fields (Explore -> Update Bank Details page)
@@ -1810,9 +1825,10 @@ export const listApprovedRestaurants = async (query = {}) => {
     }
 
     // Strict zone filter for user listing:
-    // if zoneId is provided, return only restaurants mapped to that zone.
+    // With radius-based migration, we ignore the mock zoneId and only filter by zoneId if it is a real active zone.
     const zoneIdRaw = String(query.zoneId || '').trim();
-    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
+    const isMockZone = zoneIdRaw === '507f1f77bcf86cd799439011';
+    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw) && !isMockZone) {
         filter.zoneId = new mongoose.Types.ObjectId(zoneIdRaw);
     }
 
@@ -1847,21 +1863,25 @@ export const listApprovedRestaurants = async (query = {}) => {
         openDays: 1
     };
 
-    // Use $geoNear only when geo is explicitly needed (radius filter or nearest sorting).
-    // This avoids accidentally hiding restaurants that do not have coordinates yet.
-    const wantsGeo = (radiusKm !== null) || sortBy === 'nearest';
-    if (lat !== null && lng !== null && wantsGeo) {
+    // Use $geoNear when coordinates are available, using global userVisibilityRadius from BusinessSettings.
+    const wantsGeo = (lat !== null && lng !== null);
+    if (wantsGeo) {
+        // Fetch global radius settings — default 10 KM if not configured
+        const globalSettings = await FoodBusinessSettings.findOne().lean().catch(() => null);
+        const globalUserRadius = globalSettings?.userVisibilityRadius ?? 10;
+        // Fallback for per-restaurant serviceRadius: use userVisibilityRadius
+        const globalRestaurantRadius = globalSettings?.userVisibilityRadius ?? 10;
+        const effectiveRadiusKm = radiusKm ?? globalUserRadius;
+
         const geoNear = {
             $geoNear: {
                 near: { type: 'Point', coordinates: [lng, lat] },
                 distanceField: 'distanceMeters',
                 spherical: true,
-                query: filter
+                query: filter,
+                maxDistance: Math.max(0.1, effectiveRadiusKm) * 1000
             }
         };
-        if (radiusKm !== null) {
-            geoNear.$geoNear.maxDistance = Math.max(0.1, radiusKm) * 1000;
-        }
 
         const sortStage = (() => {
             if (sortBy === 'rating' || sortBy === 'rating-high') return { $sort: { rating: -1, distanceMeters: 1 } };
@@ -1879,6 +1899,16 @@ export const listApprovedRestaurants = async (query = {}) => {
             {
                 $addFields: {
                     distanceInKm: { $round: [{ $divide: ['$distanceMeters', 1000] }, 2] }
+                }
+            },
+            {
+                $match: {
+                    $expr: {
+                        $lte: [
+                            "$distanceMeters",
+                            { $multiply: [ { $ifNull: ["$serviceRadius", globalRestaurantRadius] }, 1000 ] }
+                        ]
+                    }
                 }
             },
             sortStage

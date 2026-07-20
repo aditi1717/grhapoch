@@ -225,6 +225,12 @@ const restaurantSchema = new mongoose.Schema(
       ref: "FoodZone",
       index: true,
     },
+    /** Operational service radius in KM */
+    serviceRadius: {
+      type: Number,
+      default: 10,
+      min: 0.1,
+    },
     businessModel: {
       type: String,
       trim: true,

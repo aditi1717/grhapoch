@@ -95,6 +95,12 @@ const deliveryPartnerSchema = new mongoose.Schema(
             enum: ['online', 'offline'],
             default: 'offline'
         },
+        /** Maximum delivery radius in KM */
+        deliveryRadius: {
+            type: Number,
+            default: 10,
+            min: 0.1
+        },
         lastLocation: {
             type: { type: String, enum: ['Point'] },
             coordinates: { type: [Number] }

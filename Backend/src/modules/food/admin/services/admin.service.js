@@ -4078,6 +4078,13 @@ export async function createRestaurantByAdmin(body) {
         }
     }
 
+    if (body.serviceRadius !== undefined) {
+        const radiusVal = toFiniteNumber(body.serviceRadius);
+        if (radiusVal !== null && radiusVal > 0) {
+            doc.serviceRadius = radiusVal;
+        }
+    }
+
     if (latitude !== null && longitude !== null) {
         doc.location = {
             type: 'Point',

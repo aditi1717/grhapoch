@@ -50,7 +50,6 @@ const normalizeLocationFormFromRestaurant = (restaurant) => {
     ""
 
   return {
-    zoneId: normalizeZoneId(restaurant?.zoneId),
     formattedAddress,
     addressLine1: loc?.addressLine1 || restaurant?.addressLine1 || formattedAddress,
     addressLine2: loc?.addressLine2 || restaurant?.addressLine2 || "",
@@ -283,12 +282,7 @@ export default function EditRestaurant() {
     }
   }, [])
 
-  const currentZoneLabel = useMemo(() => {
-    const zid = normalizeZoneId(locationForm.zoneId)
-    if (!zid) return ""
-    const z = zones.find((x) => normalizeZoneId(x?._id || x?.id) === zid)
-    return z?.name || z?.zoneName || ""
-  }, [locationForm.zoneId, zones])
+  const currentZoneLabel = ""
 
   const handleSaveDetails = async () => {
     if (!restaurantId) return
@@ -337,11 +331,6 @@ export default function EditRestaurant() {
 
     const latitude = Number(locationForm.latitude)
     const longitude = Number(locationForm.longitude)
-
-    if (!locationForm.zoneId) {
-      alert("Please select a zone")
-      return
-    }
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !locationForm.formattedAddress) {
       alert("Please select a location from dropdown")
       return
@@ -350,7 +339,6 @@ export default function EditRestaurant() {
     try {
       setSavingLocation(true)
       const payload = {
-        zoneId: locationForm.zoneId,
         latitude,
         longitude,
         coordinates: [longitude, latitude],
@@ -525,26 +513,7 @@ export default function EditRestaurant() {
               ) : null}
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="md:col-span-2">
-                  <Label>Service Zone</Label>
-                  <select
-                    value={locationForm.zoneId || ""}
-                    onChange={(e) => setLocationForm((p) => ({ ...p, zoneId: e.target.value }))}
-                    className="mt-1 h-10 w-full rounded-md border border-input bg-white px-3 text-sm"
-                    disabled={zonesLoading}
-                  >
-                    <option value="">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
-                    {zones.map((z) => {
-                      const zid = normalizeZoneId(z?._id || z?.id)
-                      const label = z?.name || z?.zoneName || zid
-                      return (
-                        <option key={zid} value={zid}>
-                          {label}
-                        </option>
-                      )
-                    })}
-                  </select>
-                </div>
+
 
                 <div className="md:col-span-2">
                   <Label>Search location</Label>

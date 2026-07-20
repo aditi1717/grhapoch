@@ -2,6 +2,7 @@ import mongoose from 'mongoose';
 import { FoodOrder, FoodSettings } from '../models/order.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
+import { FoodBusinessSettings } from '../../admin/models/businessSettings.model.js';
 import { getDeliveryPartnerWalletEnhanced } from '../../delivery/services/deliveryFinance.service.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import { logger } from '../../../../utils/logger.js';
@@ -42,10 +43,13 @@ async function listNearbyOnlineDeliveryPartners(
   }
 
   const [rLng, rLat] = restaurant.location.coordinates;
+  const settings = await FoodBusinessSettings.findOne().lean().catch(() => null);
+  const adminRadius = settings?.deliveryBoyRadius ?? settings?.defaultRestaurantRadius ?? 10;
+
   const allOnline = await FoodDeliveryPartner.find({
     availabilityStatus: "online",
   })
-    .select("_id status lastLat lastLng lastLocationAt name")
+    .select("_id status lastLat lastLng lastLocationAt name deliveryRadius")
     .lean();
 
   const scored = [];
@@ -62,7 +66,8 @@ async function listNearbyOnlineDeliveryPartners(
     }
 
     const d = haversineKm(rLat, rLng, p.lastLat, p.lastLng);
-    if (Number.isFinite(d) && d <= maxKm) {
+    const partnerMaxRadius = Math.min(p.deliveryRadius || adminRadius, adminRadius);
+    if (Number.isFinite(d) && d <= maxKm && d <= partnerMaxRadius) {
       scored.push({ partnerId: p._id, distanceKm: d, status: p.status });
     }
   }
@@ -157,12 +162,14 @@ export async function tryAutoAssign(orderId, options = {}) {
         .map((offer) => offer.partnerId.toString())
     );
     
-    // RADIUS EXPANSION LOGIC
-    // Attempt 1: 15km, Attempt 2: 25km, Attempt 3: 40km, Attempt 4+: 60km
-    let maxKm = 15;
-    if (attempt === 2) maxKm = 25;
-    if (attempt === 3) maxKm = 40;
-    if (attempt >= 4) maxKm = 60;
+    // RADIUS EXPANSION LOGIC (CAPPED STRICTLY BY ADMIN RADIUS)
+    const settings = await FoodBusinessSettings.findOne().lean().catch(() => null);
+    const adminRadius = settings?.deliveryBoyRadius ?? settings?.defaultRestaurantRadius ?? 10;
+
+    // On manual Resend or Attempt 3+, search the FULL admin radius immediately
+    let maxKm = Math.min(5, adminRadius);
+    if (attempt === 2) maxKm = Math.min(adminRadius * 0.75, adminRadius);
+    if (options.isResend || attempt >= 3) maxKm = adminRadius;
 
     const searchOptions = { maxKm, limit: 15 };
     const { partners } = await listNearbyOnlineDeliveryPartners(order.restaurantId, searchOptions);
@@ -354,7 +361,7 @@ export async function resendDeliveryNotificationRestaurant(orderId, restaurantId
   order.dispatch.offeredTo = [];
   await order.save();
 
-  await tryAutoAssign(order._id);
+  await tryAutoAssign(order._id, { isResend: true, attempt: 3 });
   return { success: true };
 }
 
@@ -378,6 +385,6 @@ export async function resendDeliveryNotificationAdmin(orderId) {
   order.dispatch.offeredTo = [];
   await order.save();
 
-  await tryAutoAssign(order._id);
+  await tryAutoAssign(order._id, { isResend: true, attempt: 3 });
   return { success: true };
 }

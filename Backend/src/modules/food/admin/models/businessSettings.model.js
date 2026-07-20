@@ -56,7 +56,21 @@ const businessSettingsSchema = new mongoose.Schema(
             messageTemplate: { type: String, default: "Your subscription plan '{planName}' is expiring in {daysRemaining} days. Please renew to keep enjoying commission-free orders." }
         },
         adBannerDays: { type: Number, default: 30 },
-        adBannerPrice: { type: Number, default: 2000 }
+        adBannerPrice: { type: Number, default: 2000 },
+        adBannerDailyPrice: { type: Number, default: 100 },
+        adBannerMonthlyPrice: { type: Number, default: 2500 },
+        /**
+         * Delivery Boy Dispatch Radius (KM).
+         * From the restaurant's location, delivery partners within this radius
+         * are assigned/called for orders. Applied as deliveryRadius on new delivery partners.
+         */
+        deliveryBoyRadius: { type: Number, default: 10, min: 0.1 },
+        /**
+         * User Visibility Radius (KM).
+         * How far from a restaurant a user can be and still see and order from it.
+         * Applied as serviceRadius on new restaurants and used as the geo search cap.
+         */
+        userVisibilityRadius: { type: Number, default: 10, min: 0.1 }
     },
     { timestamps: true }
 );

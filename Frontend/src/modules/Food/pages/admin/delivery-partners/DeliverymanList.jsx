@@ -29,7 +29,7 @@ export default function DeliverymanList() {
     si: true,
     name: true,
     contact: true,
-    zone: true,
+    deliveryRadius: true,
     totalOrders: true,
     pocketBalance: true,
     cashInHand: true,
@@ -218,7 +218,7 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
       si: true,
       name: true,
       contact: true,
-      zone: true,
+      deliveryRadius: true,
       totalOrders: true,
       pocketBalance: true,
       cashInHand: true,
@@ -232,7 +232,7 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
     si: "Serial Number",
     name: "Name",
     contact: "Contact",
-    zone: "Zone",
+    deliveryRadius: "Delivery Radius",
     totalOrders: "Total Orders",
     pocketBalance: "Pocket Balance",
     cashInHand: "Cash In Hand",
@@ -486,10 +486,10 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                         </div>
                       </th>
                     )}
-                    {visibleColumns.zone && (
+                    {visibleColumns.deliveryRadius && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         <div className="flex items-center gap-2">
-                          <span>Zone</span>
+                          <span>Delivery Radius</span>
                           <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                         </div>
                       </th>
@@ -598,9 +598,9 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                             </div>
                           </td>
                         )}
-                        {visibleColumns.zone && (
+                        {visibleColumns.deliveryRadius && (
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-slate-700">{dm.zone}</span>
+                            <span className="text-sm text-slate-700">{dm.deliveryRadius || 10} KM</span>
                           </td>
                         )}
                         {visibleColumns.totalOrders && (
@@ -880,6 +880,10 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                           <p className="text-sm text-slate-900 mt-1 capitalize">{viewDetails.vehicle.type}</p>
                         </div>
                       )}
+                      <div>
+                        <label className="text-xs font-semibold text-slate-500 uppercase">Delivery Radius</label>
+                        <p className="text-sm text-slate-900 mt-1">{viewDetails.deliveryRadius || 10} KM</p>
+                      </div>
                     </div>
                   </div>
                 )}

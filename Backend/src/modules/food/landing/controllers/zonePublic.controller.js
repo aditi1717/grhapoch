@@ -1,4 +1,5 @@
 import { FoodZone } from '../../admin/models/zone.model.js';
+import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { getRedisClient } from '../../../../config/redis.js';
 
 const ACTIVE_ZONES_CACHE_KEY = 'zones:active:list:v1';
@@ -90,19 +91,48 @@ export const detectZonePublicController = async (req, res, next) => {
             return res.status(200).json(cached);
         }
 
-        const zones = await getActiveZones();
-        for (const zone of zones) {
-            const coords = Array.isArray(zone.coordinates) ? zone.coordinates : [];
-            if (coords.length < 3) continue;
-            if (isPointInPolygon(lat, lng, coords)) {
-                const response = {
-                    success: true,
-                    message: 'Zone detected',
-                    data: { status: 'IN_SERVICE', zoneId: zone._id, zone }
-                };
-                await setCachedJson(cacheKey, response, ZONE_DETECT_CACHE_TTL_SECONDS);
-                return res.status(200).json(response);
-            }
+        // Geospatial search: Find first restaurant that covers user location coordinates
+        const matchedRestaurants = await FoodRestaurant.aggregate([
+            {
+                $geoNear: {
+                    near: { type: 'Point', coordinates: [lng, lat] },
+                    distanceField: 'distanceMeters',
+                    spherical: true,
+                    query: { status: 'approved', isAcceptingOrders: true }
+                }
+            },
+            {
+                $match: {
+                    $expr: {
+                        $lte: [
+                            "$distanceMeters",
+                            { $multiply: [ { $ifNull: ["$serviceRadius", 10] }, 1000 ] }
+                        ]
+                    }
+                }
+            },
+            { $limit: 1 }
+        ]);
+
+        if (matchedRestaurants.length > 0) {
+            const restaurant = matchedRestaurants[0];
+            const mockZone = {
+                _id: '507f1f77bcf86cd799439011',
+                name: 'Radius Service',
+                zoneName: 'Radius Service',
+                country: 'India',
+                serviceLocation: restaurant.city || 'Indore',
+                unit: 'kilometer',
+                coordinates: [],
+                isActive: true
+            };
+            const response = {
+                success: true,
+                message: 'Zone detected',
+                data: { status: 'IN_SERVICE', zoneId: mockZone._id, zone: mockZone }
+            };
+            await setCachedJson(cacheKey, response, ZONE_DETECT_CACHE_TTL_SECONDS);
+            return res.status(200).json(response);
         }
 
         const response = {
@@ -120,22 +150,22 @@ export const detectZonePublicController = async (req, res, next) => {
 /** GET /zones/public - list active zones for onboarding/selects */
 export const listZonesPublicController = async (_req, res, next) => {
     try {
-        const zones = await getActiveZones();
+        const mockZone = {
+            _id: '507f1f77bcf86cd799439011',
+            name: 'Radius Service',
+            zoneName: 'Radius Service',
+            serviceLocation: 'Indore',
+            country: 'India',
+            unit: 'kilometer',
+            isActive: true,
+            coordinates: [],
+            createdAt: new Date()
+        };
 
         return res.status(200).json({
             success: true,
             message: 'Zones fetched successfully',
-            data: { zones: zones.map((zone) => ({
-                _id: zone._id,
-                name: zone.name,
-                zoneName: zone.zoneName,
-                serviceLocation: zone.serviceLocation,
-                country: zone.country,
-                unit: zone.unit,
-                isActive: zone.isActive,
-                coordinates: zone.coordinates,
-                createdAt: zone.createdAt
-            })) }
+            data: { zones: [mockZone] }
         });
     } catch (error) {
         next(error);
@@ -145,22 +175,22 @@ export const listZonesPublicController = async (_req, res, next) => {
 /** GET /zones/nearby - list zones for hotspot/nearby visualization */
 export const listZonesNearbyPublicController = async (_req, res, next) => {
     try {
-        const zones = await getActiveZones();
+        const mockZone = {
+            _id: '507f1f77bcf86cd799439011',
+            name: 'Radius Service',
+            zoneName: 'Radius Service',
+            serviceLocation: 'Indore',
+            country: 'India',
+            unit: 'kilometer',
+            isActive: true,
+            coordinates: [],
+            createdAt: new Date()
+        };
 
         return res.status(200).json({
             success: true,
             message: 'Nearby zones fetched',
-            data: { zones: zones.map((zone) => ({
-                _id: zone._id,
-                name: zone.name,
-                zoneName: zone.zoneName,
-                serviceLocation: zone.serviceLocation,
-                country: zone.country,
-                unit: zone.unit,
-                isActive: zone.isActive,
-                coordinates: zone.coordinates,
-                createdAt: zone.createdAt
-            })) }
+            data: { zones: [mockZone] }
         });
     } catch (error) {
         next(error);

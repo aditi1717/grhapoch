@@ -8,6 +8,7 @@ import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { ValidationError } from '../../../../core/auth/errors.js';
 import { getDeliveryCashLimitSettings } from '../../admin/services/admin.service.js';
 import { isMobilePlatform } from '../../../../utils/platform.js';
+import { FoodBusinessSettings } from '../../admin/models/businessSettings.model.js';
 
 export const registerDeliveryPartner = async (payload, files) => {
     const { 
@@ -96,6 +97,11 @@ export const registerDeliveryPartner = async (payload, files) => {
         }
     }
 
+    // Fetch delivery boy dispatch radius from global business settings
+    const settings = await FoodBusinessSettings.findOne().lean().catch(() => null);
+    // deliveryBoyRadius = from restaurant's coordinates, how far away a partner can be to get called
+    const parsedRadius = settings?.deliveryBoyRadius ?? 10;
+
     const partner = await FoodDeliveryPartner.create({
         name,
         phone,
@@ -111,6 +117,7 @@ export const registerDeliveryPartner = async (payload, files) => {
         panNumber,
         aadharNumber,
         status: 'pending',
+        deliveryRadius: parsedRadius,
         ...images
     });
 
@@ -166,7 +173,7 @@ export const updateDeliveryPartnerProfile = async (userId, payload, files) => {
     const {
         name, countryCode, address, city, state,
         vehicleType, vehicleName, vehicleNumber, drivingLicenseNumber, panNumber, aadharNumber,
-        fcmToken, platform
+        fcmToken, platform, deliveryRadius
     } = payload;
 
     if (name) partner.name = name;
@@ -197,6 +204,12 @@ export const updateDeliveryPartnerProfile = async (userId, payload, files) => {
         partner.vehicleNumber = vNum;
     }
     if (drivingLicenseNumber !== undefined) partner.drivingLicenseNumber = drivingLicenseNumber;
+    if (deliveryRadius !== undefined) {
+        const radiusNum = parseFloat(deliveryRadius);
+        if (Number.isFinite(radiusNum) && radiusNum > 0) {
+            partner.deliveryRadius = radiusNum;
+        }
+    }
 
     if (fcmToken) {
         if (isMobilePlatform(platform)) {
