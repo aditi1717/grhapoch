@@ -1055,7 +1055,6 @@ export default function AddRestaurant() {
             Search to auto-fill Area, City, State, Pincode and coordinates.
           </p>
         </div>
-        </div>
         <div>
           <Label className="text-xs text-gray-700">Primary contact number*</Label>
           <Input
