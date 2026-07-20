@@ -1038,6 +1038,9 @@ export default function RestaurantOnboarding() {
                 longitude: localData.step1.location?.longitude ?? "",
               },
             }))
+            if (localData.step1.location?.formattedAddress || localData.step1.location?.addressLine1) {
+              setLocationSearchValue(localData.step1.location?.formattedAddress || localData.step1.location?.addressLine1)
+            }
           }
 
           // Restore Images from IndexedDB
@@ -1254,6 +1257,10 @@ export default function RestaurantOnboarding() {
                 longitude: locationData.longitude ?? prev.location?.longitude ?? "",
               },
             }))
+            const restoredSearchVal = locationData.formattedAddress || locationData.address || data.address || locationData.addressLine1 || ""
+            if (restoredSearchVal) {
+              setLocationSearchValue(restoredSearchVal)
+            }
 
             // Map Step 2
             setStep2((prev) => ({
@@ -1416,12 +1423,6 @@ export default function RestaurantOnboarding() {
       errors.push("Primary contact number is required")
     } else if (!INDIAN_PHONE_REGEX.test(step1.primaryContactNumber.trim())) {
       errors.push("Please enter a valid 10-digit Indian phone number for restaurant")
-    }
-    if (!step1.zoneId?.trim()) {
-      errors.push("Service zone is required")
-    }
-    if (zoneDetectionState.status === "out_of_zone") {
-      errors.push("No active zone found at this location")
     }
     if (!step1.location?.area?.trim()) {
       errors.push("Area/Sector/Locality is required")
@@ -1966,15 +1967,33 @@ export default function RestaurantOnboarding() {
           </p>
           <div className="relative">
             <Label className={ONBOARDING_LABEL}>Search location</Label>
-            <p className="text-[12px] text-gray-600 mt-1">
-              Zone will be auto detected according to the selected location.
-            </p>
             <div className="relative">
               <Input
                 ref={locationSearchInputRef}
                 value={locationSearchValue}
                 onChange={(e) => {
-                  setLocationSearchValue(e.target.value)
+                  const val = e.target.value
+                  setLocationSearchValue(val)
+                  if (!val.trim()) {
+                    setIsAutoFilledLocationLocked(false)
+                    setLocationSuggestions([])
+                    setStep1((prev) => ({
+                      ...prev,
+                      location: {
+                        ...prev.location,
+                        formattedAddress: "",
+                        addressLine1: "",
+                        addressLine2: "",
+                        landmark: "",
+                        area: "",
+                        city: "",
+                        state: "",
+                        pincode: "",
+                        latitude: "",
+                        longitude: "",
+                      },
+                    }))
+                  }
                   setZoneDetectionState((prev) =>
                     prev.status === "idle" ? prev : { status: "idle", message: "", zoneName: "" }
                   )
@@ -2031,7 +2050,7 @@ export default function RestaurantOnboarding() {
                             location: {
                               ...prev.location,
                               formattedAddress,
-                              addressLine1: formattedAddress,
+                              addressLine1: prev.location.addressLine1 || "",
                               area: area || prev.location.area,
                               city: city || prev.location.city,
                               state: state || prev.location.state,
@@ -2066,7 +2085,7 @@ export default function RestaurantOnboarding() {
                         location: {
                           ...prev.location,
                           formattedAddress: display,
-                          addressLine1: display,
+                          addressLine1: prev.location.addressLine1 || "",
                           area: area || prev.location.area,
                           city: city || prev.location.city,
                           state: state || prev.location.state,
@@ -2096,26 +2115,6 @@ export default function RestaurantOnboarding() {
             <p className={ONBOARDING_HINT}>
               Select a suggestion to auto-fill area/city/state/pincode and coordinates.
             </p>
-            {zoneDetectionState.status === "detecting" && (
-              <p className="mt-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700">
-                Detecting service zone...
-              </p>
-            )}
-            {zoneDetectionState.status === "matched" && (
-              <p className="mt-2 rounded-md border border-green-200 bg-green-50 px-3 py-2 text-xs font-semibold text-green-700">
-                {zoneDetectionState.message}
-              </p>
-            )}
-            {zoneDetectionState.status === "out_of_zone" && (
-              <p className="mt-2 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-700">
-                No active zone found at this location.
-              </p>
-            )}
-            {zoneDetectionState.status === "failed" && (
-              <p className="mt-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700">
-                {zoneDetectionState.message}
-              </p>
-            )}
           </div>
           <Input
             value={step1.location?.addressLine1 || ""}
@@ -2125,7 +2124,6 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, addressLine1: e.target.value },
               })
             }
-            readOnly={isAutoFilledLocationLocked}
             className="bg-white text-sm"
             placeholder="Shop no. / building no. (optional)"
           />
@@ -2343,7 +2341,7 @@ export default function RestaurantOnboarding() {
             location: {
               ...prev.location,
               formattedAddress: parsed.formattedAddress || prev.location.formattedAddress,
-              addressLine1: parsed.formattedAddress || prev.location.addressLine1 || "",
+              addressLine1: prev.location.addressLine1 || "",
               area: parsed.area || prev.location.area,
               city: parsed.city || prev.location.city,
               state: parsed.state || prev.location.state,
@@ -2405,6 +2403,31 @@ export default function RestaurantOnboarding() {
       return
     }
     const q = normalizeLocationQuery(locationSearchValue)
+    if (!q) {
+      setLocationSuggestions([])
+      setIsSearchingLocation(false)
+      setIsAutoFilledLocationLocked(false)
+      setStep1((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          formattedAddress: "",
+          addressLine1: "",
+          addressLine2: "",
+          landmark: "",
+          area: "",
+          city: "",
+          state: "",
+          pincode: "",
+          latitude: "",
+          longitude: "",
+        },
+      }))
+      if (window.google?.maps?.places?.AutocompleteSessionToken) {
+        placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+      }
+      return
+    }
     if (q.length < 3) {
       setLocationSuggestions([])
       setIsSearchingLocation(false)
