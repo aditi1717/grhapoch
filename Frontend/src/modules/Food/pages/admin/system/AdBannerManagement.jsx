@@ -122,7 +122,7 @@ export default function AdBannerManagement() {
 
       const payload = {
         companyName: current.companyName || "Switcheats",
-        email: current.email || "support@switcheats.com",
+        email: current.email || "support@grhapoch.com",
         phoneCountryCode: current.phone?.countryCode || "+91",
         phoneNumber: current.phone?.number || "9999999999",
         address: current.address || "",

@@ -52,9 +52,9 @@ export const config = {
     // Security
     bcryptSaltRounds: Number(process.env.BCRYPT_SALT_ROUNDS || 10),
 
-    // Uploads (local VPS storage — served by nginx, not Node)
+    // Uploads (local dev → Backend/uploads, production VPS → /var/www/uploads)
     uploadStorageRoot: process.env.UPLOAD_STORAGE_ROOT
-        || (process.env.NODE_ENV === 'production' ? '/var/www/uploads' : 'uploads'),
+        || ((process.env.NODE_ENV === 'production' && process.platform !== 'win32') ? '/var/www/uploads' : 'uploads'),
     uploadBaseUrl: sanitizeUploadBaseUrl(process.env.UPLOAD_BASE_URL)
         || (process.env.NODE_ENV === 'production' ? '/uploads' : '/uploads'),
     uploadMaxFileSizeBytes: Number(process.env.UPLOAD_MAX_FILE_SIZE_MB || 5) * 1024 * 1024,

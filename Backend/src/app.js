@@ -73,10 +73,8 @@ app.use('/api', responseTimeLogger);
 // API Routes
 app.use('/api', routes);
 
-// Dev-only: serve uploaded files when nginx is not in front (production uses nginx)
-if (config.nodeEnv === 'development') {
-    app.use('/uploads', express.static(path.resolve(config.uploadStorageRoot)));
-}
+// Serve uploaded files statically (Nginx handles /uploads in prod VPS, Express serves in dev & local fallback)
+app.use('/uploads', express.static(path.resolve(config.uploadStorageRoot)));
 
 // Error Handling
 app.use(errorHandler);
