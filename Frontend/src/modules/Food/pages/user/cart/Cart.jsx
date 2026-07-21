@@ -1315,7 +1315,11 @@ export default function Cart() {
   const itemDiscountAmount = appliedCoupon && discount > 0 ? discount : 0
   const otherSavings = Math.max(0, savings - itemDiscountAmount)
   const selectedPaymentLabel =
-    selectedPaymentMethod === "wallet" ? "Wallet" : "Online Payment"
+    selectedPaymentMethod === "wallet"
+      ? "Wallet"
+      : selectedPaymentMethod === "cash" || selectedPaymentMethod === "cod"
+      ? "Cash on Delivery"
+      : "Online Payment"
 
   // Restaurant name from data or cart
   const restaurantName = restaurantData?.name || restaurantData?.restaurantName || cart[0]?.restaurant || "Restaurant"
@@ -2023,6 +2027,24 @@ export default function Cart() {
         } catch (error) {
           debugError("Error refreshing wallet balance:", error)
         }
+        return
+      }
+
+      // Cash on Delivery flow: order placed with COD (already created in backend)
+      if (selectedPaymentMethod === "cash" || selectedPaymentMethod === "cod") {
+        toast.success("Order placed with Cash on Delivery")
+        setPlacedOrderId(order?._id || order?.orderId || order?.id || null)
+        setShowOrderSuccess(true)
+        window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
+        clearCart()
+        setNote("")
+        setShowNoteInput(false)
+        try {
+          window.localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
+        } catch {
+          // ignore
+        }
+        setIsPlacingOrder(false)
         return
       }
 
@@ -2866,6 +2888,8 @@ export default function Cart() {
                 <div className="w-9 h-9 rounded-lg bg-orange-100/80 dark:bg-orange-900/40 flex items-center justify-center flex-shrink-0">
                   {selectedPaymentMethod === "wallet" ? (
                     <Wallet className="h-5 w-5 text-[#EB590E]" />
+                  ) : selectedPaymentMethod === "cash" || selectedPaymentMethod === "cod" ? (
+                    <Banknote className="h-5 w-5 text-[#EB590E]" />
                   ) : (
                     <Zap className="h-5 w-5 text-[#EB590E]" />
                   )}
@@ -2881,6 +2905,11 @@ export default function Cart() {
                     {selectedPaymentMethod === "wallet" && (
                       <p className="text-[10px] text-green-600 dark:text-green-400 font-bold bg-green-50 dark:bg-green-900/20 px-1 rounded">
                         {RUPEE_SYMBOL}{walletBalance.toFixed(0)}
+                      </p>
+                    )}
+                    {(selectedPaymentMethod === "cash" || selectedPaymentMethod === "cod") && (
+                      <p className="text-[10px] text-orange-600 dark:text-orange-400 font-bold bg-orange-50 dark:bg-orange-900/20 px-1 rounded">
+                        Pay on delivery
                       </p>
                     )}
                   </div>

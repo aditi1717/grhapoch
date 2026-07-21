@@ -569,7 +569,10 @@ export async function createOrder(userId, dto) {
 
     let razorpayPayload = null;
 
-    if (paymentMethod === "razorpay" && isRazorpayConfigured()) {
+    if (paymentMethod === "razorpay") {
+      if (!isRazorpayConfigured()) {
+        throw new ValidationError("Razorpay payment gateway is not configured on the server. Please use Cash on Delivery or Wallet.");
+      }
       const amountPaise = Math.round((normalizedPricing.total || 0) * 100);
       if (amountPaise < 100)
         throw new ValidationError("Amount too low for online payment");
@@ -586,8 +589,9 @@ export async function createOrder(userId, dto) {
         // Update order payment state before saving
         order.payment = payment;
       } catch (err) {
-        logger.error(`Razorpay order creation failed: ${err.message}`);
-        throw new ValidationError(err?.message || "Payment gateway error");
+        const detail = err?.error?.description || err?.message || err?.description || "Payment gateway error";
+        logger.error(`Razorpay order creation failed: ${detail}`, { error: err });
+        throw new ValidationError(detail);
       }
     }
 
