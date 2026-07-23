@@ -87,7 +87,6 @@ import {
   DropdownMenuTrigger,
 } from "@food/components/ui/dropdown-menu";
 import { useLocation } from "@food/hooks/useLocation";
-import { useZone } from "@food/hooks/useZone";
 import quickSpicyLogo from "@food/assets/grhapoch-logo.png";
 import offerImage from "@food/assets/offerimage.png";
 import api, { restaurantAPI, adminAPI } from "@food/api";
@@ -100,7 +99,7 @@ import QuickSection from "@food/components/user/home/QuickSection";
 import PromoRow from "@food/components/user/home/PromoRow";
 import PromotionBannerCarousel from "@food/components/user/home/PromotionBannerCarousel";
 import AdBannersCarousel from "@food/components/user/home/AdBannersCarousel";
-import OutOfZoneScreen from "@food/components/user/OutOfZoneScreen";
+import OutOfServiceScreen from "@food/components/user/OutOfServiceScreen";
 
 
 // Explore More Icons
@@ -1492,15 +1491,13 @@ export default function Home() {
     return useSavedAddress ? defaultSavedAddressLocation : location;
   }, [deliveryAddressMode, defaultSavedAddressLocation, location]);
 
-  const {
-    zoneId,
-    zoneStatus,
-    isInService,
-    isOutOfService,
-    loading: zoneLoading,
-    error: zoneError,
-    refreshZone,
-  } = useZone(effectiveLocation);
+  const zoneId = null;
+  const zoneStatus = "IN_SERVICE";
+  const isInService = true;
+  const isOutOfService = false;
+  const zoneLoading = false;
+  const zoneError = null;
+  const refreshZone = () => {};
 
   useEffect(() => {
     if (Array.isArray(exploreIcons)) {
@@ -1533,18 +1530,20 @@ export default function Home() {
     return () => {
       cancelled = true;
     };
-  }, [zoneId, refreshLanding]);
+  }, [refreshLanding]);
   const [showToast, setShowToast] = useState(false);
   const [showManageCollections, setShowManageCollections] = useState(false);
   const [selectedRestaurantSlug, setSelectedRestaurantSlug] = useState(null);
 
-  // Fetch categories (zone-aware) for the homepage category rail.
+  // Fetch categories for the homepage category rail.
   useEffect(() => {
     let cancelled = false
     const run = async () => {
-      const zoneKey = String(zoneId || "global")
+      const lat = effectiveLocation?.latitude
+      const lng = effectiveLocation?.longitude
+      const zoneKey = lat && lng ? `${lat.toFixed(4)},${lng.toFixed(4)}` : "global"
       try {
-        // Dedupe repeated calls (StrictMode + zone settling). Cache per zoneKey and share in-flight request.
+        // Dedupe repeated calls (StrictMode + location settling). Cache per zoneKey and share in-flight request.
         const cached = publicCategoriesCacheRef.current.get(zoneKey)
         if (cached) {
           if (!cancelled) setRealCategories(cached)
@@ -1560,7 +1559,12 @@ export default function Home() {
 
         setLoadingRealCategories(true)
         const promise = (async () => {
-          const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+          const params = {}
+          if (lat && lng) {
+            params.latitude = lat
+            params.longitude = lng
+          }
+          const res = await adminAPI.getPublicCategories(params)
           const list =
             res?.data?.data?.categories ||
             res?.data?.categories ||
@@ -1598,7 +1602,7 @@ export default function Home() {
     return () => {
       cancelled = true
     }
-  }, [zoneId, normalizeImageUrl])
+  }, [effectiveLocation?.latitude, effectiveLocation?.longitude, normalizeImageUrl])
 
   // Memoize cartCount to prevent recalculation on every render - use cart directly
   const cartCount = useMemo(
@@ -1835,13 +1839,13 @@ export default function Home() {
           params.trusted = "true";
         }
 
-        // Strict zone-only listing for user home.
-        // If zone is not detected yet, don't fetch global restaurants.
-        if (!zoneId) {
+        // Radius-based coordinates listing for user home.
+        if (!effectiveLocation?.latitude || !effectiveLocation?.longitude) {
           setRestaurantsData([]);
           return;
         }
-        params.zoneId = zoneId;
+        params.latitude = effectiveLocation.latitude;
+        params.longitude = effectiveLocation.longitude;
 
         debugLog("Fetching restaurants with params:", params);
         const response = await restaurantAPI.getRestaurants(params);
@@ -2620,7 +2624,7 @@ export default function Home() {
     setHeroSearch("");
   }, [closeSearch]);
 
-  const shouldShowOutOfZoneScreen = useMemo(() => {
+  const shouldShowOutOfServiceScreen = useMemo(() => {
     const hasCoords =
       Number.isFinite(Number(effectiveLocation?.latitude)) &&
       Number.isFinite(Number(effectiveLocation?.longitude));
@@ -2815,8 +2819,8 @@ export default function Home() {
     );
   }, [displayCategories, showCategorySkeleton, navigate, isCategoryStuck]);
 
-  if (shouldShowOutOfZoneScreen) {
-    return <OutOfZoneScreen location={effectiveLocation} />;
+  if (shouldShowOutOfServiceScreen) {
+    return <OutOfServiceScreen location={effectiveLocation} />;
   }
 
   return (

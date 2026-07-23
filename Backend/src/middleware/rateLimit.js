@@ -47,7 +47,7 @@ export const shouldSkipGlobalRateLimit = (req) => {
         return true;
     }
 
-    // Zone detection — called on every GPS/location update
+    // Service availability detection — called on every GPS/location update
     if (req.method === 'GET' && /\/zones\/detect/.test(path)) {
         return true;
     }

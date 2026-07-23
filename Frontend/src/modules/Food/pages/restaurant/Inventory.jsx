@@ -844,6 +844,20 @@ export default function Inventory() {
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [isAddAddonOpen, setIsAddAddonOpen] = useState(false)
 
+  // Scroll focused field into view above keyboard when add-on form is open
+  useEffect(() => {
+    if (!isAddAddonOpen) return
+    const handleFocusIn = (e) => {
+      const target = e.target
+      if (!target?.matches('input, textarea, select')) return
+      window.setTimeout(() => {
+        target.scrollIntoView({ behavior: "smooth", block: "center" })
+      }, 200)
+    }
+    document.addEventListener("focusin", handleFocusIn, true)
+    return () => document.removeEventListener("focusin", handleFocusIn, true)
+  }, [isAddAddonOpen])
+
   useEffect(() => {
     if (!filterOpen) return undefined
 
@@ -1421,10 +1435,15 @@ export default function Inventory() {
     [categories]
   )
 
-  const activeFilterOptions = useMemo(
-    () => (activeTab === "add-ons" ? ADDON_FILTER_OPTIONS : MENU_FILTER_OPTIONS),
-    [activeTab]
-  )
+  const activeFilterOptions = useMemo(() => {
+    if (activeTab === "add-ons") {
+      return ADDON_FILTER_OPTIONS
+    }
+    if (isPureVegRestaurant) {
+      return MENU_FILTER_OPTIONS.filter((option) => option.value !== "non-veg")
+    }
+    return MENU_FILTER_OPTIONS
+  }, [activeTab, isPureVegRestaurant])
 
   useEffect(() => {
     if (!activeFilterOptions.some((option) => option.value === selectedFilter)) {
@@ -2135,16 +2154,21 @@ export default function Inventory() {
                           : ADDON_TYPE_OPTIONS
                         ).map((option) => {
                           const active = addonFoodType === option.value
+                          const isVegOption = option.value === "veg"
+                          const activeStyle = active
+                            ? isVegOption
+                              ? { borderColor: "#16A34A", backgroundColor: "#F0FDF4", color: "#15803D" }
+                              : { borderColor: "#EF4444", backgroundColor: "#FEF2F2", color: "#B91C1C" }
+                            : {}
                           return (
                             <button
                               key={option.value}
                               type="button"
                               onClick={() => setAddonFoodType(option.value)}
                               className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                                active
-                                  ? "border-emerald-500 bg-emerald-50 text-emerald-700"
-                                  : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                                active ? "" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
                               }`}
+                              style={activeStyle}
                             >
                               {option.label}
                             </button>
@@ -2580,7 +2604,7 @@ export default function Inventory() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-black/50 z-[70]"
               onClick={() => setFilterOpen(false)}
             />
             <motion.div
@@ -2588,7 +2612,7 @@ export default function Inventory() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[71]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">
@@ -2664,7 +2688,7 @@ export default function Inventory() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-black/50 z-50"
+              className="fixed inset-0 bg-black/50 z-[70]"
               onClick={() => setTogglePopupOpen(false)}
             />
             <motion.div
@@ -2672,7 +2696,7 @@ export default function Inventory() {
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-50 max-h-[90vh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom)+6rem)]"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-2xl shadow-2xl z-[71] max-h-[90vh] overflow-y-auto pb-[calc(1rem+env(safe-area-inset-bottom)+6rem)]"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="p-6">

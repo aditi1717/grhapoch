@@ -20,6 +20,12 @@ export default function DeliverySignIn() {
   const [keyboardInset, setKeyboardInset] = useState(0)
 
   useEffect(() => {
+    const tempPhone = sessionStorage.getItem("delivery_login_temp_phone")
+    if (tempPhone) {
+      setFormData(prev => ({ ...prev, phone: tempPhone }))
+      return
+    }
+
     const stored = sessionStorage.getItem("deliveryAuthData")
     if (stored) {
       try {
@@ -88,6 +94,7 @@ export default function DeliverySignIn() {
   const handlePhoneChange = (e) => {
     const value = e.target.value.replace(/\D/g, "").slice(0, 10)
     setFormData(prev => ({ ...prev, phone: value }))
+    sessionStorage.setItem("delivery_login_temp_phone", value)
     if (error) setError(validatePhone(value))
   }
 

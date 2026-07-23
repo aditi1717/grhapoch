@@ -58,7 +58,7 @@ import {
     getPublicLandingSettingsController,
     getPublicTopBannersController
 } from '../controllers/publicLanding.controller.js';
-import { detectZonePublicController, listZonesPublicController, listZonesNearbyPublicController } from '../controllers/zonePublic.controller.js';
+
 import {
     listGourmetAdmin,
     createGourmetAdmin,
@@ -164,9 +164,6 @@ router.get('/explore-icons/public', getPublicExploreIconsController);
 router.get('/hero-banners/home-promotion/public', getPublicHomePromotionBannersController);
 router.get('/hero-banners/gourmet/public', getPublicGourmetController);
 router.get('/landing/settings/public', getPublicLandingSettingsController);
-router.get('/zones/detect', detectZonePublicController);
-router.get('/zones/nearby', listZonesNearbyPublicController);
-router.get('/zones/public', listZonesPublicController);
 // Admin landing settings
 router.get('/hero-banners/landing/settings', getAdminLandingSettingsController);
 router.patch('/hero-banners/landing/settings', updateAdminLandingSettingsController);

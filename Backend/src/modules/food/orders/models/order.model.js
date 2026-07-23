@@ -209,11 +209,6 @@ const orderSchema = new mongoose.Schema(
             ref: 'FoodRestaurant',
             required: true
         },
-        zoneId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'FoodZone',
-            index: true
-        },
         transactionId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'FoodTransaction',

@@ -7,6 +7,7 @@ import {
   Wallet,
   Compass,
 } from "lucide-react"
+import { useKeyboardVisible } from "@food/hooks/useKeyboardVisible"
 
 const getOrdersTabs = (basePath = "/restaurant") => [
   { id: "orders", label: "Orders", icon: FileText, route: `${basePath}` },
@@ -24,6 +25,7 @@ const findActiveTab = (tabs, pathname) =>
 function BottomNavOrders() {
   const navigate = useNavigate()
   const { pathname } = useLocation()
+  const isKeyboardVisible = useKeyboardVisible()
 
   const basePath = pathname.startsWith("/food/restaurant")
     ? "/food/restaurant"
@@ -33,15 +35,15 @@ function BottomNavOrders() {
 
   const tabs = useMemo(() => getOrdersTabs(basePath), [basePath])
 
-  const isInternalPage = pathname.includes("/create-offers")
-  if (isInternalPage) {
-    return null
-  }
-
   const activeTab = useMemo(() => {
     const match = findActiveTab(tabs, pathname)
     return match?.id || "orders"
   }, [tabs, pathname])
+
+  const isInternalPage = pathname.includes("/create-offers")
+  if (isInternalPage || isKeyboardVisible) {
+    return null
+  }
 
   const handleTabClick = (tab) => {
     if (tab.route && tab.route !== pathname) {

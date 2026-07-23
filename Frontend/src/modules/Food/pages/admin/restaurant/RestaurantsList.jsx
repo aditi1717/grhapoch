@@ -20,40 +20,13 @@ const PLACEHOLDER_128 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 const PAGE_SIZE = 20
 
-const zoneLabelFromRestaurant = (restaurant, zones = []) => {
-  const zid = restaurant?.zoneId
-  const zoneName =
-    (typeof zid === "object" ? (zid?.name || zid?.zoneName) : "") ||
-    ""
-  if (zoneName) return zoneName
-
-  const zoneIdString =
-    typeof zid === "string"
-      ? zid
-      : (zid?._id || zid?.id || "")
-  if (zoneIdString && Array.isArray(zones) && zones.length > 0) {
-    const match = zones.find((z) => (z?._id || z?.id) === zoneIdString)
-    const label = match?.name || match?.zoneName
-    if (label) return label
-  }
-
-  return (
-    restaurant?.zone ||
-    restaurant?.location?.area ||
-    restaurant?.location?.city ||
-    restaurant?.area ||
-    restaurant?.city ||
-    "N/A"
-  )
-}
-
-const mapRawRestaurant = (restaurant, index, zones) => ({
+const mapRawRestaurant = (restaurant, index) => ({
   id: restaurant._id || restaurant.id || index + 1,
   _id: restaurant._id,
   name: restaurant.name || restaurant.restaurantName || "N/A",
   ownerName: restaurant.ownerName || "N/A",
   ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
-  zone: zoneLabelFromRestaurant(restaurant, zones),
+  zone: restaurant?.location?.area || restaurant?.location?.city || restaurant?.area || restaurant?.city || "N/A",
   approvalStatus: normalizeApprovalStatus(restaurant),
   isActive: restaurant.isActive !== false && restaurant.status === "approved",
   rating: restaurant.rating || restaurant.ratings?.average || 0,
@@ -197,10 +170,8 @@ export default function RestaurantsList() {
   const [isEditingLocation, setIsEditingLocation] = useState(false)
   const [savingLocation, setSavingLocation] = useState(false)
   const [locationEditError, setLocationEditError] = useState("")
-  const [zones, setZones] = useState([])
-  const [zonesLoading, setZonesLoading] = useState(false)
+  // zones and zonesLoading removed
   const [locationForm, setLocationForm] = useState({
-    zoneId: "",
     latitude: "",
     longitude: "",
     formattedAddress: "",
@@ -294,7 +265,7 @@ export default function RestaurantsList() {
 
         if (rawList.length > 0 || body?.success === true) {
           const mappedRestaurants = rawList.map((restaurant, index) =>
-            mapRawRestaurant(restaurant, index, zones)
+            mapRawRestaurant(restaurant, index)
           )
           if (!cancelled) {
             setRestaurants(mappedRestaurants)
@@ -339,7 +310,7 @@ export default function RestaurantsList() {
       cancelled = true
       clearTimeout(t)
     }
-  }, [page, debouncedSearchQuery, sortConfig, zones, navigate])
+  }, [page, debouncedSearchQuery, sortConfig, navigate])
 
   useEffect(() => {
     const timeoutId = window.setTimeout(() => {
@@ -449,7 +420,6 @@ export default function RestaurantsList() {
     const longitude = (hasValidNumbers && !looksUnset) ? lngNum : ""
 
     return {
-      zoneId: restaurant?.zoneId || restaurant?.location?.zoneId || "",
       latitude: latitude || "",
       longitude: longitude || "",
       formattedAddress: loc.formattedAddress || loc.address || "",
@@ -734,10 +704,7 @@ export default function RestaurantsList() {
     const latitude = Number(locationForm.latitude)
     const longitude = Number(locationForm.longitude)
 
-    if (!locationForm.zoneId) {
-      alert("Please select a zone")
-      return
-    }
+
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || !locationForm.formattedAddress) {
       alert("Please select a location from dropdown")
       return
@@ -746,7 +713,6 @@ export default function RestaurantsList() {
     try {
       setSavingLocation(true)
       const locationPayload = {
-        zoneId: locationForm.zoneId,
         latitude,
         longitude,
         coordinates: [longitude, latitude],
@@ -821,14 +787,7 @@ export default function RestaurantsList() {
     setIsSearchingLocation(false)
     setLocationEditError("")
 
-    setZonesLoading(true)
-    adminAPI.getZones({ limit: 1000 })
-      .then((res) => {
-        const list = res?.data?.data?.zones || res?.data?.data?.data?.zones || res?.data?.data?.zones || res?.data?.data || []
-        setZones(Array.isArray(list) ? list : [])
-      })
-      .catch(() => setZones([]))
-      .finally(() => setZonesLoading(false))
+
 
     // Init dropdown autocomplete after mount.
     requestAnimationFrame(() => initPlacesAutocomplete())
@@ -1392,7 +1351,7 @@ export default function RestaurantsList() {
                       onClick={() => handleSort('zone')}
                     >
                       <div className="flex items-center gap-1">
-                        <span>Zone</span>
+                        <span>Area</span>
                         <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'zone' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
@@ -1731,21 +1690,7 @@ export default function RestaurantsList() {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <div className="md:col-span-2">
-                          <label className="block text-xs text-slate-600 mb-1 font-semibold">Service Zone*</label>
-                          <select
-                            value={locationForm.zoneId || ""}
-                            onChange={(e) => setLocationForm((prev) => ({ ...prev, zoneId: e.target.value }))}
-                            className="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white text-sm"
-                          >
-                            <option value="">{zonesLoading ? "Loading zones..." : "Select a zone"}</option>
-                            {zones.map((z) => (
-                              <option key={z._id || z.id} value={z._id || z.id}>
-                                {z.name || z.zoneName || z.serviceLocation || "Zone"}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+
 
                         <div className="md:col-span-2">
                           <label className="block text-xs text-slate-600 mb-1 font-semibold">Search location*</label>

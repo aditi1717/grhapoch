@@ -256,7 +256,7 @@ export default function DeliveryLiveTracking() {
         id: deliveryId,
         name: getDeliveryName(deliveryman),
         phone: getDeliveryPhone(deliveryman),
-        zone: deliveryman?.zone?.name || deliveryman?.zoneName || deliveryman?.serviceZone || "N/A",
+
         isOnline,
         location: isOnline && hasCoordinates ? freshestLocation : null,
         lastSeen: freshestLocation?.timestamp || deliveryman?.lastLocationAt || null,

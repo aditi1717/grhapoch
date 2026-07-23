@@ -19,7 +19,6 @@ import { restaurantAPI, adminAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
 import { useProfile } from "@food/context/ProfileContext"
 import { useLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 
@@ -43,7 +42,7 @@ export default function CategoryPage() {
   const navigate = useNavigate()
   const { vegMode } = useProfile()
   const { location } = useLocation()
-  const { zoneId, isOutOfService } = useZone(location)
+  const isOutOfService = false
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedCategory, setSelectedCategory] = useState(category?.toLowerCase() || 'all')
   const [activeFilters, setActiveFilters] = useState(new Set())
@@ -128,7 +127,7 @@ export default function CategoryPage() {
     let cancelled = false
     const categorySlug = String(selectedCategory || category || "all").toLowerCase()
 
-    if (!zoneId || categorySlug === "all") {
+    if (!location?.latitude || !location?.longitude || categorySlug === "all") {
       setCategoryFoodsData([])
       setLoadingCategoryFoods(false)
       return () => {
@@ -140,7 +139,8 @@ export default function CategoryPage() {
     void (async () => {
       try {
         const response = await restaurantAPI.getPublicFoods({
-          zoneId,
+          latitude: location.latitude,
+          longitude: location.longitude,
           categorySlug,
           limit: 1000,
         })
@@ -158,7 +158,7 @@ export default function CategoryPage() {
     return () => {
       cancelled = true
     }
-  }, [zoneId, selectedCategory, category])
+  }, [location?.latitude, location?.longitude, selectedCategory, category])
 
   const getCategoryFallbackDishesFromApprovedFoods = (categoryId, restaurants, foods = categoryFoodsData) => {
     const keywords = getCategoryKeywords(categoryId)
@@ -484,7 +484,12 @@ export default function CategoryPage() {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true)
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+        const params = {}
+        if (location?.latitude && location?.longitude) {
+          params.latitude = location.latitude
+          params.longitude = location.longitude
+        }
+        const response = await adminAPI.getPublicCategories(params)
 
         if (isCancelled) return;
 
@@ -536,7 +541,7 @@ export default function CategoryPage() {
     return () => {
       isCancelled = true;
     }
-  }, [zoneId])
+  }, [location?.latitude, location?.longitude])
 
   // Helper function to check if menu has dishes matching category keywords
   const getCategoryKeywords = (categoryId) => {
@@ -566,14 +571,16 @@ export default function CategoryPage() {
     const fetchRestaurants = async () => {
       try {
         setLoadingRestaurants(true)
-        // Strict zone check: if no zoneId, don't fetch/show anything
-        if (!zoneId) {
+        if (!location?.latitude || !location?.longitude) {
           setRestaurantsData([])
           setLoadingRestaurants(false)
           return
         }
         
-        const params = { zoneId }
+        const params = {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        }
         const response = await restaurantAPI.getRestaurants(params)
 
         if (response.data && response.data.success && response.data.data && response.data.data.restaurants) {
@@ -676,7 +683,7 @@ export default function CategoryPage() {
     }
 
     fetchRestaurants()
-  }, [zoneId, isOutOfService])
+  }, [location?.latitude, location?.longitude, isOutOfService])
 
   // Update selected category when URL changes
   useEffect(() => {

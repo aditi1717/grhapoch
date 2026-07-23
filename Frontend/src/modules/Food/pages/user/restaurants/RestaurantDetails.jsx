@@ -6,7 +6,6 @@ import { restaurantAPI, diningAPI, orderAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
 import { toast } from "sonner"
 import { useLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
 import {
   ArrowLeft,
   Search,
@@ -98,7 +97,10 @@ function RestaurantDetailsContent() {
   const { addToCart, updateQuantity, removeFromCart, getCartItem, cart } = useCart()
   const { vegMode, addDishFavorite, removeDishFavorite, isDishFavorite, getDishFavorites, getFavorites, addFavorite, removeFavorite, isFavorite } = useProfile()
   const { location: userLocation } = useLocation() // Get user's current location
-  const { zoneId, zone, loading: loadingZone, isOutOfService } = useZone(userLocation) // Get user's zone for zone-based filtering
+  const zoneId = null
+  const zone = null
+  const loadingZone = false
+  const isOutOfService = false
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
   const [highlightIndex, setHighlightIndex] = useState(0)
   const [quantities, setQuantities] = useState({})
@@ -275,8 +277,8 @@ function RestaurantDetailsContent() {
               // Fallback without zoneId so missing live location never blocks this page.
               debugLog('? Direct lookup failed, trying search by name...')
 
-                const searchVariants = zoneId
-                  ? [{ limit: 100, zoneId: zoneId, _ts: Date.now() }, { limit: 100, _ts: Date.now() }]
+                const searchVariants = userLocation?.latitude && userLocation?.longitude
+                  ? [{ limit: 100, latitude: userLocation.latitude, longitude: userLocation.longitude, _ts: Date.now() }, { limit: 100, _ts: Date.now() }]
                   : [{ limit: 100, _ts: Date.now() }]
 
                 for (const searchParams of searchVariants) {
@@ -549,7 +551,7 @@ function RestaurantDetailsContent() {
               || null,
             priceRange: actualRestaurant?.priceRange || apiRestaurant?.priceRange || onboardingStep4?.priceRange || "$$",
             offers: Array.isArray(actualRestaurant?.offers) ? actualRestaurant.offers : (Array.isArray(apiRestaurant?.offers) ? apiRestaurant.offers : []), // Will be populated from menu/offers API later
-            offerText: actualRestaurant?.offer || apiRestaurant?.offer || onboardingStep4?.offer || "FLAT 50% OFF",
+            offerText: actualRestaurant?.offer || apiRestaurant?.offer || onboardingStep4?.offer || "",
             offerCount: actualRestaurant?.offerCount || apiRestaurant?.offerCount || 0,
             restaurantOffers: {
               goldOffer: {
@@ -626,8 +628,8 @@ function RestaurantDetailsContent() {
           if (!restaurantIdForMenu) {
             debugWarn('? No restaurant ID available, searching for restaurant by name...')
             try {
-              const searchVariants = zoneId
-                ? [{ limit: 100, zoneId: zoneId, _ts: Date.now() }, { limit: 100, _ts: Date.now() }]
+              const searchVariants = userLocation?.latitude && userLocation?.longitude
+                ? [{ limit: 100, latitude: userLocation.latitude, longitude: userLocation.longitude, _ts: Date.now() }, { limit: 100, _ts: Date.now() }]
                 : [{ limit: 100, _ts: Date.now() }]
 
               for (const searchParams of searchVariants) {
@@ -1039,7 +1041,7 @@ function RestaurantDetailsContent() {
     }
 
     fetchRestaurant()
-  }, [slug, zoneId, restaurant])
+  }, [slug, userLocation?.latitude, userLocation?.longitude, restaurant])
 
   // Track previous values to prevent unnecessary recalculations
   const prevCoordsRef = useRef({ userLat: null, userLng: null, restaurantLat: null, restaurantLng: null })
@@ -1959,10 +1961,9 @@ function RestaurantDetailsContent() {
 
   // Highlight offers/texts for the blue offer line
   const highlightOffers = [
-    "Upto 50% OFF",
     restaurant?.offerText || "",
     ...(Array.isArray(restaurant?.offers) ? restaurant.offers.map((offer) => offer?.title || "") : []),
-  ]
+  ].filter(Boolean)
 
   // Auto-rotate images every 3 seconds
   useEffect(() => {
@@ -2200,25 +2201,27 @@ function RestaurantDetailsContent() {
           )}
 
           {/* Offers */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-sm overflow-hidden">
-              <Tag className="h-4 w-4 text-[#EB590E]" />
-              <div className="relative h-5 overflow-hidden">
-                <AnimatePresence mode="wait">
-                  <motion.span
-                    key={highlightIndex}
-                    initial={{ y: 16, opacity: 0 }}
-                    animate={{ y: 0, opacity: 1 }}
-                    exit={{ y: -16, opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-[#EB590E] font-medium inline-block"
-                  >
-                    {highlightOffers[highlightIndex]}
-                  </motion.span>
-                </AnimatePresence>
+          {highlightOffers.length > 0 && (
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm overflow-hidden">
+                <Tag className="h-4 w-4 text-[#EB590E]" />
+                <div className="relative h-5 overflow-hidden">
+                  <AnimatePresence mode="wait">
+                    <motion.span
+                      key={highlightIndex}
+                      initial={{ y: 16, opacity: 0 }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: -16, opacity: 0 }}
+                      transition={{ duration: 0.3 }}
+                      className="text-[#EB590E] font-medium inline-block"
+                    >
+                      {highlightOffers[highlightIndex]}
+                    </motion.span>
+                  </AnimatePresence>
+                </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Filter/Category Buttons */}
           <div className="border-y border-gray-200 py-3 -mx-4 px-4 overflow-x-auto scrollbar-hide">
@@ -3146,25 +3149,7 @@ function RestaurantDetailsContent() {
                       </button>
                     </div>
 
-                    {/* Dietary preference */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Dietary preference:</h3>
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            spicy: !prev.spicy,
-                          }))
-                        }
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all w-full ${filters.spicy
-                          ? "border-red-500 dark:border-red-400 bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400"
-                          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                          }`}
-                      >
-                        <Flame className="h-4 w-4" />
-                        <span className="font-medium">Spicy</span>
-                      </button>
-                    </div>
+
                   </div>
 
                   {/* Bottom Action Bar */}

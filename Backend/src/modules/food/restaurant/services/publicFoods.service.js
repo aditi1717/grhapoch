@@ -19,18 +19,14 @@ const isSwitch99Price = (price) => String(price ?? '').includes('99');
 
 export async function listPublicFoods(query = {}) {
     const limit = Math.min(Math.max(parseInt(query.limit, 10) || 500, 1), 1000);
-    const zoneIdRaw = String(query.zoneId || '').trim();
     const categorySlug = String(query.categorySlug || query.category || '').trim().toLowerCase();
     const promo = String(query.promo || query.promoSlug || '').trim().toLowerCase();
     const isSwitch99Promo = promo === 'switch99' || promo === 'under-250' || promo === 'under250';
 
     const restaurantFilter = { status: 'approved' };
-    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
-        restaurantFilter.zoneId = new mongoose.Types.ObjectId(zoneIdRaw);
-    }
 
     const restaurants = await FoodRestaurant.find(restaurantFilter)
-        .select('_id restaurantName slug zoneId profileImage rating totalRatings ratingCount estimatedDeliveryTime estimatedDeliveryTimeMinutes location coverImages menuImages isActive isAcceptingOrders outletTimings openDays deliveryTimings openingTime closingTime')
+        .select('_id restaurantName slug profileImage rating totalRatings ratingCount estimatedDeliveryTime estimatedDeliveryTimeMinutes location coverImages menuImages isActive isAcceptingOrders outletTimings openDays deliveryTimings openingTime closingTime')
         .lean();
 
     if (!restaurants.length) {

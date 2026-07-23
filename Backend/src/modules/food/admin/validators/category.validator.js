@@ -13,7 +13,6 @@ const booleanQuerySchema = z.preprocess((value) => {
 
 const listSchema = z.object({
     search: z.string().optional(),
-    zoneId: z.string().optional(),
     isApproved: booleanQuerySchema.optional(),
     approvalStatus: z.enum(['pending', 'approved', 'rejected']).optional(),
     page: z.coerce.number().int().min(1).optional(),
@@ -25,7 +24,6 @@ const upsertSchema = z.object({
     image: z.string().max(2000).optional(),
     type: z.string().max(100).optional(),
     foodTypeScope: z.enum(['Veg', 'Non-Veg', 'Both']).optional(),
-    zoneId: z.string().max(100).optional(),
     status: z.boolean().optional(),
     isActive: z.boolean().optional(),
     sortOrder: z.coerce.number().int().optional()

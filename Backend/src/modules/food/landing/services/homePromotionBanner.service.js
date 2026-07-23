@@ -7,7 +7,7 @@ export const listHomePromotionBanners = async () => {
     return HomePromotionBanner.find().sort({ sortOrder: 1, createdAt: -1 }).lean();
 };
 
-export const getPublicHomePromotionBanners = async (zoneId = null) => {
+export const getPublicHomePromotionBanners = async () => {
     const now = new Date();
     const filter = {
         isActive: true,
@@ -31,10 +31,6 @@ export const getPublicHomePromotionBanners = async (zoneId = null) => {
         ]
     };
 
-    if (zoneId) {
-        filter.zoneId = zoneId;
-    }
-
     return HomePromotionBanner.find(filter)
     .sort({ sortOrder: 1, createdAt: -1 })
     .lean();
@@ -51,7 +47,6 @@ export const createHomePromotionBanner = async (file, meta = {}) => {
             publicId: saved.path,
             title: meta.title,
             ctaLink: meta.ctaLink,
-            zoneId: meta.zoneId || null,
             startDate: (meta.startDate && meta.startDate !== "") ? new Date(meta.startDate) : null,
             endDate: (meta.endDate && meta.endDate !== "") ? new Date(meta.endDate) : null,
             sortOrder: meta.sortOrder ?? 0,

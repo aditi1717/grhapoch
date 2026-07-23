@@ -21,18 +21,37 @@ export default function SignIn() {
   const [logoUrl, setLogoUrl] = useState(() => getModuleLogoUrl("user") || logoImg)
   const [companyName, setCompanyName] = useState(() => getCompanyName() || "Grhapoch")
 
+  const [keyboardInset, setKeyboardInset] = useState(0)
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return undefined
+    const updateKeyboardInset = () => {
+      const viewport = window.visualViewport
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+      setKeyboardInset(inset > 0 ? inset : 0)
+    }
+    updateKeyboardInset()
+    window.visualViewport.addEventListener("resize", updateKeyboardInset)
+    window.visualViewport.addEventListener("scroll", updateKeyboardInset)
+    return () => {
+      window.visualViewport.removeEventListener("resize", updateKeyboardInset)
+      window.visualViewport.removeEventListener("scroll", updateKeyboardInset)
+    }
+  }, [])
+
   const renderBrandedName = () => {
     const name = companyName || "Grhapoch";
     const upper = name.toUpperCase();
+    const sizeClass = keyboardInset > 0 ? "text-xl sm:text-2xl" : "text-4xl";
     if (upper === "SWITCHEATS") {
       return (
-        <h1 className="text-white font-black text-4xl tracking-tighter leading-none mb-1 italic">
+        <h1 className={`text-white font-black tracking-tighter leading-none mb-1 italic ${sizeClass}`}>
           SWITCH<span className="opacity-60">EATS</span>
         </h1>
       );
     }
     return (
-      <h1 className="text-white font-black text-4xl tracking-tighter leading-none mb-1 italic uppercase">
+      <h1 className={`text-white font-black tracking-tighter leading-none mb-1 italic uppercase ${sizeClass}`}>
         {name}
       </h1>
     );
@@ -60,6 +79,15 @@ export default function SignIn() {
       }
     }
     fetchSettings()
+
+    const tempPhone = sessionStorage.getItem("user_login_temp_phone")
+    if (tempPhone) {
+      setFormData((prev) => ({
+        ...prev,
+        phone: tempPhone,
+      }))
+      return
+    }
 
     const stored = sessionStorage.getItem("userAuthData")
     if (!stored) return
@@ -92,6 +120,7 @@ export default function SignIn() {
     if (name === "phone") {
       value = value.replace(/\D/g, "").slice(0, 10)
       setError(validatePhone(value))
+      sessionStorage.setItem("user_login_temp_phone", value)
     }
 
     setFormData((prev) => ({ ...prev, [name]: value }))
@@ -145,10 +174,10 @@ export default function SignIn() {
   }
 
   return (
-    <AnimatedPage className="min-h-[100dvh] bg-white dark:bg-[#0A0A0B] flex flex-col font-sans overflow-hidden">
+    <AnimatedPage className="min-h-[100dvh] bg-white dark:bg-[#0A0A0B] flex flex-col font-sans overflow-x-hidden overflow-y-auto">
       {/* Top Branding Section - 40% height */}
       <div
-        className="relative h-[40dvh] w-full overflow-hidden flex flex-col items-center justify-center"
+        className={`relative w-full overflow-hidden flex flex-col items-center justify-center transition-all duration-200 ${keyboardInset > 0 ? "h-[20dvh] min-h-[120px]" : "h-[40dvh] min-h-[240px]"}`}
         style={{
           background:
             "linear-gradient(135deg, rgba(var(--module-theme-rgb, 250,2,114), 0.94) 0%, var(--module-theme-color, #FA0272) 55%, rgba(var(--module-theme-rgb, 250,2,114), 0.82) 100%)",
@@ -164,9 +193,9 @@ export default function SignIn() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, ease: "easeOut" }}
-          className="relative z-10 flex flex-col items-center gap-4"
+          className={`relative z-10 flex flex-col items-center transition-all duration-200 ${keyboardInset > 0 ? "gap-2" : "gap-4"}`}
         >
-          <div className="w-24 h-24 bg-white rounded-[2.2rem] flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border-4 border-white/10 overflow-hidden p-2">
+          <div className={`bg-white flex items-center justify-center shadow-[0_20px_50px_rgba(0,0,0,0.15)] border-4 border-white/10 overflow-hidden p-2 transition-all duration-200 ${keyboardInset > 0 ? "w-14 h-14 rounded-2xl" : "w-24 h-24 rounded-[2.2rem]"}`}>
             <img src={logoUrl} alt="Logo" className="w-full h-full object-contain" />
           </div>
           <div className="text-center">
@@ -181,10 +210,11 @@ export default function SignIn() {
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="flex-1 bg-white dark:bg-[#0A0A0B] rounded-t-[40px] -mt-10 relative z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] px-6 pt-10 pb-6 flex flex-col"
+        className={`flex-1 bg-white dark:bg-[#0A0A0B] relative z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] px-6 pt-10 pb-6 flex flex-col transition-all duration-200 ${keyboardInset > 0 ? "rounded-t-3xl mt-0" : "rounded-t-[40px] -mt-10"}`}
+        style={{ paddingBottom: keyboardInset ? `calc(1.5rem + ${keyboardInset}px)` : undefined }}
       >
         <div className="max-w-md mx-auto w-full flex flex-col h-full">
-          <div className="space-y-2 mb-10">
+          <div className={`space-y-2 transition-all duration-200 ${keyboardInset > 0 ? "mb-4" : "mb-10"}`}>
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">
               Get Started
             </h2>
@@ -193,7 +223,7 @@ export default function SignIn() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
+          <form onSubmit={handleSubmit} className={`transition-all duration-200 ${keyboardInset > 0 ? "space-y-4" : "space-y-8"}`}>
             <div className="space-y-4">
               <div className="relative group transition-all duration-300">
                 <div className="flex items-center gap-0 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl focus-within:border-[#FA0272]/50 focus-within:ring-4 focus-within:ring-[#FA0272]/5 transition-all overflow-hidden">

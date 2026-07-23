@@ -34,7 +34,6 @@ export default function JoiningRequest() {
   const [loadingDetails, setLoadingDetails] = useState(false)
   const [showFilterDialog, setShowFilterDialog] = useState(false)
   const [filters, setFilters] = useState({
-    zone: "",
     dateFrom: "",
     dateTo: ""
   })
@@ -84,11 +83,9 @@ export default function JoiningRequest() {
 
   const currentRequests = activeTab === "pending" ? pendingRequests : rejectedRequests
 
-  // Get unique zones and business models for filter options
   const filterOptions = useMemo(() => {
-    const zones = [...new Set(currentRequests.map(r => r.zone).filter(Boolean))]
-    return { zones }
-  }, [currentRequests])
+    return { zones: [] }
+  }, [])
 
   const filteredRequests = useMemo(() => {
     let filtered = currentRequests
@@ -103,10 +100,6 @@ export default function JoiningRequest() {
       )
     }
 
-    // Apply zone filter
-    if (filters.zone) {
-      filtered = filtered.filter(request => request.zone === filters.zone)
-    }
 
 
     // Apply date range filter
@@ -137,7 +130,7 @@ export default function JoiningRequest() {
     })
   }
 
-  const hasActiveFilters = filters.zone || filters.dateFrom || filters.dateTo
+  const hasActiveFilters = filters.dateFrom || filters.dateTo
 
   const handleApprove = async (request) => {
     if (window.confirm(`Are you sure you want to approve "${request.restaurantName}" restaurant request?`)) {
@@ -332,7 +325,7 @@ export default function JoiningRequest() {
                 Filter
                 {hasActiveFilters && (
                   <span className="ml-1 px-1.5 py-0.5 bg-blue-600 text-white text-xs rounded-full">
-                    {[filters.zone, filters.dateFrom, filters.dateTo].filter(Boolean).length}
+                    {[filters.dateFrom, filters.dateTo].filter(Boolean).length}
                   </span>
                 )}
               </button>
@@ -364,7 +357,7 @@ export default function JoiningRequest() {
                   </th>
                   <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                     <div className="flex items-center gap-1">
-                      <span>Zone</span>
+                      <span>Service Radius</span>
                       <ArrowUpDown className="w-3 h-3 text-slate-400" />
                     </div>
                   </th>
@@ -443,7 +436,7 @@ export default function JoiningRequest() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">{request.zone || "—"}</span>
+                        <span className="text-sm text-slate-700">{request.serviceRadius ? `${request.serviceRadius} KM` : ""}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
@@ -518,24 +511,7 @@ export default function JoiningRequest() {
               </div>
 
               <div className="space-y-4">
-                {/* Zone Filter */}
-                {filterOptions.zones.length > 0 && (
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Zone
-                    </label>
-                    <select
-                      value={filters.zone}
-                      onChange={(e) => setFilters({ ...filters, zone: e.target.value })}
-                      className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    >
-                      <option value="">All Zones</option>
-                      {filterOptions.zones.map((zone) => (
-                        <option key={zone} value={zone}>{zone}</option>
-                      ))}
-                    </select>
-                  </div>
-                )}
+
 
                 {/* Date Range Filters */}
                 <div className="grid grid-cols-2 gap-3">
@@ -795,7 +771,7 @@ export default function JoiningRequest() {
                             r?.state || loc?.state,
                             r?.pincode || loc?.pincode,
                             r?.landmark || loc?.landmark,
-                          ].filter(Boolean).join(", ") || loc?.formattedAddress || loc?.address || r?.zone || null
+                          ].filter(Boolean).join(", ") || loc?.formattedAddress || loc?.address || (r?.serviceRadius ? `${r.serviceRadius} KM` : null)
                           return fullAddress ? (
                             <div className="flex items-start gap-3">
                               <MapPin className="w-5 h-5 text-slate-400 mt-0.5 shrink-0" />

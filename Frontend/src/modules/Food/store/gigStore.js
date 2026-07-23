@@ -1,4 +1,4 @@
-﻿const debugLog = (...args) => {}
+const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
@@ -25,7 +25,7 @@ const DEFAULT_STATE = {
   userLevel: 'Brown', // Default level
   isOnline: true,
   currentGig: null, // Currently active gig
-  zoneMapVisible: false,
+
   selectedDropLocation: null // Selected drop location
 }
 
@@ -185,8 +185,7 @@ export const useGigStore = create(
         set({
           isOnline: true,
           bookedGigs: updatedGigs,
-          currentGig: { ...gigToActivate, status: 'active', startedAt: new Date().toISOString() },
-          zoneMapVisible: true
+          currentGig: { ...gigToActivate, status: 'active', startedAt: new Date().toISOString() }
         })
 
         localStorage.setItem('delivery_online_status', 'true')
@@ -212,8 +211,7 @@ export const useGigStore = create(
         set({
           isOnline: false,
           bookedGigs: updatedGigs,
-          currentGig: null,
-          zoneMapVisible: false
+          currentGig: null
         })
 
         localStorage.setItem('delivery_online_status', 'false')
@@ -227,10 +225,7 @@ export const useGigStore = create(
         window.dispatchEvent(new CustomEvent('gigStateUpdated'))
       },
 
-      // Toggle zone map visibility
-      toggleZoneMap: () => {
-        set(state => ({ zoneMapVisible: !state.zoneMapVisible }))
-      },
+
 
       // Get available advance days based on user level
       getAdvanceDays: () => {

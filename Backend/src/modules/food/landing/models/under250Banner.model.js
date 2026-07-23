@@ -19,9 +19,6 @@ const foodUnder250BannerSchema = new mongoose.Schema(
         ctaLink: {
             type: String
         },
-        zoneId: {
-            type: String
-        },
         sortOrder: {
             type: Number,
             default: 0,

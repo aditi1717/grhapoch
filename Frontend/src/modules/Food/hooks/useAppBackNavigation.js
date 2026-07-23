@@ -65,29 +65,23 @@ const resolveBackPath = ({ pathname, search, state }) => {
     return explicitBackPath || "/food/user"
   }
 
-  if (/^\/user\/dining\/book(\/|$)/.test(normalizedPath)) {
-    return explicitBackPath || "/food/user/dining"
+  if (normalizedPath.startsWith("/user/dining") || normalizedPath === "/user/under-250") {
+    return "/food/user"
   }
 
-  if (/^\/user\/dining\/[^/]+\/[^/]+$/.test(normalizedPath)) {
-    return explicitBackPath || "/food/user/dining"
-  }
-
-  if (
-    normalizedPath === "/user/dining/restaurants" ||
-    normalizedPath === "/user/dining/explore/upto50" ||
-    normalizedPath === "/user/dining/explore/near-rated" ||
-    normalizedPath === "/user/dining/coffee"
-  ) {
-    return "/food/user/dining"
-  }
-
-  if (/^\/user\/dining\/[^/]+$/.test(normalizedPath)) {
-    return "/food/user/dining"
+  if (normalizedPath === "/user/orders") {
+    return "/food/user/profile"
   }
 
   if (/^\/user\/orders\/[^/]+(\/invoice|\/details)?$/.test(normalizedPath)) {
     return "/food/user/orders"
+  }
+
+  if (normalizedPath === "/user/cart") {
+    if (explicitBackPath === "/food/user/profile") {
+      return "/food/user/profile"
+    }
+    return "/food/user"
   }
 
   if (

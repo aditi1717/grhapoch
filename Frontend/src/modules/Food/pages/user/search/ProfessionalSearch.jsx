@@ -9,7 +9,7 @@ import { Card, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
+
 import { adminAPI, searchAPI } from "@/services/api"
 import { motion, AnimatePresence } from "framer-motion"
 
@@ -42,7 +42,8 @@ export default function ProfessionalSearch() {
   const initialQuery = searchParams.get("q") || ""
   const navigate = useNavigate()
   const { location: userCoords } = useGeoLocation()
-  const { zoneId, zoneStatus } = useZone(userCoords)
+  const zoneId = null
+  const zoneStatus = "success"
   
   const [query, setQuery] = useState(initialQuery)
   const debouncedQuery = useDebounce(query, 500)
@@ -76,7 +77,12 @@ export default function ProfessionalSearch() {
 
     const fetchCategories = async () => {
       try {
-        const res = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+        const params = {}
+        if (userCoords?.latitude && userCoords?.longitude) {
+          params.latitude = userCoords.latitude
+          params.longitude = userCoords.longitude
+        }
+        const res = await adminAPI.getPublicCategories(params)
         if (!cancelled && res.data?.success) {
           const list = res.data?.data?.categories || res.data?.categories || []
           setCategories(Array.isArray(list) ? list : [])
@@ -94,7 +100,7 @@ export default function ProfessionalSearch() {
     return () => {
       cancelled = true
     }
-  }, [zoneId, zoneStatus])
+  }, [userCoords?.latitude, userCoords?.longitude, zoneStatus])
 
   const addToHistory = (term) => {
     const newHistory = [term, ...history.filter(h => h !== term)].slice(0, 5)
@@ -115,19 +121,11 @@ export default function ProfessionalSearch() {
         categoryId: catId,
         lat: userCoords?.latitude,
         lng: userCoords?.longitude,
-        zoneId,
-        strictZone: catId ? "true" : "false",
+        strictZone: "false",
       })
       
       if (res.data?.success) {
-        // Grouping results into Restaurants and potential Dishes
-        const all = (res.data.data.restaurants || []).filter((row) => {
-          const restaurantZoneId = row?.zoneId || row?.zone?._id || row?.zone || null
-          if (zoneId && restaurantZoneId && String(restaurantZoneId) !== String(zoneId)) {
-            return false
-          }
-          return true
-        })
+        const all = res.data.data.restaurants || []
         setResults({
           restaurants: all.filter(r => r.matchType === 'restaurant' || !r.matchType),
           dishes: all.filter(r => r.matchType === 'food')

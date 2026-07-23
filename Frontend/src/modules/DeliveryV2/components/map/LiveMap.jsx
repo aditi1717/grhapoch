@@ -9,7 +9,7 @@ import {
   OverlayView
 } from '@react-google-maps/api';
 import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
-import { zoneAPI } from '@food/api';
+
 
 const mapContainerStyle = {
   width: '100%',
@@ -50,7 +50,7 @@ export const LiveMap = ({ onMapClick, onMapLoad, onPathReceived, onPolylineRecei
 
   const [directions, setDirections] = useState(null);
   const [map, setMapInternal] = useState(null);
-  const [zones, setZones] = useState([]);
+
   const [lastDirectionsAt, setLastDirectionsAt] = useState(0);
 
   const handleMapLoad = (mapInstance) => {
@@ -136,20 +136,7 @@ export const LiveMap = ({ onMapClick, onMapLoad, onPathReceived, onPolylineRecei
     }
   }, [onPolylineReceived]);
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const response = await zoneAPI.getPublicZones();
-        if (response?.data?.success && response.data.data?.zones) {
-          const formattedZones = response.data.data.zones.map(zone => ({
-            ...zone,
-            paths: (zone.coordinates || []).map(coord => ({ lat: coord.latitude, lng: coord.longitude }))
-          })).filter(z => z.paths.length >= 3);
-          setZones(formattedZones);
-        }
-      } catch (err) {}
-    })();
-  }, []);
+
 
   const restaurantMarkerUrl = useMemo(() => {
     if (!activeOrder) return 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png';
@@ -235,9 +222,7 @@ export const LiveMap = ({ onMapClick, onMapLoad, onPathReceived, onPolylineRecei
           <Marker position={targetLocation} icon={{ url: (tripStatus === 'PICKING_UP' || tripStatus === 'REACHED_PICKUP') ? restaurantMarkerUrl : customerMarkerUrl, scaledSize: new window.google.maps.Size(44, 44), anchor: new window.google.maps.Point(22, 22) }} />
         )}
 
-        {zones.map((zone) => (
-          <Polygon key={zone._id} paths={zone.paths} options={{ fillColor: "#22c55e", fillOpacity: 0.1, strokeColor: "#22c55e", strokeOpacity: 0.4, strokeWeight: 2, zIndex: 1 }} />
-        ))}
+
       </GoogleMap>
     </div>
   );

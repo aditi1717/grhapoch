@@ -67,7 +67,7 @@ export default function ItemDetailsPage() {
   const [itemSizeQuantity, setItemSizeQuantity] = useState("")
   const [itemSizeUnit, setItemSizeUnit] = useState("piece")
   const [itemDescription, setItemDescription] = useState("")
-  const [foodType, setFoodType] = useState("Non-Veg")
+  const [foodType, setFoodType] = useState("Non-Veg") // derived from category; not user-settable
   const [basePrice, setBasePrice] = useState("")
   const [variants, setVariants] = useState([])
   const [preparationTime, setPreparationTime] = useState("")
@@ -122,6 +122,7 @@ export default function ItemDetailsPage() {
     setItemSizeQuantity(item.itemSizeQuantity || "")
     setItemSizeUnit(item.itemSizeUnit || "piece")
     setItemDescription(item.description || "")
+    // foodType will be re-derived once categories load; keep existing value as fallback
     setFoodType(item.foodType === "Veg" ? "Veg" : "Non-Veg")
     const itemVariants = getFoodVariants(item)
     setVariants(itemVariants.map(createVariantDraft))
@@ -266,6 +267,16 @@ export default function ItemDetailsPage() {
             if (nextCategory) {
               setSelectedCategoryId(nextCategory.id)
               setCategory(nextCategory.name)
+              // Derive foodType from the newly assigned category
+              const scope = String(nextCategory.foodTypeScope || "").toLowerCase()
+              setFoodType(scope === "veg" ? "Veg" : "Non-Veg")
+            }
+          } else if (selectedCategoryId) {
+            // In edit mode: re-derive foodType from the already-selected category
+            const existingCat = formattedCategories.find((cat) => String(cat.id) === String(selectedCategoryId))
+            if (existingCat) {
+              const scope = String(existingCat.foodTypeScope || "").toLowerCase()
+              setFoodType(scope === "veg" ? "Veg" : "Non-Veg")
             }
           }
         } else {
@@ -284,11 +295,7 @@ export default function ItemDetailsPage() {
     fetchCategories()
   }, [category, defaultCategory, defaultCategoryId, isNewItem, selectedCategoryId])
 
-  useEffect(() => {
-    if (isPureVegRestaurant && foodType !== "Veg") {
-      setFoodType("Veg")
-    }
-  }, [isPureVegRestaurant, foodType])
+  // foodType is derived from the selected category; no manual override needed
 
   // Keep focused form fields visible above mobile keyboard
   useEffect(() => {
@@ -297,9 +304,27 @@ export default function ItemDetailsPage() {
       const isFormField = target.matches?.('input, textarea, select, [contenteditable="true"]')
       if (!isFormField) return
 
+      // Give the keyboard time to appear before scrolling
       window.setTimeout(() => {
-        target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" })
-      }, 120)
+        try {
+          target.scrollIntoView({ behavior: "smooth", block: "center", inline: "nearest" })
+        } catch {
+          // fallback: scroll closest scrollable parent
+          let el = target.parentElement
+          while (el) {
+            const { overflowY } = window.getComputedStyle(el)
+            if (overflowY === "auto" || overflowY === "scroll") {
+              const rect = target.getBoundingClientRect()
+              const parentRect = el.getBoundingClientRect()
+              if (rect.bottom > parentRect.bottom || rect.top < parentRect.top) {
+                el.scrollTop += rect.top - parentRect.top - (parentRect.height / 2 - rect.height / 2)
+              }
+              break
+            }
+            el = el.parentElement
+          }
+        }
+      }, 200)
     }
 
     const handleFocusIn = (event) => {
@@ -495,6 +520,9 @@ export default function ItemDetailsPage() {
     setSelectedCategoryId(selectedCategory?.id || "")
     setCategory(selectedCategory?.name || "")
     setSubCategory(subCat)
+    // Derive foodType from the category scope
+    const scope = String(selectedCategory?.foodTypeScope || "").toLowerCase()
+    setFoodType(scope === "veg" ? "Veg" : "Non-Veg")
     setIsCategoryPopupOpen(false)
   }
 
@@ -623,15 +651,7 @@ export default function ItemDetailsPage() {
         return
       }
 
-      if (
-        matchedCategory?.foodTypeScope &&
-        matchedCategory.foodTypeScope !== "Both" &&
-        matchedCategory.foodTypeScope !== foodType
-      ) {
-        toast.error(`This ${matchedCategory.foodTypeScope} category cannot accept ${foodType} food`)
-        setUploadingImages(false)
-        return
-      }
+      // foodType is always derived from category, so no mismatch is possible
 
       const normalizedVariants = variants
         .map((variant) => ({
@@ -655,8 +675,8 @@ export default function ItemDetailsPage() {
 
       const hasVariants = normalizedVariants.length > 0
       const parsedBasePrice = Number(basePrice)
-      if (!hasVariants && (!Number.isFinite(parsedBasePrice) || parsedBasePrice < 0)) {
-        toast.error("Please enter a valid base price")
+      if (!hasVariants && (!Number.isFinite(parsedBasePrice) || parsedBasePrice <= 0)) {
+        toast.error("Price is required and must be greater than 0")
         setUploadingImages(false)
         return
       }
@@ -980,32 +1000,22 @@ export default function ItemDetailsPage() {
                 {descriptionLength} / {maxDescriptionLength}
               </span>
             </div>
-            {/* Dietary Options */}
-            <div className="flex gap-2 mt-3">
-              <button
-                onClick={() => setFoodType("Veg")}
-                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${foodType === "Veg"
-                  ? "border-2"
-                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  }`}
-                style={foodType === "Veg" ? { borderColor: "#16A34A", color: "#16A34A", backgroundColor: "#F0FDF4" } : undefined}
-              >
-                {foodType === "Veg" && <Check className="w-4 h-4" style={{ color: "#16A34A" }} />}
-                <span>Veg</span>
-              </button>
-              {!isPureVegRestaurant && (
-                <button
-                  onClick={() => setFoodType("Non-Veg")}
-                  className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${foodType === "Non-Veg"
-                    ? "border-red-600 border-2 text-red-600"
-                    : "bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    }`}
+            {/* Diet type badge — derived automatically from the selected category */}
+            {foodType && (
+              <div className="mt-3">
+                <span
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold border"
+                  style={
+                    foodType === "Veg"
+                      ? { borderColor: "#16A34A", color: "#16A34A", backgroundColor: "#F0FDF4" }
+                      : { borderColor: "#EF4444", color: "#B91C1C", backgroundColor: "#FEF2F2" }
+                  }
                 >
-                  {foodType === "Non-Veg" && <Check className="w-4 h-4" />}
-                  <span>Non-Veg</span>
-                </button>
-              )}
-            </div>
+                  <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: foodType === "Veg" ? "#16A34A" : "#EF4444" }} />
+                  {foodType} · based on category
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Item Price */}
@@ -1248,12 +1258,16 @@ export default function ItemDetailsPage() {
                       >
                         <div className="flex items-center justify-between gap-3">
                           <span className="text-sm font-medium">{cat.name}</span>
-                          <span className={`rounded-full border px-2 py-0.5 text-[11px] font-semibold ${cat.foodTypeScope === "Veg"
-                            ? "border-green-200 bg-green-50 text-green-700"
-                            : cat.foodTypeScope === "Non-Veg"
-                              ? "border-red-200 bg-red-50 text-red-700"
-                              : "border-slate-200 bg-slate-100 text-slate-700"
-                            }`}>
+                          <span
+                            className="rounded-full border px-2 py-0.5 text-[11px] font-semibold"
+                            style={
+                              String(cat.foodTypeScope || "").toLowerCase() === "veg"
+                                ? { borderColor: "#16A34A", color: "#16A34A", backgroundColor: "#F0FDF4" }
+                                : String(cat.foodTypeScope || "").toLowerCase() === "non-veg"
+                                  ? { borderColor: "#EF4444", color: "#B91C1C", backgroundColor: "#FEF2F2" }
+                                  : { borderColor: "#E2E8F0", color: "#334155", backgroundColor: "#F1F5F9" }
+                            }
+                          >
                             {cat.foodTypeScope || "Both"}
                           </span>
                         </div>

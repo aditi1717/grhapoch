@@ -22,7 +22,6 @@ export default function JoinRequest() {
   const [processing, setProcessing] = useState(false)
   const [rejectionReason, setRejectionReason] = useState("")
   const [filters, setFilters] = useState({
-    zone: "",
     jobType: "",
     vehicleType: "",
   })
@@ -49,9 +48,6 @@ export default function JoinRequest() {
 
       if (debouncedSearch.trim()) {
         params.search = debouncedSearch.trim()
-      }
-      if (filters.zone) {
-        params.zone = filters.zone
       }
       if (filters.vehicleType) {
         params.vehicleType = filters.vehicleType.toLowerCase()
@@ -214,17 +210,16 @@ export default function JoinRequest() {
   }
 
   const handleResetFilters = () => {
-    setFilters({ zone: "", jobType: "", vehicleType: "" })
+    setFilters({ jobType: "", vehicleType: "" })
   }
 
   const handleTabChange = (tab) => {
     setActiveTab(tab)
     setSearchQuery("") // Reset search when changing tabs
-    setFilters({ zone: "", jobType: "", vehicleType: "" }) // Reset filters
+    setFilters({ jobType: "", vehicleType: "" }) // Reset filters
   }
 
   const activeFiltersCount = Object.values(filters).filter(v => v).length
-  const zones = [...new Set(requests.map(r => r.zone))].filter(Boolean)
   const jobTypes = [...new Set(requests.map(r => r.jobType))].filter(Boolean)
   const vehicleTypes = [...new Set(requests.map(r => r.vehicleType))].filter(Boolean)
 
@@ -355,12 +350,6 @@ export default function JoinRequest() {
                     </th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                       <div className="flex items-center gap-2">
-                        <span>Zone</span>
-                        <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                      </div>
-                    </th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                      <div className="flex items-center gap-2">
                         <span>Vehicle Type</span>
                         <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
                       </div>
@@ -377,7 +366,7 @@ export default function JoinRequest() {
                 <tbody className="bg-white divide-y divide-slate-100">
                   {filteredRequests.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-20 text-center">
+                      <td colSpan={6} className="px-6 py-20 text-center">
                         <p className="text-sm text-slate-500">
                           {error ? "Error loading requests" : "No requests found"}
                         </p>
@@ -420,9 +409,6 @@ export default function JoinRequest() {
                             <span className="text-sm text-slate-700">{request.email}</span>
                             <span className="text-xs text-slate-500">{request.phone}</span>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-sm text-slate-700">{request.zone}</span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{request.vehicleType}</span>
@@ -943,19 +929,6 @@ export default function JoinRequest() {
             </DialogTitle>
           </DialogHeader>
           <div className="px-6 pb-6 space-y-4">
-            <div>
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Zone</label>
-              <select
-                value={filters.zone}
-                onChange={(e) => setFilters({ ...filters, zone: e.target.value })}
-                className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              >
-                <option value="">All Zones</option>
-                {zones.map(zone => (
-                  <option key={zone} value={zone}>{zone}</option>
-                ))}
-              </select>
-            </div>
             <div>
               <label className="block text-sm font-semibold text-slate-700 mb-2">Job Type</label>
               <select

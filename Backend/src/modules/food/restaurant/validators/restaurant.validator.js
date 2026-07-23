@@ -69,7 +69,11 @@ const restaurantRegisterSchema = z.object({
     formattedAddress: z.string().optional(),
     latitude: z.string().optional(),
     longitude: z.string().optional(),
-    zoneId: z.string().optional(),
+    serviceRadius: z.preprocess((val) => {
+        if (val === undefined || val === null || val === '') return undefined;
+        const n = Number(val);
+        return Number.isFinite(n) ? n : val;
+    }, z.number().min(0.1, 'Service radius must be greater than 0').optional()),
     cuisines: z
         .string()
         .optional()

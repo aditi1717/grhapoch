@@ -11,7 +11,6 @@ import OptimizedImage from "@food/components/OptimizedImage"
 import { RestaurantGridSkeleton } from "@food/components/ui/loading-skeletons"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { useLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
 import { useProfile } from "@food/context/ProfileContext"
 
 // Import banner
@@ -76,11 +75,9 @@ export default function Gourmet() {
     return useSavedAddress ? defaultSavedAddressLocation : location;
   }, [deliveryAddressMode, defaultSavedAddressLocation, location]);
 
-  const {
-    zoneId,
-    zoneStatus,
-    loading: zoneLoading,
-  } = useZone(effectiveLocation);
+  const zoneId = null;
+  const zoneStatus = "success";
+  const zoneLoading = false;
   
   const showGourmetSkeleton = useDelayedLoading(loading || zoneStatus === 'loading' || zoneLoading)
 
@@ -101,18 +98,19 @@ export default function Gourmet() {
     setLoading(true);
 
     const fetchGourmetRestaurants = async () => {
-      if (!zoneId) {
-        if (zoneStatus !== 'loading' && !zoneLoading) {
-          setGourmetRestaurants([]);
-          setLoading(false);
-        }
+      if (!effectiveLocation?.latitude || !effectiveLocation?.longitude) {
+        setGourmetRestaurants([]);
+        setLoading(false);
         return;
       }
 
       try {
         setError(null)
         const response = await api.get('/food/hero-banners/gourmet/public', {
-          params: { zoneId }
+          params: {
+            latitude: effectiveLocation.latitude,
+            longitude: effectiveLocation.longitude,
+          }
         })
         
         if (cancelled) return;
@@ -135,7 +133,7 @@ export default function Gourmet() {
     return () => {
       cancelled = true;
     }
-  }, [zoneId, zoneStatus, zoneLoading])
+  }, [effectiveLocation?.latitude, effectiveLocation?.longitude, zoneId, zoneStatus, zoneLoading])
 
   const toggleFavorite = (id) => {
     setFavorites(prev => {

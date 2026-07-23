@@ -8,7 +8,7 @@ import { RestaurantGridSkeleton } from "@food/components/ui/loading-skeletons"
 import StickyCartCard from "@food/components/user/StickyCartCard"
 import { useProfile } from "@food/context/ProfileContext"
 import { useLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
+
 import { restaurantAPI, adminAPI } from "@food/api"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
@@ -34,7 +34,7 @@ export default function SearchResults() {
   const query = searchParams.get("q") || ""
   const navigate = useNavigate()
   const { location } = useLocation()
-  const { zoneId, isOutOfService } = useZone(location)
+  const isOutOfService = false
   const [searchQuery, setSearchQuery] = useState(query)
   const [selectedCategory, setSelectedCategory] = useState('all')
   const [activeFilters, setActiveFilters] = useState(new Set())
@@ -86,7 +86,12 @@ export default function SearchResults() {
     const fetchCategories = async () => {
       try {
         setLoadingCategories(true)
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+        const params = {}
+        if (location?.latitude && location?.longitude) {
+          params.latitude = location.latitude
+          params.longitude = location.longitude
+        }
+        const response = await adminAPI.getPublicCategories(params)
 
         if (response.data && response.data.success && response.data.data && response.data.data.categories) {
           const categoriesArray = response.data.data.categories
@@ -127,7 +132,7 @@ export default function SearchResults() {
     }
 
     fetchCategories()
-  }, [zoneId])
+  }, [location?.latitude, location?.longitude])
 
   // Helper function to check if menu has dishes matching category keywords
   const checkCategoryInMenu = (menu, categoryId) => {
@@ -205,10 +210,10 @@ export default function SearchResults() {
       try {
         setLoadingRestaurants(true)
         debugLog('?? Fetching restaurants from API...')
-        // Optional: Add zoneId if available (for sorting/filtering, but show all restaurants)
         const params = {}
-        if (zoneId) {
-          params.zoneId = zoneId
+        if (location?.latitude && location?.longitude) {
+          params.latitude = location.latitude
+          params.longitude = location.longitude
         }
         const response = await restaurantAPI.getRestaurants(params)
 
@@ -506,7 +511,7 @@ export default function SearchResults() {
     }
 
     fetchRestaurants()
-  }, [zoneId, isOutOfService])
+  }, [location?.latitude, location?.longitude, isOutOfService])
 
   // Update search query when URL changes
   useEffect(() => {

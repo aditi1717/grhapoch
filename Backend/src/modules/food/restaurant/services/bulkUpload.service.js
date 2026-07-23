@@ -305,7 +305,6 @@ export async function processBulkMenuUpload(restaurantId, fileBuffer, options = 
                 restaurantId: restaurant._id,
                 createdByRestaurantId: restaurant._id,
                 approvalStatus: 'approved',
-                zoneId: restaurant.zoneId,
                 isActive: true
             });
         }

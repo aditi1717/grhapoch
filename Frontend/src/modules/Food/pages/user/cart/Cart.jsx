@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo, Fragment } from "react"
 import { createPortal } from "react-dom"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useLocation } from "react-router-dom"
 import { Plus, Minus, ArrowLeft, ChevronRight, Clock, MapPin, Phone, FileText, Utensils, Tag, Percent, Share2, ChevronUp, ChevronDown, X, Check, Settings, CreditCard, Wallet, Building2, Sparkles, Banknote, Zap, CheckCircle2, MessageCircle, Send, Mail, Copy } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import confetti from "canvas-confetti"
@@ -11,7 +11,6 @@ import { useCart } from "@food/context/CartContext"
 import { useProfile } from "@food/context/ProfileContext"
 import { useOrders } from "@food/context/OrdersContext"
 import { useLocation as useUserLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
 import { useLocationSelector } from "@food/components/user/UserLayout"
 import { orderAPI, restaurantAPI, adminAPI, userAPI, API_ENDPOINTS } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
@@ -210,6 +209,7 @@ const buildEffectiveCartPricing = ({
 export default function Cart() {
   const companyName = useCompanyName()
   const navigate = useNavigate()
+  const routerLocation = useLocation()
   const goBack = useAppBackNavigation()
   const orderSuccessAudioRef = useRef(null)
   const hasRestoredRecipientRef = useRef(false)
@@ -552,7 +552,7 @@ export default function Cart() {
       longitude: selectedAddressCoordinates[0]
     }
     : currentLocation
-  const { zoneId } = useZone(zoneLocation) // Prefer selected/saved address zone
+  const zoneId = null
   const defaultPayment = getDefaultPaymentMethod()
 
   useEffect(() => {
@@ -1434,12 +1434,10 @@ export default function Cart() {
   }
 
   const handleBack = () => {
-    // Priority: slug > restaurantId (both work for the restaurant details route)
-    const idOrSlug = restaurantData?.slug || restaurantId
-    if (idOrSlug) {
-      navigate(`/food/user/restaurants/${idOrSlug}`)
+    if (routerLocation.state?.from === "/food/user/profile") {
+      navigate("/food/user/profile")
     } else {
-      goBack()
+      navigate("/food/user")
     }
   }
 
@@ -1965,8 +1963,7 @@ export default function Cart() {
         note: note || "",
         sendCutlery: sendCutlery !== false,
         paymentMethod: selectedPaymentMethod,
-        // `useZone()` can return `null`. Zod expects string/undefined, not null.
-        zoneId: zoneId || undefined,
+        zoneId: undefined,
         scheduledAt: isScheduled ? new Date(`${scheduledDate}T${scheduledTime}:00`).toISOString() : undefined,
       };
       // Log final order details (including paymentMethod for COD debugging)
@@ -2239,7 +2236,7 @@ export default function Cart() {
           </div>
           <h2 className="text-lg font-semibold text-gray-800 dark:text-white mb-1">Your cart is empty</h2>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4 text-center">Add items from a restaurant to start a new order</p>
-          <Link to="/user">
+          <Link to="/food/user">
             <Button
               className="text-white border-0"
               style={{

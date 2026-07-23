@@ -9,7 +9,6 @@ import { Card, CardTitle, CardContent } from "@food/components/ui/card"
 import { Button } from "@food/components/ui/button"
 import { RestaurantGridSkeleton } from "@food/components/ui/loading-skeletons"
 import { useProfile } from "@food/context/ProfileContext"
-import { useZone } from "@food/hooks/useZone"
 import { useLocation } from "@food/hooks/useLocation"
 import { restaurantAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
@@ -44,7 +43,6 @@ const pickRestaurantImage = (restaurant) => {
 export default function Restaurants() {
   const { addFavorite, removeFavorite, isFavorite } = useProfile()
   const { location: userLocation } = useLocation()
-  const { zoneId } = useZone(userLocation)
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
   const showRestaurantsSkeleton = useDelayedLoading(loading)
@@ -56,8 +54,9 @@ export default function Restaurants() {
       try {
         setLoading(true)
         const params = { limit: 300, _ts: Date.now() }
-        if (zoneId) {
-          params.zoneId = zoneId
+        if (userLocation?.latitude && userLocation?.longitude) {
+          params.latitude = userLocation.latitude
+          params.longitude = userLocation.longitude
         }
         const response = await restaurantAPI.getRestaurants(params, { noCache: true })
         const list =
@@ -105,7 +104,7 @@ export default function Restaurants() {
     return () => {
       cancelled = true
     }
-  }, [zoneId])
+  }, [userLocation?.latitude, userLocation?.longitude])
 
   const hasRestaurants = useMemo(() => restaurants.length > 0, [restaurants.length])
 

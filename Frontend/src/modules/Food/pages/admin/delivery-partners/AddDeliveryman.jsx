@@ -9,6 +9,7 @@ export default function AddDeliveryman() {
     email: "",
     deliverymanType: "",
     vehicle: "",
+
     identityType: "Passport",
     identityNumber: "",
     age: "",
@@ -158,6 +159,8 @@ export default function AddDeliveryman() {
                     <option value="part-time">Part Time</option>
                   </select>
                 </div>
+
+
 
 
 

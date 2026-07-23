@@ -1,9 +1,13 @@
 import { Link, useLocation } from "react-router-dom"
 import { Tag, User, Truck, ShoppingCart, UtensilsCrossed } from "lucide-react"
+import { useKeyboardVisible } from "@food/hooks/useKeyboardVisible"
 
 export default function BottomNavigation() {
   const location = useLocation()
   const pathname = location.pathname
+  const isKeyboardVisible = useKeyboardVisible()
+
+  if (isKeyboardVisible) return null
 
   // Check active routes - support both /user/* and /* paths
   const isCart = pathname === "/food/cart" || pathname.startsWith("/food/user/cart")

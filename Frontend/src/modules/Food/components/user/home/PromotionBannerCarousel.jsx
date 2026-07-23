@@ -9,16 +9,10 @@ const PromotionBannerCarousel = ({ zoneId: propZoneId }) => {
   const [loading, setLoading] = useState(true);
   const autoSlideIntervalRef = useRef(null);
 
-  // Fallback to localStorage if prop is not provided
-  const zoneId = propZoneId || localStorage.getItem('userZoneId');
-
   const fetchBanners = useCallback(async () => {
-    if (!zoneId) return;
     try {
       setLoading(true);
-      const response = await publicConfigGetOnce("/food/hero-banners/home-promotion/public", {
-        params: { zoneId },
-      });
+      const response = await publicConfigGetOnce("/food/hero-banners/home-promotion/public");
       if (response.data?.success && response.data?.data?.banners) {
         setBanners(response.data.data.banners);
       }
@@ -27,7 +21,7 @@ const PromotionBannerCarousel = ({ zoneId: propZoneId }) => {
     } finally {
       setLoading(false);
     }
-  }, [zoneId]);
+  }, []);
 
   useEffect(() => {
     fetchBanners();

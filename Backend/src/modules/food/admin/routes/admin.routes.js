@@ -53,8 +53,6 @@ const resolveSectionFromRequest = (path = '', method = '') => {
     if (path.startsWith('/sub-admins')) return 'sub_admin_management';
     if (path === '/customers' && String(method).toUpperCase() === 'GET') return null;
     if (path.startsWith('/customers') || path.startsWith('/support-tickets')) return 'customer_management';
-    if (path === '/zones' && String(method).toUpperCase() === 'GET') return null;
-    if (/^\/zones\/[^/]+$/.test(path) && String(method).toUpperCase() === 'GET') return null;
     if (path === '/restaurants' && String(method).toUpperCase() === 'GET') return null;
     if (/^\/restaurants\/[^/]+$/.test(path) && String(method).toUpperCase() === 'GET') return null;
     if (/^\/restaurants\/[^/]+\/analytics$/.test(path) && String(method).toUpperCase() === 'GET') return null;
@@ -65,8 +63,7 @@ const resolveSectionFromRequest = (path = '', method = '') => {
         path.startsWith('/restaurant-settings') ||
         path.startsWith('/restaurant-subscription-settings') ||
         path.startsWith('/restaurant-subscription-plans') ||
-        path.startsWith('/restaurant-subscriptions') ||
-        path.startsWith('/zones')
+        path.startsWith('/restaurant-subscriptions')
     ) return 'restaurant_management';
     if (path.startsWith('/categories') || path.startsWith('/addons') || path.startsWith('/foods')) return 'food_management';
     if (path.startsWith('/offers')) return 'promotions_management';
@@ -356,34 +353,7 @@ router.patch('/delivery/:id/approve', adminController.approveDeliveryPartner);
 router.patch('/delivery/:id/reject', adminController.rejectDeliveryPartner);
 router.delete('/delivery/:id', adminController.deleteDeliveryPartner);
 
-// ----- Zones -----
-router.get(
-    '/zones',
-    requireAnyAdminPermission([
-        { section: 'dashboard', action: 'view' },
-        { section: 'restaurant_management', action: 'view' },
-        { section: 'point_of_sale', action: 'view' },
-        { section: 'food_management', action: 'view' },
-        { section: 'delivery_management', action: 'view' },
-        { section: 'report_management', action: 'view' },
-    ]),
-    adminController.getZones
-);
-router.get(
-    '/zones/:id',
-    requireAnyAdminPermission([
-        { section: 'dashboard', action: 'view' },
-        { section: 'restaurant_management', action: 'view' },
-        { section: 'point_of_sale', action: 'view' },
-        { section: 'food_management', action: 'view' },
-        { section: 'delivery_management', action: 'view' },
-        { section: 'report_management', action: 'view' },
-    ]),
-    adminController.getZoneById
-);
-router.post('/zones', adminController.createZone);
-router.patch('/zones/:id', adminController.updateZone);
-router.delete('/zones/:id', adminController.deleteZone);
+
 
 // ----- Dining -----
 router.get('/dining/categories', diningAdminController.getDiningCategories);

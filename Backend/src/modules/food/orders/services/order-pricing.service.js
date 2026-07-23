@@ -21,7 +21,7 @@ export async function loadRestaurantForOrdering(restaurantId) {
 
   const doc = await FoodRestaurant.findById(restaurantId)
     .select(
-      'status restaurantName zoneId location isAcceptingOrders outsideHoursOverride openingTime closingTime openDays deliveryTimings isActive',
+      'status restaurantName location isAcceptingOrders outsideHoursOverride openingTime closingTime openDays deliveryTimings isActive',
     )
     .lean();
 

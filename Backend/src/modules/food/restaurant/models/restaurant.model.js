@@ -205,11 +205,6 @@ const restaurantSchema = new mongoose.Schema(
       type: geoPointSchema,
       default: undefined,
     },
-    pendingZoneId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "FoodZone",
-      default: undefined,
-    },
     locationUpdateStatus: {
       type: String,
       enum: ["none", "pending", "approved", "rejected"],
@@ -219,11 +214,8 @@ const restaurantSchema = new mongoose.Schema(
     locationUpdateRequestedAt: { type: Date },
     locationUpdateReviewedAt: { type: Date },
     locationRejectionReason: { type: String, trim: true, default: "" },
-    /** Optional service zone id (can be computed from location). */
     zoneId: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: "FoodZone",
-      index: true,
     },
     /** Operational service radius in KM */
     serviceRadius: {

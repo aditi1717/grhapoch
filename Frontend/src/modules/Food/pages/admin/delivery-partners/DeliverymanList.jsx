@@ -29,7 +29,6 @@ export default function DeliverymanList() {
     si: true,
     name: true,
     contact: true,
-    deliveryRadius: true,
     totalOrders: true,
     pocketBalance: true,
     cashInHand: true,
@@ -74,6 +73,7 @@ export default function DeliverymanList() {
       const params = {
         page: 1,
         limit: 1000, // Get all for now
+        status: "approved",
       }
 
       // Add search to params if provided
@@ -99,13 +99,13 @@ export default function DeliverymanList() {
           return {
             ...partner,
             walletSummary: wallet || null,
-pocketBalance: wallet?.pocketBalance || 0,
-cashInHand: wallet?.cashCollected || 0,
-remainingCashLimit: wallet?.remainingCashLimit || 0,
-totalEarning: wallet?.totalEarning || 0,
-bonus: wallet?.bonus || 0,
-totalWithdrawn: wallet?.totalWithdrawn || 0,
-availableCashLimit: wallet?.availableCashLimit || 0,
+            pocketBalance: wallet?.pocketBalance || 0,
+            cashInHand: wallet?.cashCollected || 0,
+            remainingCashLimit: wallet?.remainingCashLimit || 0,
+            totalEarning: wallet?.totalEarning || 0,
+            bonus: wallet?.bonus || 0,
+            totalWithdrawn: wallet?.totalWithdrawn || 0,
+            availableCashLimit: wallet?.availableCashLimit || 0,
           }
         })
 
@@ -155,8 +155,10 @@ availableCashLimit: wallet?.availableCashLimit || 0,
   }, [searchQuery])
 
   const filteredDeliverymen = useMemo(() => {
-    // Backend already handles search, but we can do client-side filtering if needed
-    return deliverymen
+    return deliverymen.filter((dm) => {
+      const status = String(dm?.status || "").toLowerCase().trim()
+      return status === "approved" || status === "active"
+    })
   }, [deliverymen])
 
   const handleView = async (deliveryman) => {
@@ -218,7 +220,6 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
       si: true,
       name: true,
       contact: true,
-      deliveryRadius: true,
       totalOrders: true,
       pocketBalance: true,
       cashInHand: true,
@@ -232,7 +233,6 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
     si: "Serial Number",
     name: "Name",
     contact: "Contact",
-    deliveryRadius: "Delivery Radius",
     totalOrders: "Total Orders",
     pocketBalance: "Pocket Balance",
     cashInHand: "Cash In Hand",
@@ -486,14 +486,6 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                         </div>
                       </th>
                     )}
-                    {visibleColumns.deliveryRadius && (
-                      <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
-                        <div className="flex items-center gap-2">
-                          <span>Delivery Radius</span>
-                          <ArrowUpDown className="w-3 h-3 text-slate-400 cursor-pointer hover:text-slate-600" />
-                        </div>
-                      </th>
-                    )}
                     {visibleColumns.totalOrders && (
                       <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
                         <div className="flex items-center gap-2">
@@ -596,11 +588,6 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                               <span className="text-sm text-slate-700">{dm.email}</span>
                               <span className="text-xs text-slate-500">{dm.phone}</span>
                             </div>
-                          </td>
-                        )}
-                        {visibleColumns.deliveryRadius && (
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-slate-700">{dm.deliveryRadius || 10} KM</span>
                           </td>
                         )}
                         {visibleColumns.totalOrders && (
@@ -880,10 +867,6 @@ availableCashLimit: deliveryman.availableCashLimit || 0,
                           <p className="text-sm text-slate-900 mt-1 capitalize">{viewDetails.vehicle.type}</p>
                         </div>
                       )}
-                      <div>
-                        <label className="text-xs font-semibold text-slate-500 uppercase">Delivery Radius</label>
-                        <p className="text-sm text-slate-900 mt-1">{viewDetails.deliveryRadius || 10} KM</p>
-                      </div>
                     </div>
                   </div>
                 )}

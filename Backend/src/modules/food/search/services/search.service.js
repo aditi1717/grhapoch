@@ -21,7 +21,6 @@ const RESTAURANT_SEARCH_SELECT = [
     'pureVegRestaurant',
     'createdAt',
     'location',
-    'zoneId',
     'area',
     'city'
 ].join(' ');
@@ -73,9 +72,7 @@ export const searchUnified = async (query = {}, options = {}) => {
         maxDeliveryTime,
         isVeg,
         page = 1,
-        limit = 20,
-        zoneId,
-        strictZone
+        limit = 20
     } = query;
 
     const pageNumber = Math.max(parseInt(page, 10) || 1, 1);
@@ -90,10 +87,6 @@ export const searchUnified = async (query = {}, options = {}) => {
 
     // 1. Initial Filter (approved status and basic conditions)
     const restaurantFilter = { status: 'approved' };
-
-    if (zoneId && mongoose.Types.ObjectId.isValid(zoneId)) {
-        restaurantFilter.zoneId = new mongoose.Types.ObjectId(zoneId);
-    }
 
     if (isVeg === 'true') {
         restaurantFilter.pureVegRestaurant = true;
@@ -198,7 +191,9 @@ export const searchUnified = async (query = {}, options = {}) => {
         });
     }
 
-    let results = Array.from(restaurantDetailsMap.values());
+    const activeRestaurantIds = await FoodItem.distinct('restaurantId', { approvalStatus: 'approved' });
+    const activeRestaurantIdsSet = new Set(activeRestaurantIds.map(id => id.toString()));
+    let results = Array.from(restaurantDetailsMap.values()).filter(r => activeRestaurantIdsSet.has(r._id.toString()));
 
     if (hasGeoSorting && results.length > 0) {
         results = results
@@ -206,42 +201,21 @@ export const searchUnified = async (query = {}, options = {}) => {
             .sort((a, b) => (a.distanceScore || 999) - (b.distanceScore || 999));
     }
 
-    const finalResult = {
+    return {
         success: true,
         data: {
             restaurants: results.slice(skip, skip + limitNumber),
             total: results.length,
             page: pageNumber,
-            limit: limitNumber,
-            zoneFiltered: !!(zoneId && mongoose.Types.ObjectId.isValid(zoneId))
+            limit: limitNumber
         }
     };
-
-    const shouldSkipZoneFallback =
-        strictZone === true ||
-        strictZone === 'true' ||
-        !!(categoryId && mongoose.Types.ObjectId.isValid(categoryId));
-
-    if (
-        !shouldSkipZoneFallback &&
-        results.length === 0 &&
-        zoneId &&
-        mongoose.Types.ObjectId.isValid(zoneId)
-    ) {
-        const fallbackResults = await searchUnified({ ...query, zoneId: null }, options);
-        if (fallbackResults.data.total > 0) {
-            fallbackResults.data.wasFallback = true;
-            return fallbackResults;
-        }
-    }
-
-    return finalResult;
 };
 
 /**
  * Fetch Admin-only categories
  */
-export const getAdminCategories = async (query = {}) => {
+export const getAdminCategories = async () => {
     const filter = {
         isActive: true,
         isApproved: true,
@@ -251,14 +225,6 @@ export const getAdminCategories = async (query = {}) => {
             { restaurantId: { $eq: undefined } }
         ]
     };
-
-    if (query.zoneId && mongoose.Types.ObjectId.isValid(query.zoneId)) {
-        filter.$or = [
-            { zoneId: new mongoose.Types.ObjectId(query.zoneId) },
-            { zoneId: { $exists: false } },
-            { zoneId: null }
-        ];
-    }
 
     const categories = await FoodCategory.find(filter).sort({ sortOrder: 1, name: 1 }).lean();
     return categories;

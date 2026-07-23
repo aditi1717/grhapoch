@@ -106,7 +106,7 @@ router.get('/restaurants/:id/menu', cacheResponse(600, 'restaurant_menu'), getPu
 router.get('/public/foods', cacheResponse(300, 'public_foods'), listPublicFoodsController);
 router.get('/restaurants/:id/outlet-timings', cacheResponse(600, 'restaurant_timings'), getOutletTimingsByRestaurantIdController);
 router.get('/offers', optionalAuth, listPublicOffersController);
-// Public: categories list (zone-aware; returns zone categories + global)
+// Public: categories list
 router.get('/categories/public', cacheResponse(600, 'categories'), listCategoriesController);
 
 // Restaurant dashboard/profile (Bearer token + RESTAURANT role)

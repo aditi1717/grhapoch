@@ -40,6 +40,11 @@ const deliveryRegisterSchema = z.object({
         .regex(aadharRegex, 'Invalid Aadhar format')
         .optional()
         .or(z.literal('')),
+    deliveryRadius: z.preprocess((val) => {
+        if (val === undefined || val === null || val === '') return undefined;
+        const n = Number(val);
+        return Number.isFinite(n) ? n : val;
+    }, z.number().min(0.1, 'Delivery radius must be greater than 0').optional()),
     fcmToken: z.string().optional().nullable(),
     platform: z.preprocess(
         (value) => normalizePlatform(value, { allowUndefined: true }),

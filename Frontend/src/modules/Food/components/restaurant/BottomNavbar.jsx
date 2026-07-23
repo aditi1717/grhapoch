@@ -1,9 +1,13 @@
 import { useNavigate, useLocation } from "react-router-dom"
 import { Home, ShoppingBag, Store, Wallet, Menu } from "lucide-react"
+import { useKeyboardVisible } from "@food/hooks/useKeyboardVisible"
 
 export default function BottomNavbar({ onMenuClick }) {
   const navigate = useNavigate()
   const location = useLocation()
+  const isKeyboardVisible = useKeyboardVisible()
+
+  if (isKeyboardVisible) return null
 
   const isActive = (path) => {
     if (path === "/restaurant") {

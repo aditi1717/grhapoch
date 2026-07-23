@@ -65,7 +65,7 @@ export default function DiningList() {
                         name: restaurant.name || restaurant.restaurantName || "N/A",
                         ownerName: restaurant.ownerName || "N/A",
                         ownerPhone: restaurant.ownerPhone || "N/A",
-                        zone: restaurant.zone || "N/A",
+                        zone: restaurant.serviceRadius ? `${restaurant.serviceRadius} KM` : "N/A",
                         status: restaurant.status === "approved" || restaurant.isActive === true,
                         rating: restaurant.rating || 0,
                         logo: getPrimaryRestaurantImage(restaurant, "https://via.placeholder.com/40"),
@@ -304,7 +304,7 @@ export default function DiningList() {
                                         <tr>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Restaurant</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Owner</th>
-                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Zone</th>
+                                            <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Service Radius</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Dining</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Guests</th>
                                             <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">Rating</th>

@@ -2,7 +2,7 @@ import { FoodGourmetRestaurant } from '../models/gourmetRestaurant.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import mongoose from 'mongoose';
 
-export const getPublicGourmetRestaurants = async (zoneId) => {
+export const getPublicGourmetRestaurants = async () => {
     const docs = await FoodGourmetRestaurant.find({ isActive: true })
         .sort({ priority: 1, createdAt: -1 })
         .lean();
@@ -10,12 +10,9 @@ export const getPublicGourmetRestaurants = async (zoneId) => {
     const restaurantIds = docs.map((d) => d.restaurantId);
     
     const query = { _id: { $in: restaurantIds }, status: 'approved' };
-    if (zoneId && mongoose.Types.ObjectId.isValid(zoneId)) {
-        query.zoneId = new mongoose.Types.ObjectId(zoneId);
-    }
 
     const restaurants = await FoodRestaurant.find(query)
-        .select('restaurantName area city profileImage rating cuisines slug pureVegRestaurant location estimatedDeliveryTime zoneId')
+        .select('restaurantName area city profileImage rating cuisines slug pureVegRestaurant location estimatedDeliveryTime')
         .lean();
 
     const restaurantMap = new Map(restaurants.map((r) => [r._id.toString(), r]));
@@ -36,8 +33,7 @@ export const getPublicGourmetRestaurants = async (zoneId) => {
                 slug: r.slug,
                 pureVegRestaurant: r.pureVegRestaurant,
                 location: r.location,
-                estimatedDeliveryTime: r.estimatedDeliveryTime,
-                zoneId: r.zoneId
+                estimatedDeliveryTime: r.estimatedDeliveryTime
             } : null
         };
     });

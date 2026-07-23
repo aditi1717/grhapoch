@@ -5,7 +5,6 @@ import { logger } from '../../../../utils/logger.js';
 import { FoodUser } from '../../../../core/users/user.model.js';
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodDeliveryPartner } from '../../delivery/models/deliveryPartner.model.js';
-import { FoodZone } from '../../admin/models/zone.model.js';
 import { ValidationError, ForbiddenError, NotFoundError } from '../../../../core/auth/errors.js';
 import { buildPaginationOptions, buildPaginatedResult } from '../../../../utils/helpers.js';
 import { FoodOffer } from '../../admin/models/offer.model.js';
@@ -535,7 +534,6 @@ export async function createOrder(userId, dto) {
     const order = new FoodOrder({
       userId: toObjectId(userId, 'User ID'),
       restaurantId: restaurantId,
-      zoneId: dto.zoneId ? toObjectId(dto.zoneId, 'Zone ID') : toObjectId(restaurant.zoneId, 'Restaurant Zone ID'),
       items: resolvedItems.map(item => ({
         ...item,
         itemId: toObjectId(item.itemId, 'Item ID')
@@ -1873,8 +1871,6 @@ export async function listOrdersAdmin(query) {
       : "";
   const restaurantIdRaw =
     typeof query.restaurantId === "string" ? query.restaurantId.trim() : "";
-  const zoneIdRaw =
-    typeof query.zoneId === "string" ? query.zoneId.trim() : "";
   const startDateRaw =
     typeof query.startDate === "string" ? query.startDate.trim() : "";
   const endDateRaw =
@@ -1968,21 +1964,6 @@ export async function listOrdersAdmin(query) {
     filter.restaurantId = new mongoose.Types.ObjectId(restaurantIdRaw);
   }
 
-  if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw)) {
-    const zoneRestaurantIds = await FoodRestaurant.find({
-      zoneId: new mongoose.Types.ObjectId(zoneIdRaw),
-    }).distinct("_id");
-    if (filter.restaurantId instanceof mongoose.Types.ObjectId) {
-      filter.restaurantId = {
-        $in: zoneRestaurantIds.filter(
-          (id) => String(id) === String(filter.restaurantId),
-        ),
-      };
-    } else {
-      filter.restaurantId = { $in: zoneRestaurantIds };
-    }
-  }
-
   if (startDateRaw || endDateRaw) {
     const createdAt = {};
     const start = startDateRaw ? new Date(startDateRaw) : null;
@@ -2007,7 +1988,7 @@ export async function listOrdersAdmin(query) {
     FoodOrder.find(filter)
       .select("+deliveryOtp")
       .populate("userId", "name phone email")
-      .populate("restaurantId", "restaurantName area city ownerPhone zoneId")
+      .populate("restaurantId", "restaurantName area city ownerPhone")
       .populate("dispatch.deliveryPartnerId", "name phone")
       .sort({ createdAt: -1 })
       .skip(skip)

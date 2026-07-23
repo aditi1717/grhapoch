@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom"
 import { useState, useMemo, useCallback, useEffect, useRef } from "react"
-import { Star, Clock, MapPin, ArrowDownUp, Timer, ArrowRight, ChevronDown, Bookmark, Share2, Plus, Minus, X, Search, Mic, ShoppingCart, Wallet } from "lucide-react"
+import { Star, Clock, MapPin, ArrowDownUp, Timer, ArrowRight, ChevronDown, Bookmark, Share2, Plus, Minus, X, Search, Mic, ShoppingCart, Wallet, ArrowLeft } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { toast } from "sonner"
 import AnimatedPage from "@food/components/user/AnimatedPage"
@@ -9,7 +9,6 @@ import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { useSearchOverlay, useLocationSelector } from "@food/components/user/UserLayout"
 import { useLocation } from "@food/hooks/useLocation"
-import { useZone } from "@food/hooks/useZone"
 import { useProfile } from "@food/context/ProfileContext"
 import { useCart } from "@food/context/CartContext"
 import PageNavbar from "@food/components/user/PageNavbar"
@@ -194,7 +193,11 @@ export default function Under250() {
     return useSavedAddress ? defaultSavedAddressLocation : location
   }, [deliveryAddressMode, defaultSavedAddressLocation, location])
 
-  const { zoneId, zoneStatus, isInService, isOutOfService, refreshZone } = useZone(effectiveLocation)
+  const zoneId = null
+  const zoneStatus = "success"
+  const isInService = true
+  const isOutOfService = false
+  const refreshZone = () => {}
   const navigate = useNavigate()
   const { addToCart, updateQuantity, removeFromCart, getCartItem, cart } = useCart()
   const [activeCategory, setActiveCategory] = useState(initialFiltersRef.current.activeCategory)
@@ -572,36 +575,27 @@ export default function Under250() {
     }
   }, [])
 
-  useEffect(() => {
-    if (
-      !Number.isFinite(effectiveLocation?.latitude) ||
-      !Number.isFinite(effectiveLocation?.longitude)
-    ) {
-      return
-    }
 
-    refreshZone()
-  }, [
-    deliveryAddressMode,
-    effectiveLocation?.latitude,
-    effectiveLocation?.longitude,
-    refreshZone,
-  ])
 
   useEffect(() => {
     const fetchRestaurantsUnder250 = async () => {
       const fetchGeneration = ++fetchGenerationRef.current
       try {
         setLoadingRestaurants(true)
-        if (!zoneId) {
+        if (!effectiveLocation?.latitude || !effectiveLocation?.longitude) {
           setUnder250Restaurants([])
           return
         }
 
         const [restaurantsResponse, foodsResponse] = await Promise.all([
-          restaurantAPI.getRestaurants({ zoneId, limit: 1000 }),
+          restaurantAPI.getRestaurants({
+            latitude: effectiveLocation.latitude,
+            longitude: effectiveLocation.longitude,
+            limit: 1000,
+          }),
           restaurantAPI.getPublicFoods({
-            zoneId,
+            latitude: effectiveLocation.latitude,
+            longitude: effectiveLocation.longitude,
             promo: "switch99",
             limit: 1000,
           }),
@@ -664,7 +658,7 @@ export default function Under250() {
     }
 
     fetchRestaurantsUnder250()
-  }, [zoneId, effectiveLocation, filterCandidateRestaurants, isSwitch99EligibleItem])
+  }, [effectiveLocation?.latitude, effectiveLocation?.longitude, filterCandidateRestaurants, isSwitch99EligibleItem])
 
   // Fetch categories from backend (no static fallback list)
   useEffect(() => {
@@ -672,7 +666,12 @@ export default function Under250() {
 
     const fetchCategories = async () => {
       try {
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {})
+        const params = {}
+        if (effectiveLocation?.latitude && effectiveLocation?.longitude) {
+          params.latitude = effectiveLocation.latitude
+          params.longitude = effectiveLocation.longitude
+        }
+        const response = await adminAPI.getPublicCategories(params)
         const categoriesRaw = Array.isArray(response?.data?.data?.categories)
           ? response.data.data.categories
           : []
@@ -709,7 +708,7 @@ export default function Under250() {
     return () => {
       cancelled = true
     }
-  }, [zoneId])
+  }, [effectiveLocation?.latitude, effectiveLocation?.longitude])
 
   // Sync quantities from cart on mount
   useEffect(() => {
@@ -1110,23 +1109,32 @@ export default function Under250() {
     <div className={`relative min-h-screen bg-white dark:bg-[#0a0a0a]`}>
       {/* Premium Glassmorphic Header Wrapper (Replica of Dining) */}
       <div className="sticky top-0 z-50 w-full bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl shadow-sm border-b border-gray-100 dark:border-gray-900 md:hidden">
-        {/* Top Row: Location & Profile */}
+        {/* Top Row: Back, Location & Profile */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
-          <div 
-            className="flex items-center gap-2 cursor-pointer group max-w-[70%]"
-            onClick={openLocationSelector}
-          >
-            <div className="bg-[#FA0272]/10 p-2 rounded-full border border-[#FA0272]/20">
-              <MapPin className="h-[18px] w-[18px] text-[#FA0272]" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">Location</span>
-                <ChevronDown className="h-3 w-3 text-[#FA0272]" />
+          <div className="flex items-center gap-3 min-w-0 flex-1">
+            <button 
+              onClick={() => navigate("/food/user")}
+              className="flex items-center justify-center h-8 w-8 rounded-full bg-gray-100/80 dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700 shadow-sm transition active:scale-90"
+            >
+              <ArrowLeft className="h-4 w-4 text-gray-700 dark:text-gray-300" strokeWidth={2.5} />
+            </button>
+
+            <div 
+              className="flex items-center gap-2 cursor-pointer group min-w-0"
+              onClick={openLocationSelector}
+            >
+              <div className="bg-[#FA0272]/10 p-2 rounded-full border border-[#FA0272]/20">
+                <MapPin className="h-[18px] w-[18px] text-[#FA0272]" />
               </div>
-              <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                {displayLocation}
-              </span>
+              <div className="flex flex-col min-w-0">
+                <div className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
+                  <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">Location</span>
+                  <ChevronDown className="h-3 w-3 text-[#FA0272]" />
+                </div>
+                <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
+                  {displayLocation}
+                </span>
+              </div>
             </div>
           </div>
 

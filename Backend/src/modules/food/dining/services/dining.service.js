@@ -104,7 +104,7 @@ function mapCategory(doc) {
     };
 }
 
-function getRestaurantZone(restaurant) {
+function getRestaurantArea(restaurant) {
     return (
         restaurant?.location?.area ||
         restaurant?.location?.city ||
@@ -158,7 +158,7 @@ function mapDiningRestaurant(restaurant, diningDoc, categoriesById) {
         ownerName: restaurant.ownerName || 'N/A',
         ownerPhone: restaurant.ownerPhone || restaurant.phone || 'N/A',
         pureVegRestaurant: diningDoc?.pureVegRestaurant === true || restaurant?.pureVegRestaurant === true,
-        zone: getRestaurantZone(restaurant),
+        area: getRestaurantArea(restaurant),
         city: restaurant?.location?.city || restaurant?.city || '',
         status: restaurant.status,
         isActive: restaurant.status === 'approved',
@@ -275,11 +275,6 @@ export async function deleteDiningCategory(id) {
 
 export async function listDiningRestaurantsAdmin(user = null) {
     const restaurantFilter = {};
-    if (user && user.role === 'SUBADMIN') {
-        const subadmin = await mongoose.model('FoodAdmin').findById(user.userId).select('assignedZoneIds').lean();
-        const zoneIds = Array.isArray(subadmin?.assignedZoneIds) ? subadmin.assignedZoneIds : [];
-        restaurantFilter.zoneId = { $in: zoneIds };
-    }
 
     const [restaurants, diningDocs, categories] = await Promise.all([
         FoodRestaurant.find(restaurantFilter)
@@ -387,7 +382,6 @@ export async function listDiningRestaurantsPublic(query = {}) {
     const filter = { isEnabled: true };
     const categoryValue = String(query.category || '').trim();
     const cityValue = String(query.city || '').trim();
-    const zoneIdValue = String(query.zoneId || '').trim();
 
     if (categoryValue) {
         const category = await FoodDiningCategory.findOne({
@@ -421,29 +415,18 @@ export async function listDiningRestaurantsPublic(query = {}) {
         status: 'approved',
         _id: { $in: activeRestaurantIds }
     };
-    const restaurantAndConditions = [];
 
     if (cityValue) {
-        restaurantAndConditions.push({
-            $or: [
-                { city: { $regex: cityValue, $options: 'i' } },
-                { 'location.city': { $regex: cityValue, $options: 'i' } }
-            ]
-        });
-    }
-
-    if (zoneIdValue && mongoose.Types.ObjectId.isValid(zoneIdValue)) {
-        restaurantAndConditions.push({ zoneId: new mongoose.Types.ObjectId(zoneIdValue) });
-    }
-
-    if (restaurantAndConditions.length > 0) {
-        restaurantMatch.$and = restaurantAndConditions;
+        restaurantMatch.$or = [
+            { city: { $regex: cityValue, $options: 'i' } },
+            { 'location.city': { $regex: cityValue, $options: 'i' } }
+        ];
     }
 
     const diningDocs = await FoodDiningRestaurant.find(filter)
         .populate({
             path: 'restaurantId',
-            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages location area city zoneId status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo',
+            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo',
             match: restaurantMatch
         })
         .populate('categoryIds', 'name slug imageUrl')
@@ -584,17 +567,8 @@ export async function getPendingDiningRequest(restaurantId) {
     }).lean();
 }
 
-export async function listAllPendingDiningRequests(user = null) {
+export async function listAllPendingDiningRequests() {
     const filter = { status: 'pending' };
-
-    if (user && user.role === 'SUBADMIN') {
-        const subadmin = await mongoose.model('FoodAdmin').findById(user.userId).select('assignedZoneIds').lean();
-        const zoneIds = Array.isArray(subadmin?.assignedZoneIds) ? subadmin.assignedZoneIds : [];
-        const restaurantIds = zoneIds.length
-            ? await FoodRestaurant.find({ zoneId: { $in: zoneIds } }).distinct('_id')
-            : [];
-        filter.restaurantId = { $in: restaurantIds };
-    }
 
     return await FoodDiningRequest.find(filter)
         .populate({

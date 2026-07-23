@@ -15,14 +15,12 @@ export default function DeliveryBoyViewMap() {
   const navigate = useNavigate()
   const mapRef = useRef(null)
   const mapInstanceRef = useRef(null)
-  const zonesPolygonsRef = useRef([])
   const infoWindowsRef = useRef([])
   const deliveryBoyMarkersRef = useRef([])
   const rotatedIconCacheRef = useRef(new Map()) // Cache for rotated bike icons
   
   const [googleMapsApiKey, setGoogleMapsApiKey] = useState("")
   const [mapLoading, setMapLoading] = useState(true)
-  const [zones, setZones] = useState([])
   const [deliveryBoys, setDeliveryBoys] = useState([])
   const deliveryMetaByIdRef = useRef(new Map())
   const [loading, setLoading] = useState(true)
@@ -31,7 +29,6 @@ export default function DeliveryBoyViewMap() {
   const autocompleteRef = useRef(null)
 
   useEffect(() => {
-    fetchZones()
     fetchDeliveryPartnerDirectory()
     loadGoogleMaps()
 
@@ -106,12 +103,9 @@ export default function DeliveryBoyViewMap() {
     }
   }, [mapLoading])
 
-  // Draw zones and delivery boy markers when map and data are ready
+  // Draw delivery boy markers when map and data are ready
   useEffect(() => {
     if (!mapLoading && mapInstanceRef.current && window.google) {
-      if (zones.length > 0) {
-        drawAllZonesOnMap(window.google, mapInstanceRef.current)
-      }
       if (deliveryBoys.length > 0) {
         // drawDeliveryBoyMarkers is async, so handle it properly
         drawDeliveryBoyMarkers(window.google, mapInstanceRef.current).catch(error => {
@@ -119,22 +113,8 @@ export default function DeliveryBoyViewMap() {
         })
       }
     }
-  }, [zones, mapLoading, deliveryBoys])
+  }, [mapLoading, deliveryBoys])
 
-  const fetchZones = async () => {
-    try {
-      setLoading(true)
-      const response = await adminAPI.getZones({ limit: 1000 })
-      if (response.data?.success && response.data.data?.zones) {
-        setZones(response.data.data.zones)
-      }
-    } catch (error) {
-      debugError("Error fetching zones:", error)
-      setZones([])
-    } finally {
-      setLoading(false)
-    }
-  }
 
   const fetchDeliveryPartnerDirectory = async () => {
     try {
@@ -539,7 +519,7 @@ export default function DeliveryBoyViewMap() {
         {/* Header */}
         <div className="flex items-center gap-4 mb-6">
           <button
-            onClick={() => navigate("/admin/food/zone-setup")}
+            onClick={() => navigate("/admin/food/delivery-partners")}
             className="p-2 hover:bg-slate-200 rounded-lg transition-colors"
           >
             <ArrowLeft className="w-5 h-5 text-slate-600" />
@@ -550,7 +530,7 @@ export default function DeliveryBoyViewMap() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-slate-900">Delivery Boy View</h1>
-              <p className="text-sm text-slate-600">View zones and online delivery boys on map</p>
+              <p className="text-sm text-slate-600">View online delivery boys on map</p>
             </div>
           </div>
         </div>
@@ -617,11 +597,6 @@ export default function DeliveryBoyViewMap() {
             <div className="mt-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
               <h3 className="text-sm font-semibold text-slate-900 mb-2">Map Information</h3>
               <div className="text-xs text-slate-600 space-y-1">
-                {zones.length > 0 && (
-                  <p>
-                    Click on any <span className="font-semibold text-blue-600">zone</span> on the map to view details. Total zones: <strong>{zones.length}</strong>
-                  </p>
-                )}
                 {deliveryBoys.length > 0 && (
                   <p>
                     Click on any <span className="font-semibold text-green-600">green bike icon</span> to view delivery boy details. Online delivery boys: <strong>{deliveryBoys.length}</strong>

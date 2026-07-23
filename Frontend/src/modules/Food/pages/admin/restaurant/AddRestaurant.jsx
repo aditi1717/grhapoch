@@ -6,7 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
 import { Button } from "@food/components/ui/button"
-import { adminAPI, uploadAPI, zoneAPI } from "@food/api"
+import { adminAPI, uploadAPI } from "@food/api"
 import { toast } from "sonner"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => { console.warn(...args) }
@@ -160,8 +160,6 @@ export default function AddRestaurant() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showSuccessDialog, setShowSuccessDialog] = useState(false)
   const [formErrors, setFormErrors] = useState({})
-  const [zones, setZones] = useState([])
-  const [zonesLoading, setZonesLoading] = useState(false)
   const [isHydrated, setIsHydrated] = useState(false)
 
   // Step 1: Basic Info
@@ -192,6 +190,7 @@ export default function AddRestaurant() {
     profileImage: null,
     cuisines: [],
     estimatedDeliveryTime: "",
+    serviceRadius: 10,
     openingTime: "",
     closingTime: "",
     openDays: [],
@@ -612,6 +611,7 @@ export default function AddRestaurant() {
         profileImage: profileImageData,
         cuisines: step2.cuisines,
         estimatedDeliveryTime: step2.estimatedDeliveryTime,
+        serviceRadius: Number(step2.serviceRadius) || 10,
         openingTime: step2.openingTime,
         closingTime: step2.closingTime,
         openDays: step2.openDays,
@@ -666,27 +666,7 @@ export default function AddRestaurant() {
   const [locationSuggestions, setLocationSuggestions] = useState([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
 
-  useEffect(() => {
-    if (step !== 1) return
-    let cancelled = false
-    setZonesLoading(true)
-    zoneAPI
-      .getPublicZones()
-      .then((res) => {
-        const list = res?.data?.data?.zones || res?.data?.zones || []
-        if (!cancelled) setZones(Array.isArray(list) ? list : [])
-      })
-      .catch(() => {
-        if (!cancelled) setZones([])
-      })
-      .finally(() => {
-        if (!cancelled) setZonesLoading(false)
-      })
 
-    return () => {
-      cancelled = true
-    }
-  }, [step])
 
   // Initialize Google Places Autocomplete for Step 1 location search.
   useEffect(() => {
@@ -1218,6 +1198,22 @@ export default function AddRestaurant() {
               )
             })}
           </div>
+        </div>
+
+        <div>
+          <Label className="text-xs text-gray-700">Service Radius (KM)*</Label>
+          <Input
+            type="number"
+            min="0.1"
+            step="0.5"
+            value={step2.serviceRadius ?? 10}
+            onChange={(e) => setStep2({ ...step2, serviceRadius: e.target.value })}
+            className="mt-1 bg-white text-sm"
+            placeholder="e.g. 10 (Operational distance radius in KM)"
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            Max distance (in KM) within which users can see and order from this restaurant.
+          </p>
         </div>
 
         <div className="space-y-3">

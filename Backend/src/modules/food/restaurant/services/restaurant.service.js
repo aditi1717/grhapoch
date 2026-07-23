@@ -3,7 +3,7 @@ import { uploadImageBuffer } from '../../../../services/cloudinary.service.js';
 import { normalizeMediaUrlForStorage } from '../../../../services/storage.service.js';
 import { ValidationError, NotFoundError } from '../../../../core/auth/errors.js';
 import mongoose from 'mongoose';
-import { FoodZone } from '../../admin/models/zone.model.js';
+
 import { FoodOffer } from '../../admin/models/offer.model.js';
 import { FoodOfferUsage } from '../../admin/models/offerUsage.model.js';
 import { FoodRestaurantMenu } from '../models/restaurantMenu.model.js';
@@ -431,43 +431,7 @@ const parseSortBy = (value) => {
     return allowed.has(v) ? v : null;
 };
 
-const zoneToPolygon = (zoneDoc) => {
-    const coords = Array.isArray(zoneDoc?.coordinates) ? zoneDoc.coordinates : [];
-    if (coords.length < 3) return null;
-    const ring = coords
-        .map((c) => [Number(c.longitude), Number(c.latitude)])
-        .filter((pair) => pair.every((n) => Number.isFinite(n)));
-    if (ring.length < 3) return null;
-    const first = ring[0];
-    const last = ring[ring.length - 1];
-    if (first[0] !== last[0] || first[1] !== last[1]) ring.push(first);
-    return { type: 'Polygon', coordinates: [ring] };
-};
 
-const isPointInZonePolygon = (lat, lng, polygon = []) => {
-    if (!Array.isArray(polygon) || polygon.length < 3) return false;
-    let inside = false;
-    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
-        const xi = Number(polygon[i]?.longitude);
-        const yi = Number(polygon[i]?.latitude);
-        const xj = Number(polygon[j]?.longitude);
-        const yj = Number(polygon[j]?.latitude);
-        if (![xi, yi, xj, yj].every(Number.isFinite)) continue;
-        const intersect =
-            yi > lat !== yj > lat &&
-            lng < ((xj - xi) * (lat - yi)) / (yj - yi + 0.0) + xi;
-        if (intersect) inside = !inside;
-    }
-    return inside;
-};
-
-const findMatchedZoneForCoordinates = async (lat, lng) => {
-    if (lat === null || lng === null) return null;
-    const activeZones = await FoodZone.find({ isActive: true })
-        .select('_id coordinates name zoneName')
-        .lean();
-    return activeZones.find((zone) => isPointInZonePolygon(lat, lng, zone?.coordinates)) || null;
-};
 
 const hasPublishedRestaurantLocation = (restaurant = {}) => {
     const loc = restaurant?.location;
@@ -1273,24 +1237,16 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
             throw new ValidationError('Location latitude and longitude are required');
         }
 
-        const matchedZone = await findMatchedZoneForCoordinates(lat, lng);
-        if (!matchedZone?._id) {
-            throw new ValidationError('Selected location is outside the service zone. Please pin inside an active zone.');
-        }
-
-        const pendingZoneId = new mongoose.Types.ObjectId(String(matchedZone._id));
         const isLocationChangeRequest = hasPublishedRestaurantLocation(currentRestaurant);
 
         if (isLocationChangeRequest) {
             update.pendingLocation = nextLocation;
-            update.pendingZoneId = pendingZoneId;
             update.locationUpdateStatus = 'pending';
             update.locationUpdateRequestedAt = new Date();
             update.locationRejectionReason = '';
             update.locationUpdateReviewedAt = null;
         } else {
             update.location = nextLocation;
-            update.zoneId = pendingZoneId;
             update.addressLine1 = nextLocation.addressLine1;
             update.addressLine2 = nextLocation.addressLine2;
             update.area = nextLocation.area;
@@ -1733,7 +1689,8 @@ export const listApprovedRestaurants = async (query = {}) => {
     const page = Math.max(parseInt(query.page, 10) || 1, 1);
     const skip = (page - 1) * limit;
 
-    const filter = { status: 'approved' };
+    const activeRestaurantIds = await FoodItem.distinct('restaurantId', { approvalStatus: 'approved' });
+    const filter = { status: 'approved', _id: { $in: activeRestaurantIds } };
 
     if (query.city && String(query.city).trim()) {
         const city = String(query.city).trim().slice(0, 80);
@@ -1822,14 +1779,6 @@ export const listApprovedRestaurants = async (query = {}) => {
                 { cuisines: { $in: [new RegExp(term, 'i')] } }
             ];
         }
-    }
-
-    // Strict zone filter for user listing:
-    // With radius-based migration, we ignore the mock zoneId and only filter by zoneId if it is a real active zone.
-    const zoneIdRaw = String(query.zoneId || '').trim();
-    const isMockZone = zoneIdRaw === '507f1f77bcf86cd799439011';
-    if (zoneIdRaw && mongoose.Types.ObjectId.isValid(zoneIdRaw) && !isMockZone) {
-        filter.zoneId = new mongoose.Types.ObjectId(zoneIdRaw);
     }
 
     const lat = toFiniteNumber(query.lat);

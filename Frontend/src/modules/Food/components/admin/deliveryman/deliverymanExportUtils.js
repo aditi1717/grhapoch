@@ -4,12 +4,11 @@ const debugError = (...args) => {}
 
 // Export utility functions for deliveryman data
 export const exportDeliverymenToCSV = (deliverymen, filename = "deliverymen") => {
-  const headers = ["SI", "Name", "Contact", "Zone", "Total Orders", "Cash Limit", "Cash In Hand", "Amount", "Availability Status"]
+  const headers = ["SI", "Name", "Contact", "Total Orders", "Cash Limit", "Cash In Hand", "Amount", "Availability Status"]
   const rows = deliverymen.map((dm) => [
     dm.sl,
     dm.name,
     dm.phone,
-    dm.zone,
     dm.totalOrders,
     dm.remainingCashLimit || 0,
     dm.cashInHand || 0,
@@ -34,13 +33,12 @@ export const exportDeliverymenToCSV = (deliverymen, filename = "deliverymen") =>
 }
 
 export const exportDeliverymenToExcel = (deliverymen, filename = "deliverymen") => {
-  const headers = ["SI", "Name", "Phone", "Email", "Zone", "Total Orders", "Cash Limit", "Cash In Hand", "Amount", "Status"]
+  const headers = ["SI", "Name", "Phone", "Email", "Total Orders", "Cash Limit", "Cash In Hand", "Amount", "Status"]
   const rows = deliverymen.map((dm) => [
     dm.sl,
     dm.name,
     dm.phone,
     dm.email,
-    dm.zone,
     dm.totalOrders,
     dm.remainingCashLimit || 0,
     dm.cashInHand || 0,
@@ -101,7 +99,6 @@ export const exportDeliverymenToPDF = (deliverymen, filename = "deliverymen") =>
           dm.name || 'N/A',
           dm.phone || 'N/A',
           dm.email || 'N/A',
-          dm.zone || 'N/A',
           dm.totalOrders || 0,
           dm.remainingCashLimit || 0,
           dm.cashInHand || 0,
@@ -111,7 +108,7 @@ export const exportDeliverymenToPDF = (deliverymen, filename = "deliverymen") =>
 
         // Add table using autoTable
         autoTable(doc, {
-          head: [["SI", "Name", "Phone", "Email", "Zone", "Total Orders", "Cash Limit", "Cash In Hand", "Amount", "Status"]],
+          head: [["SI", "Name", "Phone", "Email", "Total Orders", "Cash Limit", "Cash In Hand", "Amount", "Status"]],
           body: tableData,
           startY: 28,
           styles: {
@@ -131,7 +128,7 @@ export const exportDeliverymenToPDF = (deliverymen, filename = "deliverymen") =>
             1: { cellWidth: 30 }, // Name
             2: { cellWidth: 25 }, // Phone
             3: { cellWidth: 40 }, // Email
-            4: { cellWidth: 30 }, // Zone
+            4: { cellWidth: 30 }, // Delivery Radius
             5: { cellWidth: 20 }, // Total Orders
             6: { cellWidth: 20 }, // Cash Limit
             7: { cellWidth: 20 }, // Cash In Hand

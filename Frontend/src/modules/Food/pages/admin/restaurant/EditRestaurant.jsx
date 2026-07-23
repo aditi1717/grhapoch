@@ -18,11 +18,7 @@ const isNearZero = (n) => Math.abs(Number(n) || 0) < 0.000001
 
 const normalizeRestaurantId = (r) => r?._id || r?.id || r?.restaurantId || ""
 
-const normalizeZoneId = (zoneId) => {
-  if (!zoneId) return ""
-  if (typeof zoneId === "string") return zoneId
-  return zoneId?._id || zoneId?.id || ""
-}
+
 
 const normalizeLocationFormFromRestaurant = (restaurant) => {
   const loc =
@@ -80,6 +76,7 @@ const normalizeDetailsFormFromRestaurant = (restaurant) => {
       restaurant?.estimatedDeliveryTimeMinutes ??
       restaurant?.estimatedDeliveryTime ??
       "",
+    serviceRadius: restaurant?.serviceRadius ?? 10,
     offer: restaurant?.offer || "",
     openingTime: restaurant?.openingTime || restaurant?.deliveryTimings?.openingTime || "",
     closingTime: restaurant?.closingTime || restaurant?.deliveryTimings?.closingTime || "",
@@ -131,8 +128,7 @@ export default function EditRestaurant() {
   const [error, setError] = useState("")
 
   const [restaurant, setRestaurant] = useState(null)
-  const [zones, setZones] = useState([])
-  const [zonesLoading, setZonesLoading] = useState(false)
+
 
   const [detailsForm, setDetailsForm] = useState(() => normalizeDetailsFormFromRestaurant(null))
   const [locationForm, setLocationForm] = useState(() => normalizeLocationFormFromRestaurant(null))
@@ -180,33 +176,7 @@ export default function EditRestaurant() {
     }
   }, [restaurantId])
 
-  useEffect(() => {
-    let mounted = true
-    setZonesLoading(true)
-    adminAPI
-      .getZones({ limit: 1000 })
-      .then((res) => {
-        const list =
-          res?.data?.data?.zones ||
-          res?.data?.data?.data?.zones ||
-          res?.data?.data ||
-          []
-        if (!mounted) return
-        setZones(Array.isArray(list) ? list : [])
-      })
-      .catch(() => {
-        if (!mounted) return
-        setZones([])
-      })
-      .finally(() => {
-        if (!mounted) return
-        setZonesLoading(false)
-      })
 
-    return () => {
-      mounted = false
-    }
-  }, [])
 
   useEffect(() => {
     if (!locationSearchInputRef.current) return
@@ -282,7 +252,7 @@ export default function EditRestaurant() {
     }
   }, [])
 
-  const currentZoneLabel = ""
+
 
   const handleSaveDetails = async () => {
     if (!restaurantId) return
@@ -307,6 +277,7 @@ export default function EditRestaurant() {
           detailsForm.estimatedDeliveryTimeMinutes === ""
             ? undefined
             : Number(detailsForm.estimatedDeliveryTimeMinutes),
+        serviceRadius: Number(detailsForm.serviceRadius) || 10,
         offer: detailsForm.offer,
         openingTime: detailsForm.openingTime,
         closingTime: detailsForm.closingTime,
@@ -480,6 +451,17 @@ export default function EditRestaurant() {
                   />
                 </div>
                 <div>
+                  <Label>Service Radius (KM)</Label>
+                  <Input
+                    type="number"
+                    min="0.1"
+                    step="0.5"
+                    value={detailsForm.serviceRadius ?? 10}
+                    onChange={(e) => setDetailsForm((p) => ({ ...p, serviceRadius: e.target.value }))}
+                    placeholder="e.g. 10"
+                  />
+                </div>
+                <div>
                   <Label>Offer</Label>
                   <Input value={detailsForm.offer} onChange={(e) => setDetailsForm((p) => ({ ...p, offer: e.target.value }))} />
                 </div>
@@ -490,9 +472,6 @@ export default function EditRestaurant() {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <div>
                   <h2 className="text-lg font-semibold text-slate-900">Location</h2>
-                  {currentZoneLabel ? (
-                    <p className="text-xs text-slate-500 mt-1">Current Zone: {currentZoneLabel}</p>
-                  ) : null}
                 </div>
                 <Button onClick={handleSaveLocation} disabled={savingLocation}>
                   {savingLocation ? (

@@ -3,17 +3,15 @@ import { MapPin, ChevronDown } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 import outOfZoneBg from "@food/assets/Outofzone_bg.jpg";
 
-const OutOfZoneScreen = ({ location }) => {
+const OutOfServiceScreen = ({ location }) => {
   const BRAND_NAME = "Grhapoch";
-
   const routerLocation = useLocation();
 
   React.useEffect(() => {
     const state = window.history.state || {};
-    window.history.pushState({ ...state, __outOfZoneExitGuard: true }, "");
+    window.history.pushState({ ...state, __outOfServiceExitGuard: true }, "");
 
     const handlePopState = () => {
-      // Exit away from the website when back is pressed on this screen.
       window.location.replace("about:blank");
     };
 
@@ -58,7 +56,6 @@ const OutOfZoneScreen = ({ location }) => {
               </div>
             </Link>
           </div>
-
         </div>
       </div>
 
@@ -76,8 +73,7 @@ const OutOfZoneScreen = ({ location }) => {
             Hang Tight, We're Almost There
           </h2>
           <p className="text-[16px] font-medium text-white/90 leading-[1.5] max-w-[320px] mx-auto drop-shadow-sm">
-            Our service isn't available in your area yet - but we're working on
-            it!
+            Our service isn't available in your area yet - but we're working on it!
           </p>
         </div>
       </div>
@@ -91,4 +87,4 @@ const OutOfZoneScreen = ({ location }) => {
   );
 };
 
-export default OutOfZoneScreen;
+export default OutOfServiceScreen;

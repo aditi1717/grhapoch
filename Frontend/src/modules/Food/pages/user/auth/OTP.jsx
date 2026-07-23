@@ -29,6 +29,23 @@ export default function OTP() {
   const [activePlatform, setActivePlatform] = useState("web")
   const inputRefs = useRef([])
   const submittingRef = useRef(false)
+  const [keyboardInset, setKeyboardInset] = useState(0)
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.visualViewport) return undefined
+    const updateKeyboardInset = () => {
+      const viewport = window.visualViewport
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+      setKeyboardInset(inset > 0 ? inset : 0)
+    }
+    updateKeyboardInset()
+    window.visualViewport.addEventListener("resize", updateKeyboardInset)
+    window.visualViewport.addEventListener("scroll", updateKeyboardInset)
+    return () => {
+      window.visualViewport.removeEventListener("resize", updateKeyboardInset)
+      window.visualViewport.removeEventListener("scroll", updateKeyboardInset)
+    }
+  }, [])
 
   useEffect(() => {
     // Redirect to home if already authenticated
@@ -277,9 +294,9 @@ export default function OTP() {
   if (!authData) return null
 
   return (
-    <AnimatedPage className="min-h-[100dvh] bg-white dark:bg-[#0A0A0B] flex flex-col font-sans overflow-hidden">
+    <AnimatedPage className="min-h-[100dvh] bg-white dark:bg-[#0A0A0B] flex flex-col font-sans overflow-x-hidden overflow-y-auto">
       {/* Top Branding Section - 35% height */}
-      <div className="relative h-[35dvh] w-full bg-[#FA0272] overflow-hidden flex flex-col items-center justify-center">
+      <div className={`relative w-full bg-[#FA0272] overflow-hidden flex flex-col items-center justify-center transition-all duration-200 ${keyboardInset > 0 ? "h-[18dvh] min-h-[110px]" : "h-[35dvh] min-h-[220px]"}`}>
         <div className="absolute inset-0 opacity-20">
           <div className="absolute top-0 left-0 w-64 h-64 border border-white/20 rounded-full -ml-20 -mt-20" />
           <div className="absolute bottom-10 right-0 w-32 h-32 border border-white/10 rounded-full -mr-16" />
@@ -289,13 +306,13 @@ export default function OTP() {
           initial={{ y: 20, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="relative z-10 flex flex-col items-center gap-4 px-6 text-center"
+          className={`relative z-10 flex flex-col items-center px-6 text-center transition-all duration-200 ${keyboardInset > 0 ? "gap-1" : "gap-4"}`}
         >
-          <div className="w-16 h-16 bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-lg mb-2">
-            <Smartphone className="w-8 h-8 text-white" />
+          <div className={`bg-white/20 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/30 shadow-lg transition-all duration-200 ${keyboardInset > 0 ? "w-10 h-10 mb-1" : "w-16 h-16 mb-2"}`}>
+            <Smartphone className={`text-white transition-all duration-200 ${keyboardInset > 0 ? "w-5 h-5" : "w-8 h-8"}`} />
           </div>
           <div className="space-y-1">
-            <h1 className="text-white font-black text-3xl tracking-tight italic">
+            <h1 className={`text-white font-black tracking-tight italic transition-all duration-200 ${keyboardInset > 0 ? "text-lg sm:text-xl" : "text-3xl"}`}>
               {showNameInput ? "ONE LAST STEP" : "VERIFICATION"}
             </h1>
             <p className="text-white/70 text-xs font-bold uppercase tracking-[0.2em]">
@@ -310,7 +327,8 @@ export default function OTP() {
         initial={{ y: "100%" }}
         animate={{ y: 0 }}
         transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
-        className="flex-1 bg-white dark:bg-[#0A0A0B] rounded-t-[40px] -mt-10 relative z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] px-6 pt-12 pb-6 flex flex-col"
+        className={`flex-1 bg-white dark:bg-[#0A0A0B] relative z-20 shadow-[0_-20px_40px_rgba(0,0,0,0.05)] px-6 pt-12 pb-6 flex flex-col transition-all duration-200 ${keyboardInset > 0 ? "rounded-t-3xl mt-0" : "rounded-t-[40px] -mt-10"}`}
+        style={{ paddingBottom: keyboardInset ? `calc(1.5rem + ${keyboardInset}px)` : undefined }}
       >
         <div className="max-w-md mx-auto w-full flex flex-col h-full">
           <AnimatePresence mode="wait">
@@ -320,7 +338,7 @@ export default function OTP() {
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -20 }}
-                className="space-y-10"
+                className={`transition-all duration-200 ${keyboardInset > 0 ? "space-y-6" : "space-y-10"}`}
               >
                 <div className="flex justify-center gap-4">
                   {otp.map((digit, index) => (
@@ -341,10 +359,10 @@ export default function OTP() {
                         onKeyDown={(e) => handleKeyDown(index, e)}
                         onPaste={index === 0 ? handlePaste : undefined}
                         disabled={isLoading}
-                        className="w-16 h-20 text-center text-3xl font-black bg-zinc-100 dark:bg-zinc-900 border-2 border-transparent focus:border-[#FA0272] rounded-2xl text-zinc-900 dark:text-white transition-all outline-none shadow-sm"
+                        className={`text-center font-black bg-zinc-100 dark:bg-zinc-900 border-2 border-transparent focus:border-[#FA0272] rounded-2xl text-zinc-900 dark:text-white transition-all outline-none shadow-sm ${keyboardInset > 0 ? "w-12 h-14 text-xl" : "w-16 h-20 text-3xl"}`}
                       />
                       {digit && (
-                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#FA0272] rounded-full" />
+                        <div className={`absolute left-1/2 -translate-x-1/2 w-1.5 h-1.5 bg-[#FA0272] rounded-full ${keyboardInset > 0 ? "bottom-2" : "bottom-3"}`} />
                       )}
                     </motion.div>
                   ))}
@@ -361,7 +379,7 @@ export default function OTP() {
                   </motion.div>
                 )}
 
-                <div className="text-center space-y-6">
+                <div className={`text-center transition-all duration-200 ${keyboardInset > 0 ? "space-y-4" : "space-y-6"}`}>
                   {resendTimer > 0 ? (
                     <p className="text-xs font-bold text-zinc-400 uppercase tracking-widest">
                       Resend code in <span className="text-zinc-900 dark:text-white">{resendTimer}s</span>
@@ -391,7 +409,7 @@ export default function OTP() {
                 key="name-view"
                 initial={{ opacity: 0, x: 20 }}
                 animate={{ opacity: 1, x: 0 }}
-                className="space-y-8"
+                className={`transition-all duration-200 ${keyboardInset > 0 ? "space-y-4" : "space-y-8"}`}
               >
                 <div className="space-y-4">
                   <div className="space-y-2">

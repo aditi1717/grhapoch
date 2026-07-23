@@ -220,7 +220,7 @@ export const getRestaurantAvailabilityStatus = (restaurant, now = new Date(), op
     openingTime: activeWindow.openingTime,
     closingTime: activeWindow.closingTime,
     minutesUntilClose,
-    closingCountdownLabel: isOpenNow
+    closingCountdownLabel: isOpenNow && minutesUntilClose !== null && minutesUntilClose <= 120
       ? formatClosingCountdown(minutesUntilClose, activeWindow.closingTime)
       : null,
     reason: isOpenNow

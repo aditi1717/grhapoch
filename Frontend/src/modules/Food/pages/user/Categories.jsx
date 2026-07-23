@@ -6,7 +6,6 @@ import { adminAPI } from "@food/api";
 import { foodImages } from "@food/constants/images";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { useLocation } from "@food/hooks/useLocation";
-import { useZone } from "@food/hooks/useZone";
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation";
 import { API_BASE_URL } from "@food/api/config";
 
@@ -17,7 +16,6 @@ export default function Categories() {
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const { location } = useLocation();
-  const { zoneId } = useZone(location);
 
   const BACKEND_ORIGIN = useMemo(() => API_BASE_URL.replace(/\/api\/?$/, ""), []);
 
@@ -43,7 +41,12 @@ export default function Categories() {
     const fetchCategories = async () => {
       try {
         setLoading(true);
-        const response = await adminAPI.getPublicCategories(zoneId ? { zoneId } : {});
+        const params = {};
+        if (location?.latitude && location?.longitude) {
+          params.latitude = location.latitude;
+          params.longitude = location.longitude;
+        }
+        const response = await adminAPI.getPublicCategories(params);
         const list =
           response?.data?.data?.categories ||
           response?.data?.categories ||
@@ -66,7 +69,7 @@ export default function Categories() {
       }
     };
     fetchCategories();
-  }, [zoneId, BACKEND_ORIGIN]);
+  }, [location?.latitude, location?.longitude, BACKEND_ORIGIN]);
 
   const filteredCategories = categories.filter((cat) =>
     (cat.name || "").toLowerCase().includes(searchQuery.toLowerCase())

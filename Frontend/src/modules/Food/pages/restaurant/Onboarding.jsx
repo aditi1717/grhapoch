@@ -13,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@food/components/ui/select"
-import { restaurantAPI, zoneAPI, uploadAPI, api } from "@food/api"
+import { restaurantAPI, uploadAPI, api } from "@food/api"
 import { MobileTimePicker } from "@mui/x-date-pickers/MobileTimePicker"
 import { LocalizationProvider } from "@mui/x-date-pickers/LocalizationProvider"
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns"
@@ -232,6 +232,25 @@ const normalizeAccountTypeValue = (value) => {
   if (normalized === "saving" || normalized === "savings") return "Saving"
   if (normalized === "current") return "Current"
   return ""
+}
+
+const extractPincode = (address) => {
+  if (!address || typeof address !== "string") return ""
+  const match = address.match(/\b[1-9][0-9]{5}\b/)
+  return match ? match[0] : ""
+}
+
+const fetchPincodeFromCoords = async (lat, lng) => {
+  if (!lat || !lng) return ""
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+    const data = await res.json()
+    const postcode = data?.address?.postcode || ""
+    const match = postcode.match(/\b[1-9][0-9]{5}\b/)
+    return match ? match[0] : ""
+  } catch (e) {
+    return ""
+  }
 }
 
 const getTodayLocalYMD = () => formatDateToLocalYMD(new Date())
@@ -634,8 +653,7 @@ export default function RestaurantOnboarding() {
   const [isEditing, setIsEditing] = useState(true)
   const [hasExistingRestaurantProfile, setHasExistingRestaurantProfile] = useState(false)
   const [isFssaiCalendarOpen, setIsFssaiCalendarOpen] = useState(false)
-  const [zones, setZones] = useState([])
-  const [zonesLoading, setZonesLoading] = useState(false)
+
   const [isOnboardingHydrated, setIsOnboardingHydrated] = useState(false)
   const isRestoringOnboardingRef = useRef(true)
 
@@ -646,7 +664,6 @@ export default function RestaurantOnboarding() {
     ownerEmail: "",
     ownerPhone: "",
     primaryContactNumber: "",
-    zoneId: "",
     location: {
       formattedAddress: "",
       addressLine1: "",
@@ -716,67 +733,7 @@ export default function RestaurantOnboarding() {
   const [locationSuggestions, setLocationSuggestions] = useState([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
   const [isAutoFilledLocationLocked, setIsAutoFilledLocationLocked] = useState(false)
-  const [zoneDetectionState, setZoneDetectionState] = useState({
-    status: "idle", // idle | detecting | matched | out_of_zone | failed
-    message: "",
-    zoneName: "",
-  })
-  const normalizeLocationQuery = (value) => String(value || "").replace(/\s+/g, " ").trim()
 
-  const detectAndSetZoneForLocation = async (lat, lng) => {
-    const latitude = Number(lat)
-    const longitude = Number(lng)
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      setZoneDetectionState({
-        status: "failed",
-        message: "Unable to detect zone because location coordinates are missing.",
-        zoneName: "",
-      })
-      return
-    }
-
-    try {
-      setZoneDetectionState({
-        status: "detecting",
-        message: "Detecting service zone for this location...",
-        zoneName: "",
-      })
-      const res = await zoneAPI.detectZone(latitude, longitude)
-      const payload = res?.data?.data
-      const isInService = payload?.status === "IN_SERVICE" && !!payload?.zoneId
-      const detectedZoneId = String(payload?.zoneId || "")
-      const detectedZone =
-        zones.find((z) => String(z?._id || z?.id || "") === detectedZoneId) || payload?.zone
-      const detectedZoneName =
-        detectedZone?.name || detectedZone?.zoneName || detectedZone?.serviceLocation || ""
-
-      if (isInService) {
-        setStep1((prev) => ({ ...prev, zoneId: detectedZoneId }))
-        setZoneDetectionState({
-          status: "matched",
-          message: detectedZoneName
-            ? `Zone auto-detected: ${detectedZoneName}`
-            : "Zone auto-detected for this location.",
-          zoneName: detectedZoneName,
-        })
-        return
-      }
-
-      setStep1((prev) => ({ ...prev, zoneId: "" }))
-      setZoneDetectionState({
-        status: "out_of_zone",
-        message: "No active zone found at this location.",
-        zoneName: "",
-      })
-    } catch (err) {
-      debugError("Failed to detect zone for onboarding location:", err)
-      setZoneDetectionState({
-        status: "failed",
-        message: "Could not verify zone right now. Please reselect the location.",
-        zoneName: "",
-      })
-    }
-  }
 
   const getPreviewImageUrl = (value) => {
     if (!value) return null
@@ -1024,7 +981,6 @@ export default function RestaurantOnboarding() {
               ownerEmail: localData.step1.ownerEmail || "",
               ownerPhone: localData.step1.ownerPhone || "",
               primaryContactNumber: localData.step1.primaryContactNumber || "",
-              zoneId: localData.step1.zoneId || "",
               location: {
                 formattedAddress: localData.step1.location?.formattedAddress || "",
                 addressLine1: localData.step1.location?.addressLine1 || "",
@@ -1230,7 +1186,6 @@ export default function RestaurantOnboarding() {
               ownerName: prev.ownerName || step1Data.ownerName || data.ownerName || "",
               ownerEmail: prev.ownerEmail || step1Data.ownerEmail || data.ownerEmail || data.email || "",
               ownerPhone: prev.ownerPhone || step1Data.ownerPhone || data.ownerPhone || data.phone || "",
-              zoneId: prev.zoneId || step1Data.zoneId || data.zoneId || "",
               primaryContactNumber:
                 prev.primaryContactNumber ||
                 step1Data.primaryContactNumber ||
@@ -1618,7 +1573,7 @@ export default function RestaurantOnboarding() {
     formData.append('ownerEmail', (step1.ownerEmail || '').trim())
     formData.append('ownerPhone', normalizePhoneDigits(step1.ownerPhone))
     formData.append('primaryContactNumber', normalizePhoneDigits(step1.primaryContactNumber))
-    formData.append('zoneId', step1.zoneId || '')
+
     formData.append('addressLine1', step1.location?.addressLine1 || '')
     formData.append('addressLine2', step1.location?.addressLine2 || '')
     formData.append('area', step1.location?.area || '')
@@ -1848,7 +1803,12 @@ export default function RestaurantOnboarding() {
               <button
                 type="button"
                 onClick={() => isEditing && setStep1({ ...step1, pureVegRestaurant: true })}
-                className={chipClass(step1.pureVegRestaurant === true, !isEditing)}
+                className={chipClass(false, !isEditing)}
+                style={
+                  step1.pureVegRestaurant === true
+                    ? { backgroundColor: "#16a34a", borderColor: "#16a34a", color: "#ffffff" }
+                    : undefined
+                }
               >
                 Yes, Pure Veg
               </button>
@@ -1994,9 +1954,6 @@ export default function RestaurantOnboarding() {
                       },
                     }))
                   }
-                  setZoneDetectionState((prev) =>
-                    prev.status === "idle" ? prev : { status: "idle", message: "", zoneName: "" }
-                  )
                 }}
                 className={ONBOARDING_INPUT}
                 placeholder="Start typing your restaurant address..."
@@ -2041,9 +1998,14 @@ export default function RestaurantOnboarding() {
                           const area = get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"])
                           const city = get(["locality"]) || get(["administrative_area_level_2"])
                           const state = get(["administrative_area_level_1"]) || get(["administrative_area_level_2"])
-                          const pincode = get(["postal_code"])
+                          const pincode = get(["postal_code"]) || extractPincode(formattedAddress)
                           const lat = place?.geometry?.location?.lat?.()
                           const lng = place?.geometry?.location?.lng?.()
+
+                          let resolvedPincode = pincode
+                          if (!resolvedPincode && typeof lat === "number" && typeof lng === "number") {
+                            resolvedPincode = await fetchPincodeFromCoords(lat, lng)
+                          }
 
                           setStep1((prev) => ({
                             ...prev,
@@ -2054,7 +2016,7 @@ export default function RestaurantOnboarding() {
                               area: area || prev.location.area,
                               city: city || prev.location.city,
                               state: state || prev.location.state,
-                              pincode: pincode || prev.location.pincode,
+                              pincode: resolvedPincode || prev.location.pincode,
                               latitude: typeof lat === "number" ? Number(lat.toFixed(6)) : prev.location.latitude,
                               longitude: typeof lng === "number" ? Number(lng.toFixed(6)) : prev.location.longitude,
                             },
@@ -2067,7 +2029,6 @@ export default function RestaurantOnboarding() {
                           if (window.google?.maps?.places?.AutocompleteSessionToken) {
                             placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
                           }
-                          await detectAndSetZoneForLocation(lat, lng)
                           return
                         } catch (err) {
                           debugWarn("Google place details failed, falling back to manual suggestion mapping:", err)
@@ -2078,7 +2039,12 @@ export default function RestaurantOnboarding() {
                       const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || ""
                       const city = addr.city || addr.town || addr.village || ""
                       const state = addr.state || ""
-                      const pincode = addr.postcode || ""
+                      const pincode = addr.postcode || extractPincode(display)
+
+                      let resolvedPincode = pincode
+                      if (!resolvedPincode && lat && lng) {
+                        resolvedPincode = await fetchPincodeFromCoords(lat, lng)
+                      }
 
                       setStep1((prev) => ({
                         ...prev,
@@ -2089,7 +2055,7 @@ export default function RestaurantOnboarding() {
                           area: area || prev.location.area,
                           city: city || prev.location.city,
                           state: state || prev.location.state,
-                          pincode: pincode || prev.location.pincode,
+                          pincode: resolvedPincode || prev.location.pincode,
                           latitude: Number.isFinite(lat) ? lat : prev.location.latitude,
                           longitude: Number.isFinite(lng) ? lng : prev.location.longitude,
                         },
@@ -2099,7 +2065,6 @@ export default function RestaurantOnboarding() {
                       setLocationSearchValue(display)
                       setLocationSuggestions([])
                       locationSearchInputRef.current?.blur()
-                      await detectAndSetZoneForLocation(lat, lng)
                     }}
                     className="w-full px-4 py-2 text-left text-[13px] hover:bg-orange-50 border-b border-gray-100 last:border-none font-medium text-gray-700"
                   >
@@ -2157,7 +2122,7 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, area: e.target.value },
               })
             }
-            readOnly={isAutoFilledLocationLocked}
+            readOnly={isAutoFilledLocationLocked && !!step1.location?.area}
             className="bg-white text-sm"
             placeholder="Area / Sector / Locality*"
           />
@@ -2169,7 +2134,7 @@ export default function RestaurantOnboarding() {
                 location: { ...step1.location, city: e.target.value },
               })
             }
-            readOnly={isAutoFilledLocationLocked}
+            readOnly={isAutoFilledLocationLocked && !!step1.location?.city}
             className="bg-white text-sm"
             placeholder="City"
           />
@@ -2182,7 +2147,7 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, state: e.target.value },
                 })
               }
-              readOnly={isAutoFilledLocationLocked}
+              readOnly={isAutoFilledLocationLocked && !!step1.location?.state}
               className={ONBOARDING_INPUT}
               placeholder="State"
             />
@@ -2194,7 +2159,7 @@ export default function RestaurantOnboarding() {
                   location: { ...step1.location, pincode: e.target.value },
                 })
               }
-              readOnly={isAutoFilledLocationLocked}
+              readOnly={isAutoFilledLocationLocked && !!step1.location?.pincode}
               className={ONBOARDING_INPUT}
               placeholder="Pincode"
             />
@@ -2207,6 +2172,33 @@ export default function RestaurantOnboarding() {
     </div>
   )
 
+
+  // Scroll active fields into view when focused
+  useEffect(() => {
+    const handleFocusIn = (e) => {
+      const target = e.target
+      if (!target) return
+
+      const isInputField =
+        target.tagName === "INPUT" ||
+        target.tagName === "TEXTAREA" ||
+        target.tagName === "SELECT" ||
+        target.getAttribute("role") === "combobox" ||
+        (target.tagName === "BUTTON" &&
+          (target.getAttribute("type") === "button" || target.classList.contains("cursor-pointer")))
+
+      if (isInputField) {
+        setTimeout(() => {
+          target.scrollIntoView({ behavior: "smooth", block: "center" })
+        }, 150)
+      }
+    }
+
+    document.addEventListener("focusin", handleFocusIn)
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn)
+    }
+  }, [])
 
   // Initialize Google Places Autocomplete for Step 1 location search.
   useEffect(() => {
@@ -2291,7 +2283,7 @@ export default function RestaurantOnboarding() {
         const area = get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"])
         const city = get(["locality"]) || get(["administrative_area_level_2"])
         const state = get(["administrative_area_level_1"]) || get(["administrative_area_level_2"])
-        const pincode = get(["postal_code"])
+        const pincode = get(["postal_code"]) || extractPincode(formattedAddress)
         const lat = place?.geometry?.location?.lat?.()
         const lng = place?.geometry?.location?.lng?.()
 
@@ -2331,11 +2323,16 @@ export default function RestaurantOnboarding() {
         inputElement.setAttribute("data-google-places-initialized", "true")
         placesAutocompleteRef.current = autocomplete
 
-        autocomplete.addListener("place_changed", () => {
+        autocomplete.addListener("place_changed", async () => {
           const place = autocomplete.getPlace()
           if (!place?.geometry) return
 
           const parsed = parsePlace(place)
+          let resolvedPincode = parsed.pincode
+          if (!resolvedPincode && parsed.latitude && parsed.longitude) {
+            resolvedPincode = await fetchPincodeFromCoords(parsed.latitude, parsed.longitude)
+          }
+
           setStep1((prev) => ({
             ...prev,
             location: {
@@ -2345,7 +2342,7 @@ export default function RestaurantOnboarding() {
               area: parsed.area || prev.location.area,
               city: parsed.city || prev.location.city,
               state: parsed.state || prev.location.state,
-              pincode: parsed.pincode || prev.location.pincode,
+              pincode: resolvedPincode || prev.location.pincode,
               latitude: parsed.latitude !== "" ? parsed.latitude : prev.location.latitude,
               longitude: parsed.longitude !== "" ? parsed.longitude : prev.location.longitude,
             },
@@ -2354,7 +2351,6 @@ export default function RestaurantOnboarding() {
           
           setLocationSearchValue(parsed.formattedAddress)
           inputElement.blur()
-          void detectAndSetZoneForLocation(parsed.latitude, parsed.longitude)
         })
 
         const pacContainerFix = () => {
@@ -2499,24 +2495,7 @@ export default function RestaurantOnboarding() {
     return () => clearTimeout(t)
   }, [locationSearchValue, step])
 
-  // Load zones for onboarding dropdown (public endpoint).
-  useEffect(() => {
-    if (step !== 1) return
-    let cancelled = false
-    setZonesLoading(true)
-    zoneAPI.getPublicZones()
-      .then((res) => {
-        const list = res?.data?.data?.zones || res?.data?.zones || []
-        if (!cancelled) setZones(Array.isArray(list) ? list : [])
-      })
-      .catch(() => {
-        if (!cancelled) setZones([])
-      })
-      .finally(() => {
-        if (!cancelled) setZonesLoading(false)
-      })
-    return () => { cancelled = true }
-  }, [step])
+
 
 
   const renderStep2 = () => (

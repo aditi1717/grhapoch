@@ -444,7 +444,7 @@ export default function Profile() {
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-6 md:py-8 lg:py-10 pb-20 sm:pb-24">
         {/* Header: Back Arrow */}
         <div className="flex items-center mb-4">
-          <Link to="/user">
+          <Link to="/food/user">
             <Button variant="ghost" size="icon" className="h-8 w-8 p-0">
               <ArrowLeft className="h-5 w-5 text-black dark:text-white" />
             </Button>
@@ -589,7 +589,7 @@ export default function Profile() {
             </Link>
           )}
 
-          <Link to="/user/cart" className="block">
+          <Link to="/food/user/cart" state={{ from: "/food/user/profile" }} className="block">
             <motion.div
               whileHover={{ x: 4, scale: 1.01 }}
               transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>

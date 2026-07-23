@@ -49,7 +49,6 @@ export function validateCalculateOrderDto(body) {
         items: z.array(orderItemSchema).min(1, 'At least one item required'),
         restaurantId: z.string().min(1, 'Restaurant id required'),
         deliveryAddressId: z.string().optional(),
-        zoneId: z.string().optional(),
         couponCode: z.string().optional(),
         deliveryFleet: z.string().optional(),
         deliveryAddress: z
@@ -91,7 +90,6 @@ export function validateCreateOrderDto(body) {
         paymentMethod: z.enum(['cash', 'razorpay', 'razorpay_qr', 'card', 'wallet'], {
             errorMap: () => ({ message: 'Invalid payment method.' }),
         }),
-        zoneId: z.string().nullable().optional(),
         scheduledAt: z.string().datetime().optional()
     });
     const result = schema.safeParse(body);
