@@ -299,12 +299,23 @@ export function useLocation() {
       const pick = (...types) =>
         components.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
 
-      const area =
-        pick("sublocality_level_1", "sublocality", "neighborhood") ||
-        pick("locality")
-      const city = pick("locality") || pick("administrative_area_level_2") || "Unknown City"
+      const premise = pick("premise", "building", "point_of_interest", "establishment", "shopping_mall")
+      const subpremise = pick("subpremise")
+      const sublocality = pick("sublocality_level_1", "sublocality", "neighborhood", "sublocality_level_2")
+      const locality = pick("locality") || pick("administrative_area_level_2") || "Unknown City"
       const state = pick("administrative_area_level_1")
       const country = pick("country")
+
+      let areaParts = []
+      if (premise) {
+        areaParts.push(premise)
+      }
+      if (sublocality && (!premise || !premise.toLowerCase().includes(sublocality.toLowerCase()))) {
+        areaParts.push(sublocality)
+      }
+
+      const area = areaParts.length > 0 ? areaParts.join(", ") : (sublocality || locality)
+      const city = locality
 
       return {
         city,

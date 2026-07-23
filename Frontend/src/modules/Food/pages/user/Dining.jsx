@@ -178,7 +178,7 @@ export default function Dining() {
     return formatSavedAddress(defaultAddress);
   }, [getDefaultAddress, formatSavedAddress]);
 
-  const displayLocation = savedAddressText || (location?.area && location?.city 
+  const displayLocation = savedAddressText || location?.formattedAddress || location?.address || (location?.area && location?.city 
     ? `${location.area}, ${location.city}` 
     : location?.area || location?.city || "Select Location");
 
@@ -496,12 +496,10 @@ export default function Dining() {
         @keyframes shimmer {
           100% {
             transform: translateX(200%);
-          }
-        }
       `}</style>
       {/* Premium Glassmorphic Header Wrapper for Dining */}
       <div className="sticky top-0 z-50 w-full bg-white/90 dark:bg-[#0a0a0a]/90 backdrop-blur-xl shadow-sm border-b border-gray-100 dark:border-gray-900 md:hidden pb-3">
-        {/* Top Row: Back, Location & Profile */}
+        {/* Top Row: Back & Title */}
         <div className="px-4 pt-3 pb-2 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <button 
@@ -510,24 +508,7 @@ export default function Dining() {
             >
               <ArrowLeft className="h-4 w-4 text-gray-700 dark:text-gray-300" strokeWidth={2.5} />
             </button>
-
-            <div 
-              className="flex items-center gap-2 cursor-pointer group min-w-0"
-              onClick={openLocationSelector}
-            >
-            <div className="bg-[#FA0272]/10 p-2 rounded-full border border-[#FA0272]/20">
-              <MapPin className="h-[18px] w-[18px] text-[#FA0272]" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <div className="flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                <span className="text-[10px] font-bold text-gray-500 tracking-wider uppercase">Dining Location</span>
-                <ChevronDown className="h-3 w-3 text-[#FA0272]" />
-              </div>
-              <span className="text-sm font-bold text-gray-900 dark:text-white truncate">
-                {displayLocation}
-              </span>
-            </div>
-            </div>
+            <span className="font-bold text-base text-gray-900 dark:text-white">Dining Out</span>
           </div>
 
           <div className="flex items-center gap-x-2 sm:gap-x-3">

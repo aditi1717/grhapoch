@@ -89,6 +89,7 @@ export default function AddressSelectorPage() {
   const placesDetailsServiceRef = useRef(null)
   const placesSessionTokenRef = useRef(null)
   const suppressSuggestionFetchRef = useRef(false)
+  const suppressMapIdleGeocodeRef = useRef(false)
   
   const ENABLE_LOCATION_REVERSE_GEOCODE = import.meta.env.VITE_ENABLE_LOCATION_REVERSE_GEOCODE !== "false"
   const ENABLE_NOMINATIM_SEARCH = import.meta.env.VITE_ENABLE_NOMINATIM_SEARCH !== "false"
@@ -348,6 +349,10 @@ export default function AddressSelectorPage() {
           const lat = center.lat()
           const lng = center.lng()
           setMapPosition([lat, lng])
+          if (suppressMapIdleGeocodeRef.current) {
+            suppressMapIdleGeocodeRef.current = false
+            return
+          }
           handleMapMoveEnd(lat, lng)
         })
 
@@ -363,57 +368,66 @@ export default function AddressSelectorPage() {
 
   const handleUseCurrentLocation = async () => {
     try {
+      // 1. Instant optimistic redirect if we already have coordinates
+      if (location?.latitude && location?.longitude) {
+        try {
+          const locationData = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            city: location.city || "Current Location",
+            area: location.area || "",
+            state: location.state || "",
+            country: location.country || "",
+            address: location.address || location.formattedAddress || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+            formattedAddress: location.formattedAddress || location.address || `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`,
+          }
+          localStorage.setItem("userLocation", JSON.stringify(locationData))
+          localStorage.setItem("user_location", JSON.stringify(locationData))
+          localStorage.setItem("deliveryAddressMode", "current")
+          window.dispatchEvent(new Event("userLocationChanged"))
+          window.dispatchEvent(new Event("deliveryAddressModeChanged"))
+        } catch {}
+
+        toast.success("Location updated", { id: "geo" })
+
+        if (!showAddressForm) {
+          navigate("/food/user")
+          // Non-blocking fresh update in background
+          requestLocation(false, true).catch(() => {})
+          return
+        }
+      }
+
+      // 2. Fast fresh fetch
       toast.loading("Getting location...", { id: "geo" })
-      const loc = await requestLocation(true, true)
-      if (loc?.latitude) {
+      const loc = await requestLocation(false, true)
+      if (loc?.latitude && loc?.longitude) {
         const newPos = [loc.latitude, loc.longitude]
         setMapPosition(newPos)
         
-        // Use Google Reverse Geocoding if available for better accuracy
-        if (window.google && window.google.maps) {
-          const geocoder = new window.google.maps.Geocoder();
-          geocoder.geocode({ location: { lat: loc.latitude, lng: loc.longitude } }, (results, status) => {
-            if (status === "OK" && results[0]) {
-              const res = results[0];
-              setCurrentAddress(res.formatted_address);
-              
-              // Extract address components
-              let street = "", city = "", state = "", postcode = "";
-              res.address_components.forEach(comp => {
-                const types = comp.types;
-                if (types.includes("route") || types.includes("sublocality")) {
-                  street = street ? `${street}, ${comp.long_name}` : comp.long_name;
-                } else if (types.includes("locality")) {
-                  city = comp.long_name;
-                } else if (types.includes("administrative_area_level_1")) {
-                  state = comp.long_name;
-                } else if (types.includes("postal_code")) {
-                  postcode = comp.long_name;
-                }
-              });
-
-              setAddressFormData(prev => ({
-                ...prev,
-                street: street || res.formatted_address.split(",")[0] || prev.street,
-                city: city || prev.city,
-                state: state || prev.state,
-                zipCode: postcode || prev.zipCode,
-              }));
-            }
-          });
-        }
-
-        // Explicitly pan the map to center the user location
-        if (googleMapRef.current) {
-          googleMapRef.current.panTo({ lat: loc.latitude, lng: loc.longitude })
-          googleMapRef.current.setZoom(17)
-        }
-        
         try {
+          const locationData = {
+            latitude: loc.latitude,
+            longitude: loc.longitude,
+            city: loc.city || "Current Location",
+            area: loc.area || "",
+            state: loc.state || "",
+            country: loc.country || "",
+            address: loc.address || loc.formattedAddress || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`,
+            formattedAddress: loc.formattedAddress || loc.address || `${loc.latitude.toFixed(4)}, ${loc.longitude.toFixed(4)}`,
+          }
+          localStorage.setItem("userLocation", JSON.stringify(locationData))
+          localStorage.setItem("user_location", JSON.stringify(locationData))
           localStorage.setItem("deliveryAddressMode", "current")
+          window.dispatchEvent(new Event("userLocationChanged"))
           window.dispatchEvent(new Event("deliveryAddressModeChanged"))
         } catch {}
+
         toast.success("Location updated", { id: "geo" })
+
+        if (!showAddressForm) {
+          navigate("/food/user")
+        }
       }
     } catch (e) {
       toast.error("Failed to get location", { id: "geo" })
@@ -523,8 +537,40 @@ export default function AddressSelectorPage() {
 
   const handleMapMoveEnd = async (lat, lng) => {
     if (!ENABLE_LOCATION_REVERSE_GEOCODE) return
+
+    if (window.google?.maps?.Geocoder) {
+      try {
+        const geocoder = new window.google.maps.Geocoder()
+        const res = await new Promise((resolve) => {
+          geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+            if (status === "OK" && results?.[0]) resolve(results[0])
+            else resolve(null)
+          })
+        })
+        if (res?.formatted_address) {
+          setCurrentAddress(res.formatted_address)
+          const components = res.address_components || []
+          const pick = (...types) =>
+            components.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+          const city = pick("locality", "administrative_area_level_2")
+          const state = pick("administrative_area_level_1")
+          const zipCode = pick("postal_code")
+
+          setAddressFormData(prev => ({
+            ...prev,
+            city: city || prev.city,
+            state: state || prev.state,
+            zipCode: zipCode || prev.zipCode,
+          }))
+          return
+        }
+      } catch (err) {
+        debugError("Google Geocoder error:", err)
+      }
+    }
+
     try {
-      // Use Nominatim for free reverse geocoding on the client side
+      // Use Nominatim for free reverse geocoding fallback
       const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
       const response = await fetch(url, { 
         headers: { 
@@ -537,15 +583,6 @@ export default function AddressSelectorPage() {
       if (json && json.address) {
         const addr = json.address
         const formatted = json.display_name
-        
-        // Extract meaningful street/area info
-        const street = [
-          addr.road,
-          addr.suburb,
-          addr.neighbourhood,
-          addr.house_number
-        ].filter(Boolean).slice(0, 2).join(", ") || addr.amenity || addr.industrial || ""
-
         const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || ""
         const state = addr.state || ""
         const postcode = addr.postcode || ""
@@ -553,7 +590,6 @@ export default function AddressSelectorPage() {
         setCurrentAddress(formatted)
         setAddressFormData(prev => ({
           ...prev,
-          street: street || formatted.split(",")[0] || prev.street,
           city: city || prev.city,
           state: state || prev.state,
           zipCode: postcode || prev.zipCode,
@@ -621,6 +657,7 @@ export default function AddressSelectorPage() {
       const zipCode = getComponent(["postal_code"])
 
       setMapPosition([lat, lng])
+      suppressMapIdleGeocodeRef.current = true
       googleMapRef.current?.panTo({ lat, lng })
       googleMapRef.current?.setZoom(17)
       suppressSuggestionFetchRef.current = true
@@ -628,11 +665,6 @@ export default function AddressSelectorPage() {
       setCurrentAddress(formattedAddress)
       setAddressFormData((prev) => ({
         ...prev,
-        street:
-          streetParts.join(", ") ||
-          suggestion.mainText ||
-          formattedAddress ||
-          prev.street,
         city: city || prev.city,
         state: state || prev.state,
         zipCode: zipCode || prev.zipCode,
@@ -654,13 +686,6 @@ export default function AddressSelectorPage() {
     const { lat, lng, display, address = {} } = suggestion || {}
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
 
-    const street = [
-      address.house_number,
-      address.road,
-      address.suburb || address.neighbourhood || address.city_district,
-    ]
-      .filter(Boolean)
-      .join(", ")
     const city =
       address.city ||
       address.town ||
@@ -670,6 +695,7 @@ export default function AddressSelectorPage() {
       ""
 
     setMapPosition([lat, lng])
+    suppressMapIdleGeocodeRef.current = true
     googleMapRef.current?.panTo({ lat, lng })
     googleMapRef.current?.setZoom(17)
     suppressSuggestionFetchRef.current = true
@@ -677,7 +703,6 @@ export default function AddressSelectorPage() {
     setCurrentAddress(display || "")
     setAddressFormData((prev) => ({
       ...prev,
-      street: street || display || prev.street,
       city: city || prev.city,
       state: address.state || prev.state,
       zipCode: address.postcode || prev.zipCode,
@@ -688,8 +713,14 @@ export default function AddressSelectorPage() {
 
   const handleAddressFormSubmit = async (e) => {
     e.preventDefault()
-    if (!addressFormData.street || !addressFormData.city) {
-      toast.error("Please fill required fields")
+    const street = String(addressFormData.street || "").trim()
+    const additionalDetails = String(addressFormData.additionalDetails || "").trim()
+    const city = String(addressFormData.city || "").trim()
+    const state = String(addressFormData.state || "").trim()
+    const zipCode = String(addressFormData.zipCode || "").trim()
+
+    if (!street || !additionalDetails || !city || !state || !zipCode) {
+      toast.error("All fields are mandatory (Primary Address, Secondary Address, City, State, Pincode)")
       return
     }
     setLoadingAddress(true)
@@ -881,9 +912,9 @@ export default function AddressSelectorPage() {
             </div>
 
             <div>
-              <Label className="text-sm font-bold mb-2 block">Primary Address (Street / Area / Landmark)</Label>
+              <Label className="text-sm font-bold mb-2 block">Primary Address (Street / Area / Landmark) <span className="text-red-500">*</span></Label>
               <Input 
-                placeholder="Search or drag to update street/area" 
+                placeholder="Enter street/area manually" 
                 value={addressFormData.street} 
                 onChange={e => setAddressFormData({...addressFormData, street: e.target.value})}
                 onFocus={() => scrollFieldIntoView("street")}
@@ -892,7 +923,7 @@ export default function AddressSelectorPage() {
                 required
               />
 
-              <Label className="text-sm font-bold mb-2 block text-orange-600 dark:text-orange-400">Secondary Address (House No. / Flat / Floor)</Label>
+              <Label className="text-sm font-bold mb-2 block text-orange-600 dark:text-orange-400">Secondary Address (House No. / Flat / Floor) <span className="text-red-500">*</span></Label>
               <Input 
                 placeholder="E.g. Flat 402, 4th Floor, Grhapoch Building" 
                 value={addressFormData.additionalDetails} 
@@ -900,12 +931,13 @@ export default function AddressSelectorPage() {
                 onFocus={() => scrollFieldIntoView("additionalDetails")}
                 ref={(el) => { manualFieldRefs.current.additionalDetails = el }}
                 className="h-12 rounded-xl border-orange-200 dark:border-orange-900/40 focus:ring-orange-500"
+                required
               />
             </div>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-xs mb-1 block">City</Label>
+                <Label className="text-xs mb-1 block">City <span className="text-red-500">*</span></Label>
                 <Input 
                   value={addressFormData.city} 
                   onChange={e => setAddressFormData({...addressFormData, city: e.target.value})} 
@@ -916,7 +948,7 @@ export default function AddressSelectorPage() {
                 />
               </div>
               <div>
-                <Label className="text-xs mb-1 block">State</Label>
+                <Label className="text-xs mb-1 block">State <span className="text-red-500">*</span></Label>
                 <Input 
                   value={addressFormData.state} 
                   onChange={e => setAddressFormData({...addressFormData, state: e.target.value})} 
@@ -929,7 +961,7 @@ export default function AddressSelectorPage() {
             </div>
 
             <div>
-              <Label className="text-xs mb-1 block">Pincode / ZIP</Label>
+              <Label className="text-xs mb-1 block">Pincode / ZIP <span className="text-red-500">*</span></Label>
               <Input 
                 placeholder="Pincode" 
                 value={addressFormData.zipCode || ""} 
@@ -937,6 +969,7 @@ export default function AddressSelectorPage() {
                 onFocus={() => scrollFieldIntoView("zipCode")}
                 ref={(el) => { manualFieldRefs.current.zipCode = el }}
                 className="h-12 rounded-xl"
+                required
               />
             </div>
 

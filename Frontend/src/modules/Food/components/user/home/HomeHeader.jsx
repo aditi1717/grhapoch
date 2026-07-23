@@ -280,9 +280,46 @@ export default function HomeHeader({
                 <ChevronDown className="h-2.5 w-2.5 text-gray-900/80 dark:text-white/80" />
               </div>
               <span className="text-sm font-bold text-gray-900 dark:text-white truncate drop-shadow-sm max-w-full">
-                {savedAddressText || (location?.area && location?.city 
-                  ? `${location.area}, ${location.city}` 
-                  : location?.area || location?.city || "Select Location")}
+                {(() => {
+                  if (savedAddressText) return savedAddressText;
+                  if (!location) return "Select Location";
+
+                  const area = String(location.area || "").trim();
+                  const city = String(location.city || "").trim();
+
+                  let cleanArea = area;
+                  if (cleanArea) {
+                    const areaParts = cleanArea.split(",").map(p => p.trim()).filter(Boolean);
+                    if (areaParts.length > 1 && /^[\d\s\-\/\,]+$/.test(areaParts[0])) {
+                      cleanArea = areaParts.slice(1).join(", ");
+                    }
+                  }
+
+                  if (cleanArea && city) {
+                    if (cleanArea.toLowerCase().includes(city.toLowerCase())) {
+                      return cleanArea;
+                    }
+                    return `${cleanArea}, ${city}`;
+                  }
+
+                  if (cleanArea) return cleanArea;
+
+                  const rawAddress = location.formattedAddress || location.address;
+                  if (rawAddress) {
+                    const parts = rawAddress.split(",").map(p => p.trim()).filter(Boolean);
+                    const cleanParts = parts.filter(p => !/^\d{6}$/.test(p) && p.toLowerCase() !== "india");
+
+                    let startIndex = 0;
+                    if (cleanParts.length > 1 && /^[\d\s\-\/\,]+$/.test(cleanParts[0])) {
+                      startIndex = 1;
+                    }
+
+                    const selected = cleanParts.slice(startIndex, startIndex + 3);
+                    if (selected.length > 0) return selected.join(", ");
+                  }
+
+                  return city || "Select Location";
+                })()}
               </span>
             </div>
           </div>
