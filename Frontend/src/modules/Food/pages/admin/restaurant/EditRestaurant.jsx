@@ -498,42 +498,65 @@ export default function EditRestaurant() {
                   <Label>Search location</Label>
                   <Input
                     ref={locationSearchInputRef}
-                    placeholder="Start typing your restaurant address..."
+                    placeholder="Search and select restaurant address..."
                     className="mt-1 bg-white text-sm text-black! dark:text-white! placeholder:text-gray-500 dark:placeholder:text-gray-400 caret-black dark:caret-white"
                     style={{ color: "#000", WebkitTextFillColor: "#000" }}
                   />
                   <p className="text-[11px] text-slate-500 mt-1">
-                    Select a suggestion from the dropdown to fill address + coordinates.
+                    Select a suggestion to auto-fill area/city/state/pincode and coordinates.
                   </p>
                 </div>
 
-                <div className="md:col-span-2">
-                  <Label>Formatted Address</Label>
-                  <Input value={locationForm.formattedAddress} readOnly className="mt-1 bg-slate-50" />
-                </div>
-                <div>
-                  <Label>Area</Label>
-                  <Input value={locationForm.area} readOnly className="mt-1 bg-slate-50" />
-                </div>
-                <div>
-                  <Label>City</Label>
-                  <Input value={locationForm.city} readOnly className="mt-1 bg-slate-50" />
-                </div>
-                <div>
-                  <Label>State</Label>
-                  <Input value={locationForm.state} readOnly className="mt-1 bg-slate-50" />
-                </div>
-                <div>
-                  <Label>Pincode</Label>
-                  <Input value={locationForm.pincode} readOnly className="mt-1 bg-slate-50" />
-                </div>
-                <div className="md:col-span-2">
-                  <Label>Landmark</Label>
+                <div className="md:col-span-2 space-y-3">
                   <Input
-                    value={locationForm.landmark}
-                    onChange={(e) => setLocationForm((p) => ({ ...p, landmark: e.target.value }))}
-                    className="mt-1"
+                    value={locationForm.addressLine1 || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, addressLine1: e.target.value }))}
+                    className="bg-white text-sm"
+                    placeholder="Shop no. / building no. (optional)"
                   />
+                  <Input
+                    value={locationForm.addressLine2 || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, addressLine2: e.target.value }))}
+                    className="bg-white text-sm"
+                    placeholder="Floor / tower (optional)"
+                  />
+                  <Input
+                    value={locationForm.landmark || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, landmark: e.target.value }))}
+                    className="bg-white text-sm"
+                    placeholder="Nearby landmark (optional)"
+                  />
+                  <Input
+                    value={locationForm.area || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, area: e.target.value }))}
+                    readOnly={!!locationForm.area}
+                    className="bg-white text-sm"
+                    placeholder="Area / Sector / Locality*"
+                  />
+                  <Input
+                    value={locationForm.city || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, city: e.target.value }))}
+                    readOnly={!!locationForm.city}
+                    className="bg-white text-sm"
+                    placeholder="City"
+                  />
+                  <Input
+                    value={locationForm.state || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, state: e.target.value }))}
+                    readOnly={!!locationForm.state}
+                    className="bg-white text-sm"
+                    placeholder="State"
+                  />
+                  <Input
+                    value={locationForm.pincode || ""}
+                    onChange={(e) => setLocationForm((p) => ({ ...p, pincode: e.target.value }))}
+                    readOnly={!!locationForm.pincode}
+                    className="bg-white text-sm"
+                    placeholder="Pincode"
+                  />
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Please ensure that this address is the same as mentioned on your FSSAI license.
+                  </p>
                 </div>
               </div>
             </section>

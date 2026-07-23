@@ -378,10 +378,29 @@ export async function listDiningCategoriesPublic() {
     return categories.map(mapCategory);
 }
 
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+    if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) return null;
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+            Math.cos((lat2 * Math.PI) / 180) *
+            Math.sin(dLon / 2) *
+            Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c;
+};
+
 export async function listDiningRestaurantsPublic(query = {}) {
     const filter = { isEnabled: true };
     const categoryValue = String(query.category || '').trim();
     const cityValue = String(query.city || '').trim();
+
+    const userLat = parseFloat(query.lat || query.latitude);
+    const userLng = parseFloat(query.lng || query.longitude);
+    const hasUserLocation = Number.isFinite(userLat) && Number.isFinite(userLng);
 
     if (categoryValue) {
         const category = await FoodDiningCategory.findOne({
@@ -426,14 +445,28 @@ export async function listDiningRestaurantsPublic(query = {}) {
     const diningDocs = await FoodDiningRestaurant.find(filter)
         .populate({
             path: 'restaurantId',
-            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo',
+            select: 'restaurantName restaurantNameNormalized ownerName ownerPhone profileImage coverImages menuImages location area city status rating diningSettings estimatedDeliveryTime estimatedDeliveryTimeMinutes featuredDish featuredPrice offer openingTime closingTime openDays isAcceptingOrders costForTwo serviceRadius',
             match: restaurantMatch
         })
         .populate('categoryIds', 'name slug imageUrl')
         .lean();
 
+    const globalUserRadius = Number(settingsDoc?.userVisibilityRadius) || 10;
+
     return diningDocs
-        .filter((doc) => doc.restaurantId)
+        .filter((doc) => {
+            if (!doc.restaurantId) return false;
+            if (hasUserLocation) {
+                const rest = doc.restaurantId;
+                const restLat = Number(rest.location?.latitude ?? rest.location?.coordinates?.[1]);
+                const restLng = Number(rest.location?.longitude ?? rest.location?.coordinates?.[0]);
+                if (!Number.isFinite(restLat) || !Number.isFinite(restLng)) return true;
+                const distKm = calculateDistanceKm(userLat, userLng, restLat, restLng);
+                const radius = Number(rest.serviceRadius) || globalUserRadius;
+                return distKm !== null && distKm <= radius;
+            }
+            return true;
+        })
         .map((doc) => ({
             ...doc.restaurantId,
             restaurant: doc.restaurantId,

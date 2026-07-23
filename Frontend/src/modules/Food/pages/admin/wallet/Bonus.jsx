@@ -114,7 +114,7 @@ export default function Bonus() {
                   type="text"
                   value={formData.bonusTitle}
                   onChange={(e) => handleInputChange("bonusTitle", e.target.value)}
-                  placeholder="Ex: EID Dhamaka"
+                  placeholder="EID Dhamaka"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -127,7 +127,7 @@ export default function Bonus() {
                   type="text"
                   value={formData.shortDescription}
                   onChange={(e) => handleInputChange("shortDescription", e.target.value)}
-                  placeholder="Ex: EID Dhamaka"
+                  placeholder="EID Dhamaka"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -158,7 +158,7 @@ export default function Bonus() {
                   min="0"
                   value={formData.bonusAmount}
                   onChange={(e) => handleInputChange("bonusAmount", e.target.value)}
-                  placeholder="Ex: 100"
+                  placeholder="100"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -174,7 +174,7 @@ export default function Bonus() {
                   type="number"
                   value={formData.minAddMoney}
                   onChange={(e) => handleInputChange("minAddMoney", e.target.value)}
-                  placeholder="Ex: 10"
+                  placeholder="10"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -190,7 +190,7 @@ export default function Bonus() {
                   type="number"
                   value={formData.maxBonus}
                   onChange={(e) => handleInputChange("maxBonus", e.target.value)}
-                  placeholder="Ex: 1000"
+                  placeholder="1000"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -257,7 +257,7 @@ export default function Bonus() {
             <div className="relative flex-1 sm:flex-initial min-w-[200px]">
               <input
                 type="text"
-                placeholder="Ex: Search by bonus title"
+                placeholder="Search by bonus title..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"

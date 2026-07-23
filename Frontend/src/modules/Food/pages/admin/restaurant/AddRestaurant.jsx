@@ -38,7 +38,25 @@ const sanitizeFssai = (value = "") => value.replace(/\D/g, "").slice(0, 14)
 const sanitizeIfsc = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 11)
 const sanitizeGst = (value = "") => value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 15)
 const normalizeName = (value = "") => value.replace(/\s+/g, " ").trimStart()
-const hasLetters = (value = "") => /[A-Za-z]/.test(value)
+const extractPincode = (address) => {
+  if (!address || typeof address !== "string") return ""
+  const match = address.match(/\b[1-9][0-9]{5}\b/)
+  return match ? match[0] : ""
+}
+
+const fetchPincodeFromCoords = async (lat, lng) => {
+  if (!lat || !lng) return ""
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+    const data = await res.json()
+    const postcode = data?.address?.postcode || ""
+    const match = postcode.match(/\b[1-9][0-9]{5}\b/)
+    return match ? match[0] : ""
+  } catch (e) {
+    return ""
+  }
+}
+
 const getTodayLocalYMD = () => new Date().toISOString().split("T")[0]
 const timeStringToMinutes = (value = "") => {
   const raw = String(value || "").trim()
@@ -658,13 +676,37 @@ export default function AddRestaurant() {
   }
 
   const locationSearchInputRef = useRef(null)
+  const locationSearchContainerRef = useRef(null)
   const placesAutocompleteRef = useRef(null)
+  const placesAutocompleteServiceRef = useRef(null)
+  const placesDetailsServiceRef = useRef(null)
+  const placesSessionTokenRef = useRef(null)
+  const suppressSuggestionFetchRef = useRef(false)
   const mapsScriptLoadedRef = useRef(false)
 
   // Manual search states for fallback
   const [locationSearchValue, setLocationSearchValue] = useState("")
   const [locationSuggestions, setLocationSuggestions] = useState([])
   const [isSearchingLocation, setIsSearchingLocation] = useState(false)
+  const [isAutoFilledLocationLocked, setIsAutoFilledLocationLocked] = useState(false)
+
+  // Close search suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        locationSearchContainerRef.current &&
+        !locationSearchContainerRef.current.contains(e.target)
+      ) {
+        setLocationSuggestions([])
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("touchstart", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
+  }, [])
 
 
 
@@ -748,7 +790,7 @@ export default function AddRestaurant() {
         const area = get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"])
         const city = get(["locality"]) || get(["administrative_area_level_2"])
         const state = get(["administrative_area_level_1"]) || get(["administrative_area_level_2"])
-        const pincode = get(["postal_code"])
+        const pincode = get(["postal_code"]) || extractPincode(formattedAddress)
         const lat = place?.geometry?.location?.lat?.()
         const lng = place?.geometry?.location?.lng?.()
         
@@ -769,6 +811,17 @@ export default function AddRestaurant() {
       if (inputElement.hasAttribute('data-google-places-initialized')) return
 
       try {
+        if (!placesAutocompleteServiceRef.current && window.google?.maps?.places?.AutocompleteService) {
+          placesAutocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+        }
+        if (!placesDetailsServiceRef.current && window.google?.maps?.places?.PlacesService) {
+          const detailsHost = document.createElement("div")
+          placesDetailsServiceRef.current = new window.google.maps.places.PlacesService(detailsHost)
+        }
+        if (!placesSessionTokenRef.current && window.google?.maps?.places?.AutocompleteSessionToken) {
+          placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+        }
+
         autocomplete = new window.google.maps.places.Autocomplete(
           inputElement,
           {
@@ -781,27 +834,33 @@ export default function AddRestaurant() {
         inputElement.setAttribute('data-google-places-initialized', 'true')
         placesAutocompleteRef.current = autocomplete
 
-        autocomplete.addListener("place_changed", () => {
+        autocomplete.addListener("place_changed", async () => {
           const place = autocomplete.getPlace()
           if (!place?.geometry) return
           
           const parsed = parsePlace(place)
+          let resolvedPincode = parsed.pincode
+          if (!resolvedPincode && parsed.latitude && parsed.longitude) {
+            resolvedPincode = await fetchPincodeFromCoords(parsed.latitude, parsed.longitude)
+          }
+
           setStep1((prev) => ({
             ...prev,
             location: {
               ...prev.location,
               formattedAddress: parsed.formattedAddress || prev.location.formattedAddress,
-              addressLine1: parsed.formattedAddress || prev.location.addressLine1 || "",
+              addressLine1: prev.location.addressLine1 || "",
               area: parsed.area || prev.location.area,
               city: parsed.city || prev.location.city,
               state: parsed.state || prev.location.state,
-              pincode: parsed.pincode || prev.location.pincode,
+              pincode: resolvedPincode || prev.location.pincode,
               latitude: parsed.latitude !== "" ? parsed.latitude : prev.location.latitude,
               longitude: parsed.longitude !== "" ? parsed.longitude : prev.location.longitude,
             },
           }))
           
           setLocationSearchValue(parsed.formattedAddress)
+          setIsAutoFilledLocationLocked(true)
           inputElement.blur()
         })
         
@@ -843,32 +902,102 @@ export default function AddRestaurant() {
     }
   }, [step])
 
-  // Hybrid Search Fallback (Nominatim)
+  // Hybrid Search: Google predictions first, Nominatim fallback
   useEffect(() => {
     if (step !== 1) return
+    if (suppressSuggestionFetchRef.current) {
+      suppressSuggestionFetchRef.current = false
+      return
+    }
     const q = String(locationSearchValue || "").trim()
+    if (!q) {
+      setLocationSuggestions([])
+      setIsSearchingLocation(false)
+      setIsAutoFilledLocationLocked(false)
+      setStep1((prev) => ({
+        ...prev,
+        location: {
+          ...prev.location,
+          formattedAddress: "",
+          addressLine1: "",
+          addressLine2: "",
+          landmark: "",
+          area: "",
+          city: "",
+          state: "",
+          pincode: "",
+          latitude: "",
+          longitude: "",
+        },
+      }))
+      if (window.google?.maps?.places?.AutocompleteSessionToken) {
+        placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+      }
+      return
+    }
     if (q.length < 3) {
       setLocationSuggestions([])
       setIsSearchingLocation(false)
+      if (window.google?.maps?.places?.AutocompleteSessionToken) {
+        placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+      }
       return
     }
 
     const t = setTimeout(async () => {
       try {
         setIsSearchingLocation(true)
-        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=4&q=${encodeURIComponent(q)}&countrycodes=in`
+        const hasGoogleAutocompleteService =
+          !!placesAutocompleteServiceRef.current && !!window.google?.maps?.places?.PlacesServiceStatus
+
+        if (hasGoogleAutocompleteService) {
+          if (!placesSessionTokenRef.current && window.google?.maps?.places?.AutocompleteSessionToken) {
+            placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+          }
+
+          const predictions = await new Promise((resolve) => {
+            placesAutocompleteServiceRef.current.getPlacePredictions(
+              {
+                input: q,
+                componentRestrictions: { country: "in" },
+                sessionToken: placesSessionTokenRef.current || undefined,
+              },
+              (items, status) => {
+                const ok = status === window.google.maps.places.PlacesServiceStatus.OK
+                resolve(ok && Array.isArray(items) ? items : [])
+              }
+            )
+          })
+
+          if (predictions.length > 0) {
+            const mappedGoogle = predictions.slice(0, 6).map((p) => ({
+              id: p.place_id,
+              placeId: p.place_id,
+              display: p.description || "",
+              mainText: p.structured_formatting?.main_text || "",
+              secondaryText: p.structured_formatting?.secondary_text || "",
+              source: "google",
+            }))
+            setLocationSuggestions(mappedGoogle)
+            return
+          }
+        }
+
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(q)}&countrycodes=in`
         const res = await fetch(url, { headers: { Accept: "application/json" } })
         const json = await res.json()
-        const mapped = (Array.isArray(json) ? json : []).map(r => ({
-          id: r.place_id,
+        const mappedFallback = (Array.isArray(json) ? json : []).map((r) => ({
+          id: `n-${r.place_id}`,
           display: r.display_name || "",
           lat: Number(r.lat),
           lng: Number(r.lon),
           addr: r.address || {},
+          source: "nominatim",
         }))
-        setLocationSuggestions(mapped)
+        setLocationSuggestions(mappedFallback)
       } catch (e) {
-        debugError("Nominatim search failed:", e)
+        debugError("Location prediction search failed:", e)
+        setLocationSuggestions([])
       } finally {
         setIsSearchingLocation(false)
       }
@@ -976,7 +1105,19 @@ export default function AddRestaurant() {
 
       <section className="bg-white p-4 sm:p-6 rounded-md space-y-4">
         <h2 className="text-lg font-semibold text-black">Restaurant contact & location</h2>
-        <div className="relative">
+        <div>
+          <Label className="text-xs text-gray-700">Primary contact number*</Label>
+          <Input
+            value={step1.primaryContactNumber || ""}
+            onChange={(e) => setStep1({ ...step1, primaryContactNumber: sanitizeDigits(e.target.value).slice(0, 10) })}
+            className="mt-1 bg-white text-sm text-black placeholder-black"
+            placeholder="Restaurant's primary contact number"
+            inputMode="numeric"
+            maxLength={10}
+          />
+        </div>
+
+        <div ref={locationSearchContainerRef} className="relative">
           <Label className="text-xs text-gray-700">Search location</Label>
           <div className="relative">
             <Input
@@ -999,66 +1140,117 @@ export default function AddRestaurant() {
                 <button
                   key={s.id}
                   type="button"
-                  onClick={() => {
-                    const { lat, lng, display, addr } = s
+                  onClick={async () => {
+                    if (s.source === "google" && s.placeId && placesDetailsServiceRef.current) {
+                      try {
+                        const placeDetails = await new Promise((resolve, reject) => {
+                          placesDetailsServiceRef.current.getDetails(
+                            {
+                              placeId: s.placeId,
+                              fields: ["formatted_address", "address_components", "geometry"],
+                              sessionToken: placesSessionTokenRef.current || undefined,
+                            },
+                            (result, status) => {
+                              if (status === window.google.maps.places.PlacesServiceStatus.OK && result) {
+                                resolve(result)
+                              } else {
+                                reject(new Error(`PlacesService failed with status: ${status}`))
+                              }
+                            }
+                          )
+                        })
+
+                        const formattedAddress = placeDetails.formatted_address || s.display || ""
+                        const comps = Array.isArray(placeDetails.address_components) ? placeDetails.address_components : []
+                        const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+
+                        const area = get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"])
+                        const city = get(["locality"]) || get(["administrative_area_level_2"])
+                        const state = get(["administrative_area_level_1"]) || get(["administrative_area_level_2"])
+                        const pincode = get(["postal_code"]) || extractPincode(formattedAddress)
+                        const lat = placeDetails?.geometry?.location?.lat?.()
+                        const lng = placeDetails?.geometry?.location?.lng?.()
+
+                        let resolvedPincode = pincode
+                        if (!resolvedPincode && typeof lat === "number" && typeof lng === "number") {
+                          resolvedPincode = await fetchPincodeFromCoords(lat, lng)
+                        }
+
+                        setStep1((prev) => ({
+                          ...prev,
+                          location: {
+                            ...prev.location,
+                            formattedAddress,
+                            addressLine1: prev.location.addressLine1 || "",
+                            area: area || prev.location.area,
+                            city: city || prev.location.city,
+                            state: state || prev.location.state,
+                            pincode: resolvedPincode || prev.location.pincode,
+                            latitude: typeof lat === "number" ? Number(lat.toFixed(6)) : prev.location.latitude,
+                            longitude: typeof lng === "number" ? Number(lng.toFixed(6)) : prev.location.longitude,
+                          },
+                        }))
+                        setIsAutoFilledLocationLocked(true)
+                        suppressSuggestionFetchRef.current = true
+                        setLocationSearchValue(formattedAddress)
+                        setLocationSuggestions([])
+                        locationSearchInputRef.current?.blur()
+                        if (window.google?.maps?.places?.AutocompleteSessionToken) {
+                          placesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+                        }
+                        return
+                      } catch (err) {
+                        debugWarn("Google place details failed, falling back to manual suggestion mapping:", err)
+                      }
+                    }
+
+                    const { lat, lng, display, addr = {} } = s
                     const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || ""
                     const city = addr.city || addr.town || addr.village || ""
                     const state = addr.state || ""
-                    const pincode = addr.postcode || ""
+                    const pincode = addr.postcode || extractPincode(display)
+
+                    let resolvedPincode = pincode
+                    if (!resolvedPincode && lat && lng) {
+                      resolvedPincode = await fetchPincodeFromCoords(lat, lng)
+                    }
 
                     setStep1((prev) => ({
                       ...prev,
                       location: {
                         ...prev.location,
                         formattedAddress: display,
-                        addressLine1: display,
+                        addressLine1: prev.location.addressLine1 || "",
                         area: area || prev.location.area,
                         city: city || prev.location.city,
                         state: state || prev.location.state,
-                        pincode: pincode || prev.location.pincode,
-                        latitude: lat,
-                        longitude: lng,
+                        pincode: resolvedPincode || prev.location.pincode,
+                        latitude: Number.isFinite(lat) ? lat : prev.location.latitude,
+                        longitude: Number.isFinite(lng) ? lng : prev.location.longitude,
                       },
                     }))
+                    setIsAutoFilledLocationLocked(true)
+                    suppressSuggestionFetchRef.current = true
                     setLocationSearchValue(display)
                     setLocationSuggestions([])
+                    locationSearchInputRef.current?.blur()
                   }}
-                  className="w-full px-4 py-2 text-left text-[13px] font-medium text-gray-700 hover:bg-orange-50 border-b border-gray-100 last:border-none"
+                  className="w-full px-4 py-2 text-left text-[13px] hover:bg-orange-50 border-b border-gray-100 last:border-none font-medium text-gray-700"
                 >
-                  <span className="truncate">{s.display}</span>
+                  <span className="block truncate">{s.mainText || s.display}</span>
+                  {s.secondaryText && (
+                    <span className="block truncate text-[11px] text-gray-500">{s.secondaryText}</span>
+                  )}
                 </button>
               ))}
             </div>
           )}
           
           <p className="text-[11px] text-gray-500 mt-1">
-            Search to auto-fill Area, City, State, Pincode and coordinates.
+            Select a suggestion to auto-fill area/city/state/pincode and coordinates.
           </p>
         </div>
-        <div>
-          <Label className="text-xs text-gray-700">Primary contact number*</Label>
-          <Input
-            value={step1.primaryContactNumber || ""}
-            onChange={(e) => setStep1({ ...step1, primaryContactNumber: sanitizeDigits(e.target.value).slice(0, 10) })}
-            className="mt-1 bg-white text-sm text-black placeholder-black"
-            placeholder="Restaurant's primary contact number"
-            inputMode="numeric"
-            maxLength={10}
-          />
-        </div>
         <div className="space-y-3">
-          <Input
-            value={step1.location?.area || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, area: e.target.value } })}
-            className="bg-white text-sm"
-            placeholder="Area / Sector / Locality*"
-          />
-          <Input
-            value={step1.location?.city || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, city: e.target.value } })}
-            className="bg-white text-sm"
-            placeholder="City*"
-          />
           <Input
             value={step1.location?.addressLine1 || ""}
             onChange={(e) => setStep1({ ...step1, location: { ...step1.location, addressLine1: e.target.value } })}
@@ -1072,23 +1264,42 @@ export default function AddRestaurant() {
             placeholder="Floor / tower (optional)"
           />
           <Input
-            value={step1.location?.state || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, state: e.target.value } })}
-            className="bg-white text-sm"
-            placeholder="State (optional)"
-          />
-          <Input
-            value={step1.location?.pincode || ""}
-            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, pincode: e.target.value } })}
-            className="bg-white text-sm"
-            placeholder="Pin code (optional)"
-          />
-          <Input
             value={step1.location?.landmark || ""}
             onChange={(e) => setStep1({ ...step1, location: { ...step1.location, landmark: e.target.value } })}
             className="bg-white text-sm"
             placeholder="Nearby landmark (optional)"
           />
+          <Input
+            value={step1.location?.area || ""}
+            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, area: e.target.value } })}
+            readOnly={isAutoFilledLocationLocked && !!step1.location?.area}
+            className="bg-white text-sm"
+            placeholder="Area / Sector / Locality*"
+          />
+          <Input
+            value={step1.location?.city || ""}
+            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, city: e.target.value } })}
+            readOnly={isAutoFilledLocationLocked && !!step1.location?.city}
+            className="bg-white text-sm"
+            placeholder="City"
+          />
+          <Input
+            value={step1.location?.state || ""}
+            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, state: e.target.value } })}
+            readOnly={isAutoFilledLocationLocked && !!step1.location?.state}
+            className="bg-white text-sm"
+            placeholder="State"
+          />
+          <Input
+            value={step1.location?.pincode || ""}
+            onChange={(e) => setStep1({ ...step1, location: { ...step1.location, pincode: e.target.value } })}
+            readOnly={isAutoFilledLocationLocked && !!step1.location?.pincode}
+            className="bg-white text-sm"
+            placeholder="Pincode"
+          />
+          <p className="text-[11px] text-gray-500 mt-1">
+            Please ensure that this address is the same as mentioned on your FSSAI license.
+          </p>
         </div>
       </section>
     </div>

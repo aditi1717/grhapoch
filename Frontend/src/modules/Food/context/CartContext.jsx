@@ -1,11 +1,26 @@
-// src/context/cart-context.jsx
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { buildCartLineId } from "@food/utils/foodVariants"
-import { userAPI } from "@/services/api"
+import { userAPI, restaurantAPI } from "@/services/api"
+import { toast } from "sonner"
 import CartReplaceDialog from "@food/components/user/CartReplaceDialog"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
+
+const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
+  if (!Number.isFinite(lat1) || !Number.isFinite(lon1) || !Number.isFinite(lat2) || !Number.isFinite(lon2)) return null;
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 
 // Default cart context value to prevent errors during initial render
@@ -133,6 +148,8 @@ const normalizeCartData = (rawCart) => {
           isVeg: finalFoodType === "Veg",
         restaurant: normalizedRestaurantName,
         restaurantId: normalizedRestaurantId,
+        restaurantLocation: item.restaurantLocation || item.location || null,
+        serviceRadius: item.serviceRadius || item.restaurantServiceRadius || null,
         image: normalizedImage,
         imageUrl: normalizedImage,
       }
@@ -180,6 +197,95 @@ export function CartProvider({ children }) {
   // Track last remove event for animation
   const [lastRemoveEvent, setLastRemoveEvent] = useState(null)
   const [cartReplacePrompt, setCartReplacePrompt] = useState(null)
+  const restaurantLocationCacheRef = useRef(new Map())
+
+  const checkCartLocationValidity = useCallback(async (currentLat, currentLng) => {
+    if (!Number.isFinite(currentLat) || !Number.isFinite(currentLng)) return
+    const safeCart = normalizeCartData(cart)
+    if (safeCart.length === 0) return
+
+    const firstItem = safeCart[0]
+    const restaurantId = firstItem?.restaurantId || firstItem?.restaurant_id
+    const restaurantName = firstItem?.restaurant || "this restaurant"
+
+    let restLat = Number(firstItem?.restaurantLocation?.latitude ?? firstItem?.restaurantLocation?.coordinates?.[1] ?? firstItem?.restaurantLat)
+    let restLng = Number(firstItem?.restaurantLocation?.longitude ?? firstItem?.restaurantLocation?.coordinates?.[0] ?? firstItem?.restaurantLng)
+    let serviceRadius = Number(firstItem?.serviceRadius || firstItem?.restaurantServiceRadius || 0)
+
+    if (!Number.isFinite(restLat) || !Number.isFinite(restLng) || serviceRadius <= 0) {
+      if (!restaurantId) return
+      const cached = restaurantLocationCacheRef.current.get(String(restaurantId))
+      if (cached) {
+        restLat = cached.lat
+        restLng = cached.lng
+        serviceRadius = cached.serviceRadius
+      } else {
+        try {
+          const res = await restaurantAPI.getRestaurantById(restaurantId)
+          const restData = res?.data?.data?.restaurant || res?.data?.restaurant || res?.data?.data
+          if (restData) {
+            restLat = Number(restData.location?.latitude ?? restData.location?.coordinates?.[1])
+            restLng = Number(restData.location?.longitude ?? restData.location?.coordinates?.[0])
+            serviceRadius = Number(restData.serviceRadius) || 10
+            restaurantLocationCacheRef.current.set(String(restaurantId), { lat: restLat, lng: restLng, serviceRadius })
+          }
+        } catch {
+          return
+        }
+      }
+    }
+
+    if (Number.isFinite(restLat) && Number.isFinite(restLng) && serviceRadius > 0) {
+      const distKm = calculateDistanceKm(currentLat, currentLng, restLat, restLng)
+      if (distKm !== null && distKm > serviceRadius) {
+        debugWarn(`⚠️ Cart restaurant "${restaurantName}" is ${distKm.toFixed(1)} km away (radius: ${serviceRadius} km). Clearing cart.`)
+        setCart([])
+        toast.error(`Your cart was cleared because ${restaurantName} does not deliver to your new location (${distKm.toFixed(1)} km away).`)
+      }
+    }
+  }, [cart])
+
+  useEffect(() => {
+    const handleLocationValidation = () => {
+      try {
+        const savedLoc = localStorage.getItem("user_location")
+        if (savedLoc) {
+          const parsed = JSON.parse(savedLoc)
+          const lat = Number(parsed.latitude ?? parsed.lat)
+          const lng = Number(parsed.longitude ?? parsed.lng)
+          if (Number.isFinite(lat) && Number.isFinite(lng)) {
+            checkCartLocationValidity(lat, lng)
+            return
+          }
+        }
+
+        const profileAddr = localStorage.getItem("food_user_default_address")
+        if (profileAddr) {
+          const parsed = JSON.parse(profileAddr)
+          const coords = parsed?.location?.coordinates
+          if (Array.isArray(coords) && coords.length >= 2) {
+            const lng = Number(coords[0])
+            const lat = Number(coords[1])
+            if (Number.isFinite(lat) && Number.isFinite(lng)) {
+              checkCartLocationValidity(lat, lng)
+            }
+          }
+        }
+      } catch (_) {}
+    }
+
+    handleLocationValidation()
+
+    window.addEventListener("storage", handleLocationValidation)
+    window.addEventListener("deliveryAddressModeChanged", handleLocationValidation)
+    window.addEventListener("userLocationChanged", handleLocationValidation)
+
+    return () => {
+      window.removeEventListener("storage", handleLocationValidation)
+      window.removeEventListener("deliveryAddressModeChanged", handleLocationValidation)
+      window.removeEventListener("userLocationChanged", handleLocationValidation)
+    }
+  }, [checkCartLocationValidity])
 
   // Persist to localStorage whenever cart changes
   useEffect(() => {

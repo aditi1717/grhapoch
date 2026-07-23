@@ -64,11 +64,12 @@ export default function DiningCategory() {
     const fetchRestaurants = async () => {
       try {
         setIsLoading(true)
-        const response = await diningAPI.getRestaurants(
-          category
-            ? (location?.city ? { category, city: location.city } : { category })
-            : (location?.city ? { city: location.city } : {})
-        )
+        const response = await diningAPI.getRestaurants({
+          category,
+          city: location?.city || undefined,
+          lat: location?.latitude,
+          lng: location?.longitude
+        })
 
         if (response?.data?.success) {
           const mapped = (Array.isArray(response.data.data) ? response.data.data : []).map((restaurant) => {

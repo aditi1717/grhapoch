@@ -184,7 +184,7 @@ export default function DeliveryManPayments() {
                   step="0.01"
                   value={formData.amount}
                   onChange={(e) => handleInputChange("amount", e.target.value)}
-                  placeholder="Ex: 100"
+                  placeholder="100"
                   className={`w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
                     formErrors.amount ? "border-red-500" : "border-slate-300"
                   }`}
@@ -200,7 +200,7 @@ export default function DeliveryManPayments() {
                   type="text"
                   value={formData.method}
                   onChange={(e) => handleInputChange("method", e.target.value)}
-                  placeholder="Ex: Cash"
+                  placeholder="Cash"
                   className={`w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
                     formErrors.method ? "border-red-500" : "border-slate-300"
                   }`}
@@ -216,7 +216,7 @@ export default function DeliveryManPayments() {
                   type="text"
                   value={formData.reference}
                   onChange={(e) => handleInputChange("reference", e.target.value)}
-                  placeholder="Ex: Collect Cash"
+                  placeholder="Collect Cash"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>
@@ -256,7 +256,7 @@ export default function DeliveryManPayments() {
               <div className="relative flex-1 sm:flex-initial min-w-[250px]">
                 <input
                   type="text"
-                  placeholder="Ex: Search here by Name"
+                  placeholder="Search by name..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"

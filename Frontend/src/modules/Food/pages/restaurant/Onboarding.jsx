@@ -234,6 +234,8 @@ const normalizeAccountTypeValue = (value) => {
   return ""
 }
 
+const normalizeLocationQuery = (value) => String(value || "").trim().toLowerCase()
+
 const extractPincode = (address) => {
   if (!address || typeof address !== "string") return ""
   const match = address.match(/\b[1-9][0-9]{5}\b/)
@@ -709,12 +711,31 @@ export default function RestaurantOnboarding() {
 
   const previewUrlCacheRef = useRef(new Map())
   const locationSearchInputRef = useRef(null)
+  const locationSearchContainerRef = useRef(null)
   const placesAutocompleteRef = useRef(null)
   const placesAutocompleteServiceRef = useRef(null)
   const placesDetailsServiceRef = useRef(null)
   const placesSessionTokenRef = useRef(null)
   const suppressSuggestionFetchRef = useRef(false)
   const mapsScriptLoadedRef = useRef(false)
+
+  // Close search suggestions on click outside
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (
+        locationSearchContainerRef.current &&
+        !locationSearchContainerRef.current.contains(e.target)
+      ) {
+        setLocationSuggestions([])
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside)
+    document.addEventListener("touchstart", handleClickOutside)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("touchstart", handleClickOutside)
+    }
+  }, [])
   const menuImagesInputRef = useRef(null)
   const profileImageInputRef = useRef(null)
   const panImageInputRef = useRef(null)

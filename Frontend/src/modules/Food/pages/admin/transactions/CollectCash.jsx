@@ -180,7 +180,7 @@ export default function CollectCash() {
                   type="text"
                   value={formData.method}
                   onChange={(e) => handleInputChange("method", e.target.value)}
-                  placeholder="Ex: Cash"
+                  placeholder="Cash"
                   className={`w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
                     formErrors.method ? "border-red-500" : "border-slate-300"
                   }`}
@@ -236,7 +236,7 @@ export default function CollectCash() {
                   step="0.01"
                   value={formData.amount}
                   onChange={(e) => handleInputChange("amount", e.target.value)}
-                  placeholder="Ex: 100"
+                  placeholder="100"
                   className={`w-full px-4 py-2.5 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm ${
                     formErrors.amount ? "border-red-500" : "border-slate-300"
                   }`}
@@ -252,7 +252,7 @@ export default function CollectCash() {
                   type="text"
                   value={formData.reference}
                   onChange={(e) => handleInputChange("reference", e.target.value)}
-                  placeholder="Ex: Collect Cash"
+                  placeholder="Collect Cash"
                   className="w-full px-4 py-2.5 border border-slate-300 rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
                 />
               </div>

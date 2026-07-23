@@ -189,7 +189,11 @@ export default function Dining() {
         const [bannerResponse, cats, rests] = await Promise.all([
           diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
-          diningAPI.getRestaurants(location?.city ? { city: location.city } : {}),
+          diningAPI.getRestaurants({
+            city: location?.city || undefined,
+            lat: location?.latitude,
+            lng: location?.longitude
+          }),
         ])
 
         const heroBanners = Array.isArray(bannerResponse?.data?.data?.banners)
