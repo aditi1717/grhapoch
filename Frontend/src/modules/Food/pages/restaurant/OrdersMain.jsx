@@ -990,6 +990,7 @@ export default function OrdersMain() {
   const showNewOrderPopupRef = useRef(showNewOrderPopup);
   const isMutedRef = useRef(isMuted);
   const newOrderRef = useRef(null);
+  const lenisRef = useRef(null);
 
   const markOrderAsShown = (orderLike) => {
     const keys = [
@@ -1099,6 +1100,7 @@ export default function OrdersMain() {
             isActive: restaurant.isActive,
             rejectionReason: restaurant.rejectionReason || null,
             onboarding: restaurant.onboarding || null,
+            restaurantName: restaurant.restaurantName || restaurant.name || null,
             isLoading: false,
           });
 
@@ -1150,6 +1152,7 @@ export default function OrdersMain() {
           isActive: restaurant.isActive,
           rejectionReason: restaurant.rejectionReason || null,
           onboarding: restaurant.onboarding || null,
+          restaurantName: restaurant.restaurantName || restaurant.name || null,
           isLoading: false,
         });
       }
@@ -1203,6 +1206,7 @@ export default function OrdersMain() {
       easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
       smoothWheel: true,
     });
+    lenisRef.current = lenis;
 
     function raf(time) {
       lenis.raf(time);
@@ -1213,8 +1217,31 @@ export default function OrdersMain() {
 
     return () => {
       lenis.destroy();
+      lenisRef.current = null;
     };
   }, []);
+
+  // Prevent body scroll and stop Lenis when any modal/popup or detail sheet is open
+  useEffect(() => {
+    const isAnyModalOpen =
+      showNewOrderPopup ||
+      showRejectPopup ||
+      showCancelPopup ||
+      isSheetOpen;
+
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+      lenisRef.current?.stop();
+    } else {
+      document.body.style.overflow = "";
+      lenisRef.current?.start();
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+      lenisRef.current?.start();
+    };
+  }, [showNewOrderPopup, showRejectPopup, showCancelPopup, isSheetOpen]);
 
   // Show new order popup when real order notification arrives from Socket.IO
   useEffect(() => {
@@ -1663,12 +1690,33 @@ export default function OrdersMain() {
       try {
         const orderId = orderToReject.orderMongoId || orderToReject.orderId;
         await restaurantAPI.rejectOrder(orderId, rejectReason);
-        debugLog("? Order rejected:", orderId);
+        debugLog("✅ Order rejected:", orderId);
         requestOrdersRefresh();
       } catch (error) {
-        debugError("? Error rejecting order:", error);
-        alert("Failed to reject order. Please try again.");
-        return;
+        const httpStatus = error?.response?.status;
+        const serverMsg = String(error?.response?.data?.message || "").toLowerCase();
+        
+        // If the order was already auto-expired/cancelled by the system (deadline passed),
+        // treat this as a successful rejection from the restaurant's perspective:
+        // The order is already removed from their queue — just dismiss the popup silently.
+        const isAlreadyCancelled =
+          httpStatus === 400 &&
+          (serverMsg.includes("further ahead") ||
+            serverMsg.includes("cannot be moved") ||
+            serverMsg.includes("cancelled") ||
+            serverMsg.includes("rejected"));
+        
+        const isNotFound = httpStatus === 404;
+        
+        if (isAlreadyCancelled || isNotFound) {
+          debugLog("ℹ️ Order was already cancelled/expired by system — dismissing popup silently.");
+          // Fall through to cleanup below (no early return)
+        } else {
+          // Unexpected / server error — show the alert and abort
+          debugError("❌ Error rejecting order:", error);
+          alert("Failed to reject order. Please try again.");
+          return;
+        }
       }
     }
 
@@ -1738,7 +1786,8 @@ export default function OrdersMain() {
 
   // Handle PDF download
   const handlePrint = async () => {
-    if (!newOrder) {
+    const orderToPrint = popupOrder || newOrder;
+    if (!orderToPrint) {
       debugWarn("No order data available for PDF generation");
       return;
     }
@@ -1761,7 +1810,7 @@ export default function OrdersMain() {
       // Restaurant name
       doc.setFontSize(14);
       doc.setFont("helvetica", "normal");
-      doc.text(orderToPrint.restaurantName || "Restaurant", 105, 30, {
+      doc.text(restaurantStatus.restaurantName || orderToPrint.restaurantName || "Restaurant", 105, 30, {
         align: "center",
       });
 
@@ -1783,10 +1832,17 @@ export default function OrdersMain() {
 
       doc.text(`Date: ${orderDate}`, 20, 52);
 
+      // Customer details
+      const customerName = orderToPrint.customerName || orderToPrint.userId?.name || "Customer";
+      const customerPhone = orderToPrint.customerPhone || orderToPrint.userId?.phone || "N/A";
+      doc.text(`Customer Name: ${customerName}`, 20, 59);
+      doc.text(`Customer Phone: ${customerPhone}`, 20, 66);
+
       // Customer address
+      let addressY = 76;
       if (orderToPrint.customerAddress) {
         doc.setFont("helvetica", "bold");
-        doc.text("Delivery Address:", 20, 62);
+        doc.text("Delivery Address:", 20, addressY);
         doc.setFont("helvetica", "normal");
         const addressText =
           [
@@ -1797,11 +1853,11 @@ export default function OrdersMain() {
             .filter(Boolean)
             .join(", ") || "Address not available";
         const addressLines = doc.splitTextToSize(addressText, 170);
-        doc.text(addressLines, 20, 69);
+        doc.text(addressLines, 20, addressY + 7);
       }
 
       // Items table
-      let yPos = 85;
+      let yPos = orderToPrint.customerAddress ? 105 : 76;
       if (orderToPrint.items && orderToPrint.items.length > 0) {
         doc.setFont("helvetica", "bold");
         doc.text("Items:", 20, yPos);
@@ -1811,8 +1867,8 @@ export default function OrdersMain() {
         const tableData = orderToPrint.items.map((item) => [
           item.name || "Item",
           item.quantity || 1,
-          `₹${(item.price || 0).toFixed(2)}`,
-          `₹${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
+          `Rs. ${(item.price || 0).toFixed(2)}`,
+          `Rs. ${((item.price || 0) * (item.quantity || 1)).toFixed(2)}`,
         ]);
 
         autoTable(doc, {
@@ -1827,11 +1883,18 @@ export default function OrdersMain() {
           },
           styles: { fontSize: 9 },
           columnStyles: {
-            0: { cellWidth: 80 },
-            1: { cellWidth: 30, halign: "center" },
-            2: { cellWidth: 35, halign: "right" },
-            3: { cellWidth: 35, halign: "right" },
+            0: { halign: "left" },
+            1: { halign: "center" },
+            2: { halign: "right" },
+            3: { halign: "right" },
           },
+          didParseCell: function (data) {
+            if (data.section === 'head') {
+              if (data.column.index === 1) data.cell.styles.halign = 'center';
+              if (data.column.index === 2) data.cell.styles.halign = 'right';
+              if (data.column.index === 3) data.cell.styles.halign = 'right';
+            }
+          }
         });
 
         yPos = doc.lastAutoTable.finalY + 10;
@@ -1840,7 +1903,7 @@ export default function OrdersMain() {
       // Total
       doc.setFont("helvetica", "bold");
       doc.setFontSize(12);
-      doc.text(`Total: ₹${(orderToPrint.total || 0).toFixed(2)}`, 20, yPos);
+      doc.text(`Total: Rs. ${(orderToPrint.total || 0).toFixed(2)}`, 20, yPos);
 
       // Payment status
       yPos += 10;
@@ -1877,8 +1940,8 @@ export default function OrdersMain() {
       doc.setFont("helvetica", "normal");
       doc.text(
         orderToPrint.sendCutlery === false
-          ? "? Don't send cutlery"
-          : "? Send cutlery requested",
+          ? "Cutlery: Not requested (Don't send cutlery)"
+          : "Cutlery: Requested (Send cutlery)",
         20,
         yPos,
       );

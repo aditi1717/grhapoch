@@ -11,6 +11,7 @@ import { Input } from "@food/components/ui/input"
 import { useLocation as useGeoLocation } from "@food/hooks/useLocation"
 
 import { adminAPI, searchAPI } from "@/services/api"
+import { useProfile } from "@food/context/ProfileContext"
 import { motion, AnimatePresence } from "framer-motion"
 
 // Helper to resolve media URLs consistently
@@ -42,6 +43,7 @@ export default function ProfessionalSearch() {
   const initialQuery = searchParams.get("q") || ""
   const navigate = useNavigate()
   const { location: userCoords } = useGeoLocation()
+  const { vegMode } = useProfile()
   const zoneId = null
   const zoneStatus = "success"
   
@@ -121,11 +123,17 @@ export default function ProfessionalSearch() {
         categoryId: catId,
         lat: userCoords?.latitude,
         lng: userCoords?.longitude,
+        isVeg: vegMode ? "true" : undefined,
         strictZone: "false",
       })
       
       if (res.data?.success) {
-        const all = res.data.data.restaurants || []
+        let all = res.data.data.restaurants || []
+
+        if (vegMode) {
+          all = all.filter(r => r.pureVegRestaurant === true || r.isPureVeg === true)
+        }
+
         setResults({
           restaurants: all.filter(r => r.matchType === 'restaurant' || !r.matchType),
           dishes: all.filter(r => r.matchType === 'food')
@@ -136,7 +144,7 @@ export default function ProfessionalSearch() {
     } finally {
       setLoading(false)
     }
-  }, [userCoords, zoneId])
+  }, [userCoords, vegMode])
 
   useEffect(() => {
     performSearch(debouncedQuery, selectedCategoryId)
@@ -200,6 +208,11 @@ export default function ProfessionalSearch() {
               placeholder="Search for restaurants or dishes..." 
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && query.trim()) {
+                  addToHistory(query.trim())
+                }
+              }}
               className="pl-12 pr-12 h-12 w-full bg-slate-100 dark:bg-zinc-800 border-none focus:ring-2 focus:ring-rose-500 rounded-full text-base"
             />
             {query && (
@@ -294,7 +307,14 @@ export default function ProfessionalSearch() {
                 </div>
                 <div className="grid gap-4">
                   {results.dishes.map((r) => (
-                    <Link to={`/user/restaurants/${r.slug || r._id}${r.matchedDishId ? `?dish=${r.matchedDishId}` : ''}`} key={r._id} className="flex gap-4 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 hover:shadow-md transition-shadow group">
+                    <Link 
+                      to={`/user/restaurants/${r.slug || r._id}${r.matchedDishId ? `?dish=${r.matchedDishId}` : ''}`} 
+                      key={r._id} 
+                      onClick={() => {
+                        if (query.trim()) addToHistory(query.trim())
+                      }}
+                      className="flex gap-4 p-3 bg-white dark:bg-zinc-900 rounded-2xl shadow-sm border border-slate-100 dark:border-zinc-800 hover:shadow-md transition-shadow group"
+                    >
                        <div className="w-24 h-24 rounded-xl overflow-hidden bg-slate-100 flex-shrink-0 relative">
                            <img 
                             src={getMediaUrl(r.matchedDishImage || r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))} 
@@ -338,7 +358,14 @@ export default function ProfessionalSearch() {
                 </div>
                 <div className="grid gap-6">
                   {results.restaurants.map((r) => (
-                    <Link to={`/user/restaurants/${r._id}`} key={r._id} className="block group">
+                    <Link 
+                      to={`/user/restaurants/${r._id}`} 
+                      key={r._id} 
+                      onClick={() => {
+                        if (query.trim()) addToHistory(query.trim())
+                      }}
+                      className="block group"
+                    >
                       <div className="relative rounded-3xl overflow-hidden aspect-[16/9] mb-3 bg-slate-200">
                          <img 
                           src={getMediaUrl(r.profileImage || r.image || (Array.isArray(r.images) && r.images[0]))} 

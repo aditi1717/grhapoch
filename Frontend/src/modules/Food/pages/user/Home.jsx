@@ -1,4 +1,4 @@
-import { useSearchParams, Link, useNavigate } from "react-router-dom";
+import { useSearchParams, Link, useNavigate, useNavigationType, useLocation as useRouterLocation } from "react-router-dom";
 import React, {
   useRef,
   useEffect,
@@ -93,6 +93,7 @@ import api, { restaurantAPI, adminAPI } from "@food/api";
 import { usePublicAppConfig } from "@food/context/PublicAppConfigContext";
 import { API_BASE_URL } from "@food/api/config";
 import OptimizedImage from "@food/components/OptimizedImage";
+import { calculateDistance } from "@food/utils/common";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
 import HomeHeader from "@food/components/user/home/HomeHeader";
 import QuickSection from "@food/components/user/home/QuickSection";
@@ -195,14 +196,7 @@ const RestaurantImageCarousel = React.memo(
     );
 
     const images = useMemo(() => {
-      const hasRecommended = Array.isArray(restaurant.recommendedItems) && restaurant.recommendedItems.length > 0;
-      
-      if (hasRecommended) {
-        return restaurant.recommendedItems
-          .filter(item => item && item.image)
-          .map(item => withCacheBuster(item.image));
-      }
-
+      // Always show restaurant cover/profile images, not food item images
       const sourceImages =
         Array.isArray(restaurant.images) && restaurant.images.length > 0
           ? restaurant.images
@@ -214,7 +208,7 @@ const RestaurantImageCarousel = React.memo(
         .filter(Boolean);
 
       return validImages.map((img) => withCacheBuster(img));
-    }, [restaurant.recommendedItems, restaurant.images, restaurant.image, withCacheBuster]);
+    }, [restaurant.images, restaurant.image, withCacheBuster]);
     const [internalIndex, setInternalIndex] = useState(0);
     const currentIndex = externalIndex !== null ? externalIndex : internalIndex;
     
@@ -449,7 +443,6 @@ const RestaurantCard = React.memo(({
   restaurant,
   index,
   availabilityTick,
-  isOutOfService,
   favorite,
   onToggleFavorite,
   BACKEND_ORIGIN,
@@ -528,7 +521,7 @@ const RestaurantCard = React.memo(({
       <div className="h-full group">
         <Card
           className={`overflow-hidden gap-0 border-0 dark:border-gray-800 bg-white dark:bg-[#1a1a1a] border-background transition-all duration-500 py-0 rounded-[28px] flex flex-col h-full w-full relative shadow-sm hover:shadow-xl ${
-            isOutOfService || !availability.isOpen
+            !availability.isOpen
               ? "grayscale opacity-75"
               : ""
           }`}>
@@ -730,8 +723,13 @@ const RestaurantCard = React.memo(({
 
 export default function Home() {
   const HERO_BANNER_AUTO_SLIDE_MS = 3500;
-  const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "");
+  const BACKEND_ORIGIN = API_BASE_URL
+    .replace(/\/api\/v\d+\/?$/i, "")
+    .replace(/\/api\/?$/i, "")
+    .replace(/\/+$/, "");
   const navigate = useNavigate();
+  const navigationType = useNavigationType();
+  const routerLocation = useRouterLocation();
   const [searchParams] = useSearchParams();
   const query = searchParams.get("q") || "";
   const [heroSearch, setHeroSearch] = useState("");
@@ -810,6 +808,46 @@ export default function Home() {
   const heroShellRef = useRef(null);
   const stickyHeaderRef = useRef(null);
   const categoryAnchorRef = useRef(null);
+  const hasRestoredScrollRef = useRef(false);
+
+  // Track and save scroll position to sessionStorage
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!loadingRestaurants && restaurantsData.length > 0) {
+        sessionStorage.setItem("homepage_scroll_y", String(window.scrollY));
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, [loadingRestaurants, restaurantsData]);
+
+  // Handle fresh navigation (clear scroll position if not POP and not custom isBack state)
+  useEffect(() => {
+    if (navigationType !== "POP" && !routerLocation.state?.isBack) {
+      sessionStorage.removeItem("homepage_scroll_y");
+      hasRestoredScrollRef.current = true; // No need to restore scroll
+    }
+  }, [navigationType, routerLocation.state]);
+
+  // Restore scroll position after restaurants finish loading
+  useEffect(() => {
+    const isBackNav = navigationType === "POP" || routerLocation.state?.isBack;
+    if (!loadingRestaurants && restaurantsData.length > 0 && isBackNav && !hasRestoredScrollRef.current) {
+      const savedScrollY = sessionStorage.getItem("homepage_scroll_y");
+      if (savedScrollY) {
+        const y = parseInt(savedScrollY, 10);
+        window.scrollTo(0, y);
+        // Use a small timeout to let the DOM fully settle/paint
+        const timer = setTimeout(() => {
+          window.scrollTo(0, y);
+          hasRestoredScrollRef.current = true;
+        }, 150);
+        return () => clearTimeout(timer);
+      } else {
+        hasRestoredScrollRef.current = true;
+      }
+    }
+  }, [loadingRestaurants, restaurantsData, navigationType, routerLocation.state]);
   const slugifyCategory = useCallback(
     (value) =>
       String(value || "")
@@ -1491,13 +1529,7 @@ export default function Home() {
     return useSavedAddress ? defaultSavedAddressLocation : location;
   }, [deliveryAddressMode, defaultSavedAddressLocation, location]);
 
-  const zoneId = null;
-  const zoneStatus = "IN_SERVICE";
-  const isInService = true;
-  const isOutOfService = false;
-  const zoneLoading = false;
-  const zoneError = null;
-  const refreshZone = () => {};
+
 
   useEffect(() => {
     if (Array.isArray(exploreIcons)) {
@@ -1510,7 +1542,7 @@ export default function Home() {
     let cancelled = false;
     setLoadingLandingConfig(true);
 
-    void refreshLanding(zoneId)
+    void refreshLanding(null)
       .then((landing) => {
         if (cancelled || !landing) return;
         setExploreMoreHeading(landing.exploreMoreHeading || "Explore More");
@@ -1635,23 +1667,8 @@ export default function Home() {
     };
   }, []);
 
-  useEffect(() => {
-    if (
-      !Number.isFinite(effectiveLocation?.latitude) ||
-      !Number.isFinite(effectiveLocation?.longitude)
-    ) {
-      return;
-    }
 
-    // Force a zone sync when effective delivery source changes
-    // (saved/current toggle, saved default address change, location source updates).
-    refreshZone();
-  }, [
-    deliveryAddressMode,
-    effectiveLocation?.latitude,
-    effectiveLocation?.longitude,
-    refreshZone,
-  ]);
+
 
   const cityName = effectiveLocation?.city || "Select";
   const stateName = effectiveLocation?.state || "Location";
@@ -1719,9 +1736,29 @@ export default function Home() {
   const toggleFilter = (filterId) => {
     setActiveFilters((prev) => {
       const newSet = new Set(prev);
-      if (newSet.has(filterId)) {
-        newSet.delete(filterId);
-      } else {
+      const isAlreadyActive = newSet.has(filterId);
+
+      const timeGroup = ['under-30-mins', 'delivery-under-30', 'under-45-mins', 'delivery-under-45'];
+      if (timeGroup.includes(filterId)) {
+        timeGroup.forEach((id) => newSet.delete(id));
+      }
+
+      const distanceGroup = ['under-1km', 'distance-under-1km', 'under-2km', 'distance-under-2km'];
+      if (distanceGroup.includes(filterId)) {
+        distanceGroup.forEach((id) => newSet.delete(id));
+      }
+
+      const ratingGroup = ['rating-35-plus', 'rating-4-plus', 'rating-45-plus'];
+      if (ratingGroup.includes(filterId)) {
+        ratingGroup.forEach((id) => newSet.delete(id));
+      }
+
+      const priceGroup = ['price-under-200', 'price-under-500', 'under-250'];
+      if (priceGroup.includes(filterId)) {
+        priceGroup.forEach((id) => newSet.delete(id));
+      }
+
+      if (!isAlreadyActive) {
         newSet.add(filterId);
       }
       return newSet;
@@ -2158,7 +2195,6 @@ export default function Home() {
       buildRestaurantImageCandidates,
       effectiveLocation?.latitude,
       effectiveLocation?.longitude,
-      zoneId,
     ],
   );
 
@@ -2534,6 +2570,10 @@ export default function Home() {
       ? recommendedRestaurantsFromSettings
       : [];
 
+    const userLat = Number(effectiveLocation?.latitude);
+    const userLng = Number(effectiveLocation?.longitude);
+    const hasUserLocation = Number.isFinite(userLat) && Number.isFinite(userLng);
+
     // Primary source: restaurants returned by landing settings API (already admin-selected).
     const fromSettingsMapped = fromSettings.map((restaurant) => {
       const restaurantId = restaurant?._id ? String(restaurant._id) : "";
@@ -2550,13 +2590,29 @@ export default function Home() {
       ]);
       const image = imageCandidates[0] || foodImages[0];
 
+      const restLat = Number(
+        restaurant?.location?.latitude ??
+        (Array.isArray(restaurant?.location?.coordinates) ? restaurant.location.coordinates[1] : null)
+      );
+      const restLng = Number(
+        restaurant?.location?.longitude ??
+        (Array.isArray(restaurant?.location?.coordinates) ? restaurant.location.coordinates[0] : null)
+      );
+
+      let distanceInKm = null;
+      if (hasUserLocation && Number.isFinite(restLat) && Number.isFinite(restLng)) {
+        distanceInKm = calculateDistance(userLat, userLng, restLat, restLng);
+      }
+
       return {
         id: restaurant?.restaurantId || restaurantId,
         mongoId: restaurantId,
         name: getRestaurantDisplayName(restaurant),
         cuisine,
         rating: Number(restaurant?.rating) || 0,
-        distance: "",
+        distanceInKm,
+        serviceRadius: Number(restaurant?.serviceRadius) || Number(restaurant?.userVisibilityRadius) || 10,
+        location: restaurant?.location,
         deliveryTime: "",
         image: normalizeImageUrl(image) || foodImages[0],
         images: imageCandidates.length > 0 ? imageCandidates : [foodImages[0]],
@@ -2593,6 +2649,15 @@ export default function Home() {
     });
 
     return [...orderedFromSettings, ...fromFetchedMissing]
+      .filter((restaurant) => {
+        if (hasUserLocation) {
+          const maxRadius = Number(restaurant.serviceRadius) || 10;
+          if (Number.isFinite(restaurant.distanceInKm) && restaurant.distanceInKm > maxRadius) {
+            return false;
+          }
+        }
+        return true;
+      })
       .filter(matchesVegMode)
       .slice(0, 12);
   }, [
@@ -2602,6 +2667,8 @@ export default function Home() {
     extractImages,
     normalizeImageUrl,
     matchesVegMode,
+    effectiveLocation?.latitude,
+    effectiveLocation?.longitude,
   ]);
 
   // Featured foods removed - will be handled by restaurants data from API
@@ -2624,12 +2691,7 @@ export default function Home() {
     setHeroSearch("");
   }, [closeSearch]);
 
-  const shouldShowOutOfServiceScreen = useMemo(() => {
-    const hasCoords =
-      Number.isFinite(Number(effectiveLocation?.latitude)) &&
-      Number.isFinite(Number(effectiveLocation?.longitude));
-    return hasCoords && zoneStatus === "OUT_OF_SERVICE" && !zoneLoading;
-  }, [effectiveLocation?.latitude, effectiveLocation?.longitude, zoneStatus, zoneLoading]);
+  const shouldShowOutOfServiceScreen = false;
 
   // Removed GSAP animations - using CSS and ScrollReveal components instead for better performance
   // Auto-scroll removed - manual scroll only
@@ -2962,7 +3024,7 @@ export default function Home() {
           toggleRef={vegModeToggleRef}
         />
 
-        <PromotionBannerCarousel zoneId={zoneId} />
+        <PromotionBannerCarousel />
 
         {/* Self-serve Advertisements Carousel */}
         {adBanners && adBanners.length > 0 && (
@@ -3153,7 +3215,7 @@ export default function Home() {
                       restaurant={restaurant}
                       index={index}
                       availabilityTick={availabilityTick}
-                      isOutOfService={isOutOfService}
+                      isOutOfService={false}
                       favorite={favorite}
                       onToggleFavorite={handleToggleFavorite}
                       BACKEND_ORIGIN={BACKEND_ORIGIN}

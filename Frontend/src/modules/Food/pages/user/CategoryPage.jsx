@@ -90,7 +90,12 @@ export default function CategoryPage() {
 
   const showCategorySkeleton = useDelayedLoading(loadingCategories)
   const deferredSearchQuery = useDeferredValue(searchQuery)
-  const BACKEND_ORIGIN = useMemo(() => API_BASE_URL.replace(/\/api\/?$/, ""), [])
+  const BACKEND_ORIGIN = useMemo(() => {
+    return API_BASE_URL
+      .replace(/\/api\/v\d+\/?$/i, "")
+      .replace(/\/api\/?$/i, "")
+      .replace(/\/+$/, "");
+  }, []);
   const slugify = (value) => String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
   const normalizeCategoryToken = (value) =>
     String(value || "")
@@ -358,14 +363,14 @@ export default function CategoryPage() {
   const applyFiltersAndSorting = (rows) => {
     let nextRows = Array.isArray(rows) ? [...rows] : []
 
-    if (activeFilters.has('under-30-mins')) {
+    if (activeFilters.has('under-30-mins') || activeFilters.has('delivery-under-30')) {
       nextRows = nextRows.filter((row) => {
         const time = getComparableDeliveryTime(row)
         return time != null && time <= 30
       })
     }
 
-    if (activeFilters.has('delivery-under-45')) {
+    if (activeFilters.has('under-45-mins') || activeFilters.has('delivery-under-45')) {
       nextRows = nextRows.filter((row) => {
         const time = getComparableDeliveryTime(row)
         return time != null && time <= 45
@@ -393,14 +398,14 @@ export default function CategoryPage() {
       })
     }
 
-    if (activeFilters.has('distance-under-1km')) {
+    if (activeFilters.has('under-1km') || activeFilters.has('distance-under-1km')) {
       nextRows = nextRows.filter((row) => {
         const distance = getComparableDistance(row)
         return distance != null && distance <= 1
       })
     }
 
-    if (activeFilters.has('distance-under-2km')) {
+    if (activeFilters.has('under-2km') || activeFilters.has('distance-under-2km')) {
       nextRows = nextRows.filter((row) => {
         const distance = getComparableDistance(row)
         return distance != null && distance <= 2
@@ -663,8 +668,7 @@ export default function CategoryPage() {
                 deliveryTimings: restaurant.deliveryTimings,
                 openingTime: restaurant.openingTime,
                 closingTime: restaurant.closingTime,
-                // Zone info for strict frontend filtering
-                zoneId: restaurant.zoneId || restaurant.zone?._id || restaurant.zone || null,
+  
               }
             })
 
@@ -761,18 +765,42 @@ export default function CategoryPage() {
   const toggleFilter = (filterId) => {
     setActiveFilters(prev => {
       const newSet = new Set(prev)
-      if (newSet.has(filterId)) {
-        newSet.delete(filterId)
-      } else {
+      const isAlreadyActive = newSet.has(filterId)
+
+      // Time group (under 30 mins vs under 45 mins)
+      const timeGroup = ['under-30-mins', 'delivery-under-30', 'under-45-mins', 'delivery-under-45']
+      if (timeGroup.includes(filterId)) {
+        timeGroup.forEach(id => newSet.delete(id))
+      }
+
+      // Distance group (under 1km vs under 2km)
+      const distanceGroup = ['under-1km', 'distance-under-1km', 'under-2km', 'distance-under-2km']
+      if (distanceGroup.includes(filterId)) {
+        distanceGroup.forEach(id => newSet.delete(id))
+      }
+
+      // Rating group (rating 3.5+ vs rating 4.0+ vs rating 4.5+)
+      const ratingGroup = ['rating-35-plus', 'rating-4-plus', 'rating-45-plus']
+      if (ratingGroup.includes(filterId)) {
+        ratingGroup.forEach(id => newSet.delete(id))
+      }
+
+      // Price group (price-under-200 vs price-under-500 vs under-250)
+      const priceGroup = ['price-under-200', 'price-under-500', 'under-250']
+      if (priceGroup.includes(filterId)) {
+        priceGroup.forEach(id => newSet.delete(id))
+      }
+
+      if (!isAlreadyActive) {
         newSet.add(filterId)
       }
+
       return newSet
     })
-    // Show loading when filter is toggled
     setIsLoadingFilterResults(true)
     setTimeout(() => {
       setIsLoadingFilterResults(false)
-    }, 500)
+    }, 300)
   }
 
   // Scroll tracking effect for filter modal
@@ -830,15 +858,6 @@ export default function CategoryPage() {
         : categoryDishes
     }
 
-    // Strict zone filter: double check that restaurant belongs to current zone
-    filtered = filtered.filter(row => {
-      const restaurantZoneId = row.zoneId || null;
-      if (zoneId && restaurantZoneId && String(restaurantZoneId) !== String(zoneId)) {
-        return false;
-      }
-      return true;
-    })
-
     // Filter by availability
     filtered = filtered.filter(row => {
       const availability = getRestaurantAvailabilityStatus(row, new Date(availabilityTick));
@@ -846,7 +865,7 @@ export default function CategoryPage() {
     })
 
     return applyFiltersAndSorting(filtered)
-  }, [selectedCategory, activeFilters, deferredSearchQuery, restaurantsData, categoryKeywords, vegMode, categoryFoodsData, sortBy, availabilityTick, zoneId])
+  }, [selectedCategory, activeFilters, deferredSearchQuery, restaurantsData, categoryKeywords, vegMode, categoryFoodsData, sortBy, availabilityTick])
 
   const filteredAllRestaurants = useMemo(() => {
     const sourceData = restaurantsData.length > 0 ? restaurantsData : []
@@ -860,15 +879,6 @@ export default function CategoryPage() {
         : categoryDishes
     }
 
-    // Strict zone filter: double check that restaurant belongs to current zone
-    filtered = filtered.filter(row => {
-      const restaurantZoneId = row.zoneId || null;
-      if (zoneId && restaurantZoneId && String(restaurantZoneId) !== String(zoneId)) {
-        return false;
-      }
-      return true;
-    })
-
     // Filter by availability
     filtered = filtered.filter(row => {
       const availability = getRestaurantAvailabilityStatus(row, new Date(availabilityTick));
@@ -876,7 +886,7 @@ export default function CategoryPage() {
     })
 
     return applyFiltersAndSorting(filtered)
-  }, [selectedCategory, activeFilters, deferredSearchQuery, restaurantsData, categoryKeywords, vegMode, categoryFoodsData, sortBy, availabilityTick, zoneId])
+  }, [selectedCategory, activeFilters, deferredSearchQuery, restaurantsData, categoryKeywords, vegMode, categoryFoodsData, sortBy, availabilityTick])
 
   const showRestaurantSkeleton = useDelayedLoading(
     isLoadingFilterResults || loadingRestaurants || (loadingCategoryFoods && selectedCategory !== 'all' && filteredRecommended.length === 0),

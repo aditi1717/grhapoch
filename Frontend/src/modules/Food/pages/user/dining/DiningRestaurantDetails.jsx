@@ -25,6 +25,7 @@ import {
   Utensils,
 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
+import { isModuleAuthenticated } from "@food/utils/auth"
 import { toast } from "sonner"
 
 const formatAddress = (restaurant) =>
@@ -732,6 +733,11 @@ export default function DiningRestaurantDetails() {
         <div className="mx-auto max-w-md">
           <Button
             onClick={() => {
+              if (!isModuleAuthenticated("user")) {
+                toast.error("Please login to book a table")
+                navigate("/food/user/auth/login", { state: { from: location.pathname } })
+                return
+              }
               if (canBookTable) {
                 navigate(`/food/user/dining/book/${slug}`, {
                   state: { 

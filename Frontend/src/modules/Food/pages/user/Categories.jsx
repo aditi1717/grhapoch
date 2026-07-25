@@ -17,7 +17,12 @@ export default function Categories() {
   const [searchQuery, setSearchQuery] = useState("");
   const { location } = useLocation();
 
-  const BACKEND_ORIGIN = useMemo(() => API_BASE_URL.replace(/\/api\/?$/, ""), []);
+  const BACKEND_ORIGIN = useMemo(() => {
+    return API_BASE_URL
+      .replace(/\/api\/v\d+\/?$/i, "")
+      .replace(/\/api\/?$/i, "")
+      .replace(/\/+$/, "");
+  }, []);
 
   const normalizeImageUrl = (imageUrl) => {
     if (typeof imageUrl !== "string") return "";

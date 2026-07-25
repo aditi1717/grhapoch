@@ -87,6 +87,8 @@ export default function OrdersTable({
   }
 
   const canShowCancelAction = (order) => {
+    // Do NOT allow cancel when a delivery partner is already assigned
+    if (order?.dispatch?.deliveryPartnerId) return false
     const currentStatus = String(order?.orderStatus || "").trim().toLowerCase()
     return [
       "pending",
@@ -460,7 +462,8 @@ export default function OrdersTable({
                 {visibleColumns.actions && (
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <div className="flex items-center justify-center gap-2">
-                      {onCancelOrder ? (
+                      {/* Cancel — hidden once a delivery partner is assigned */}
+                      {onCancelOrder && !order?.dispatch?.deliveryPartnerId ? (
                         <button
                           onClick={() => canShowCancelAction(order) && onCancelOrder(order)}
                           disabled={
@@ -481,7 +484,8 @@ export default function OrdersTable({
                           <span>Cancel</span>
                         </button>
                       ) : null}
-                      {onResendNotification ? (
+                      {/* Resend — hidden once a delivery partner is assigned */}
+                      {onResendNotification && !order?.dispatch?.deliveryPartnerId ? (
                         <button
                           onClick={() =>
                             canResendNotification(order) && onResendNotification(order)
@@ -508,7 +512,8 @@ export default function OrdersTable({
                           <span>Resend</span>
                         </button>
                       ) : null}
-                      {onDeassignAndResend ? (
+                      {/* Deassign & Resend — hidden once a delivery partner is assigned */}
+                      {onDeassignAndResend && !order?.dispatch?.deliveryPartnerId ? (
                         <button
                           onClick={() =>
                             canDeassignAndResend(order) && onDeassignAndResend(order)

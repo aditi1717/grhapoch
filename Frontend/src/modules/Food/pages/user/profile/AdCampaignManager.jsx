@@ -60,6 +60,16 @@ export default function AdCampaignManager() {
   useEffect(() => {
     fetchPricing();
     fetchMyAds();
+
+    if (typeof window !== "undefined") {
+      const handleRefresh = () => {
+        fetchMyAds();
+      };
+      window.addEventListener("foodNotificationInboxRefresh", handleRefresh);
+      return () => {
+        window.removeEventListener("foodNotificationInboxRefresh", handleRefresh);
+      };
+    }
   }, []);
 
   const fetchPricing = async () => {
@@ -182,7 +192,7 @@ export default function AdCampaignManager() {
               razorpaySignature: 'sig_mock_dev'
             });
             if (verifyRes.data.success) {
-              toast.success("Ad request submitted and payment simulated (Dev Mode)!", { id: "ad-submit" });
+              toast.success("Ad request submitted successfully!", { id: "ad-submit" });
               setShowCreateModal(false);
               fetchMyAds();
             } else {

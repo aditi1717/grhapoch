@@ -143,7 +143,9 @@ export default function SignupStep1() {
       newErrors.name = "Name can contain letters only"
     }
 
-    if (formData.email && !isValidEmailValue(formData.email)) {
+    if (!formData.email.trim()) {
+      newErrors.email = "Email is required"
+    } else if (!isValidEmailValue(formData.email)) {
       newErrors.email = "Enter a valid email address. Gmail must be gmail.com"
     }
 
@@ -280,7 +282,7 @@ export default function SignupStep1() {
           {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email (Optional)
+            Email <span className="text-red-500">*</span>
             </label>
             <input
               type="email"
@@ -294,6 +296,7 @@ export default function SignupStep1() {
               className={`w-full px-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 ${errors.email ? "border-red-500" : "border-gray-300"
                 }`}
               placeholder="Enter your email"
+              required
             />
             {errors.email && <p className="text-red-500 text-sm mt-1">{errors.email}</p>}
           </div>

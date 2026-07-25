@@ -189,11 +189,13 @@ const buildMessagePayload = (payload = {}, token) => {
         message.data = data;
     }
 
+    const soundSetting = payload.sound || payload.notification?.sound || (payload.category === 'dining_booking' ? 'default' : undefined);
+
     message.android = {
         priority: 'high',
         notification: {
             channel_id: 'default',
-            // sound: 'default',
+            ...(soundSetting ? { sound: soundSetting } : {}),
             default_vibrate_timings: true,
             default_light_settings: true
         }
@@ -206,7 +208,8 @@ const buildMessagePayload = (payload = {}, token) => {
         notification: {
             title: notification.title,
             body: notification.body,
-            icon: image || payload.icon || '/favicon.ico'
+            icon: image || payload.icon || '/favicon.ico',
+            ...(soundSetting ? { sound: soundSetting } : {})
         }
     };
 

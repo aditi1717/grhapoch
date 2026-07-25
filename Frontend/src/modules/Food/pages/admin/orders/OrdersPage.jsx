@@ -841,7 +841,10 @@ export default function OrdersPage({ statusKey = "all" }) {
   useEffect(() => {
     if (statusKey !== "all") return undefined
 
-    const backendUrl = API_BASE_URL.replace(/\/api\/?$/, "")
+    const backendUrl = API_BASE_URL
+      .replace(/\/api\/v\d+\/?$/i, "")
+      .replace(/\/api\/?$/i, "")
+      .replace(/\/+$/, "")
     // Backend disconnected - do not open Socket.IO (new backend in progress)
     if (!API_BASE_URL || !backendUrl || !backendUrl.startsWith("http")) {
       return undefined
@@ -901,10 +904,58 @@ export default function OrdersPage({ statusKey = "all" }) {
     socket.on("admin_new_order", handleIncomingRealtimeOrder)
     socket.on("play_notification_sound", handleIncomingRealtimeOrder)
 
+    // Live update: when a delivery partner is assigned, patch the matching row
+    // in-place so the table reflects it immediately (no full refetch needed).
+    const handleOrderStatusUpdate = (data) => {
+      const incomingId = String(
+        data?.orderMongoId || data?.orderId || ""
+      ).trim()
+      if (!incomingId) return
+
+      const hasDeliveryInfo =
+        data?.deliveryPartnerId ||
+        data?.deliveryPartnerName ||
+        data?.dispatchStatus === "accepted"
+
+      if (!hasDeliveryInfo) return
+
+      setOrders((prev) =>
+        prev.map((order) => {
+          const orderId = String(order._id || order.id || "").trim()
+          const orderDisplayId = String(order.orderId || "").trim()
+          if (orderId !== incomingId && orderDisplayId !== incomingId) {
+            return order
+          }
+          // Patch the dispatch info and delivery partner fields live
+          return {
+            ...order,
+            dispatch: {
+              ...(order.dispatch || {}),
+              status: data.dispatchStatus || order.dispatch?.status,
+              deliveryPartnerId: data.deliveryPartnerId || order.dispatch?.deliveryPartnerId,
+            },
+            deliveryPartnerName: data.deliveryPartnerName || order.deliveryPartnerName || "",
+            deliveryPartnerPhone: data.deliveryPartnerPhone || order.deliveryPartnerPhone || "",
+          }
+        })
+      )
+
+      // Also show a subtle toast so admin knows the update happened
+      if (data?.deliveryPartnerName) {
+        toast.success(
+          `Delivery partner assigned: ${data.deliveryPartnerName}`,
+          { description: `Order ${data.orderId || data.orderMongoId}`, duration: 4000 }
+        )
+      }
+    }
+
+    socket.on("order_status_update", handleOrderStatusUpdate)
+
     return () => {
       socketConnectedRef.current = false
       socket.off("admin_new_order", handleIncomingRealtimeOrder)
       socket.off("play_notification_sound", handleIncomingRealtimeOrder)
+      socket.off("order_status_update", handleOrderStatusUpdate)
       socket.disconnect()
       socketRef.current = null
       fetchAbortRef.current?.abort()

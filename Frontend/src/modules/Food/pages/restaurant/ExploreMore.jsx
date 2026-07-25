@@ -42,6 +42,7 @@ import BottomNavOrders from "@food/components/restaurant/BottomNavOrders"
 import DeleteAccountModal from "@food/components/DeleteAccountModal"
 import { toast } from "sonner"
 import { isFeatureEnabled, loadCorePublicAppConfig } from "@food/services/publicAppConfig"
+import { resolveMediaUrl } from "@food/utils/common"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
@@ -999,8 +1000,24 @@ export default function ExploreMore() {
           <div className="relative overflow-hidden rounded-[24px] bg-white p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] ring-1 ring-black/5">
             <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#FA0272]/5 blur-3xl pointer-events-none" />
             <div className="relative flex items-center gap-4">
-              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#FA0272]/10 to-[#FA0272]/5 ring-1 ring-[#FA0272]/10">
-                <Store className="h-6 w-6 text-[#FA0272]" strokeWidth={1.5} />
+              <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] bg-gradient-to-br from-[#FA0272]/10 to-[#FA0272]/5 ring-1 ring-[#FA0272]/10 overflow-hidden">
+                {restaurantData?.profileImage ? (
+                  <img
+                    src={resolveMediaUrl(restaurantData.profileImage)}
+                    alt={restaurantDisplayName}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                      const fallbackIcon = e.target.nextSibling;
+                      if (fallbackIcon) fallbackIcon.style.display = 'block';
+                    }}
+                  />
+                ) : null}
+                <Store 
+                  className="h-6 w-6 text-[#FA0272]" 
+                  style={{ display: restaurantData?.profileImage ? 'none' : 'block' }}
+                  strokeWidth={1.5} 
+                />
               </div>
               <div className="flex-1 min-w-0 text-left">
                 <h2 className="text-[17px] font-extrabold text-gray-900 truncate tracking-tight mb-0.5">

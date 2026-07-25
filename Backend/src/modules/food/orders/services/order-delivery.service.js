@@ -449,15 +449,23 @@ export async function acceptOrderDelivery(orderId, deliveryPartnerId) {
     try {
       const io = getIO();
       if (io) {
+        const dpDoc = await FoodDeliveryPartner.findById(deliveryPartnerId)
+          .select('name phone')
+          .lean();
         const payload = {
           orderMongoId: order._id?.toString?.(),
           orderId: order._id.toString(),
           orderStatus: order.orderStatus,
           dispatchStatus: order.dispatch?.status,
+          deliveryPartnerId: deliveryPartnerId.toString(),
+          deliveryPartnerName: dpDoc?.name || '',
+          deliveryPartnerPhone: dpDoc?.phone || '',
         };
         io.to(rooms.delivery(deliveryPartnerId)).emit('order_status_update', payload);
         io.to(rooms.restaurant(order.restaurantId)).emit('order_status_update', payload);
         io.to(rooms.user(order.userId)).emit('order_status_update', payload);
+        // Notify admin dashboard so it shows the assigned delivery partner live
+        io.to('admin-room').emit('order_status_update', payload);
 
         // Notify ALL other delivery partners who were offered this order to dismiss it
         const offeredPartners = order.dispatch?.offeredTo || [];

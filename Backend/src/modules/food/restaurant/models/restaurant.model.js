@@ -214,6 +214,10 @@ const restaurantSchema = new mongoose.Schema(
     locationUpdateRequestedAt: { type: Date },
     locationUpdateReviewedAt: { type: Date },
     locationRejectionReason: { type: String, trim: true, default: "" },
+    pendingProfileUpdate: { type: mongoose.Schema.Types.Mixed },
+    profileUpdateRequestedAt: { type: Date },
+    profileUpdateFields: { type: [String], default: [] },
+    profileUpdateRejectionReason: { type: String, trim: true, default: "" },
     zoneId: {
       type: mongoose.Schema.Types.ObjectId,
     },

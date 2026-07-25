@@ -407,65 +407,68 @@ export default function OutletInfo() {
 
   const prevGlobalStatusRef = useRef("")
 
-  // Clear local "pending" badges only after admin resolves review (pending -> approved/rejected).
+  // Clear local "pending" badges when backend is approved and has no pending profileUpdateFields.
   useEffect(() => {
     if (!restaurantData) return
 
     const globalStatus = normalizeApprovalStatus(restaurantData?.status)
-    const prevGlobal = prevGlobalStatusRef.current
-    prevGlobalStatusRef.current = globalStatus
+    const profileFields = Array.isArray(restaurantData?.profileUpdateFields) ? restaurantData.profileUpdateFields : []
+    const isLocationPending = restaurantData?.locationUpdateStatus === "pending"
 
-    if (prevGlobal !== "pending" || !["approved", "rejected"].includes(globalStatus)) {
-      return
-    }
+    if (globalStatus === "approved" && profileFields.length === 0 && !isLocationPending) {
+      setLocalApprovalStatus((prev) => {
+        if (!prev || Object.keys(prev).length === 0) return prev
+        const sections = ["name", "basic", "compliance", "bank"]
+        const next = { ...prev }
+        let changed = false
 
-    setLocalApprovalStatus((prev) => {
-      const sections = ["name", "basic", "compliance", "bank"]
-      const next = { ...prev }
-      let changed = false
+        sections.forEach((section) => {
+          const entry = prev?.[section]
+          const localStatus =
+            entry && typeof entry === "object"
+              ? normalizeApprovalStatus(entry.status)
+              : normalizeApprovalStatus(entry)
+          if (localStatus === "pending") {
+            next[section] = { status: "approved", markedAt: Date.now() }
+            changed = true
+          }
+        })
 
-      sections.forEach((section) => {
-        const entry = prev?.[section]
-        const localStatus =
-          entry && typeof entry === "object"
-            ? normalizeApprovalStatus(entry.status)
-            : normalizeApprovalStatus(entry)
-        if (localStatus === "pending") {
-          next[section] = { status: globalStatus, markedAt: Date.now() }
-          changed = true
+        if (!changed) return prev
+
+        try {
+          const raw = localStorage.getItem(OUTLET_APPROVAL_STATUS_KEY)
+          const parsed = raw ? JSON.parse(raw) : {}
+          const rid = String(restaurantData?._id || restaurantData?.id || restaurantMongoId || restaurantId || "default")
+          parsed[rid] = next
+          localStorage.setItem(OUTLET_APPROVAL_STATUS_KEY, JSON.stringify(parsed))
+        } catch (error) {
+          debugError("Failed to sync local approval status:", error)
         }
+
+        return next
       })
-
-      if (!changed) return prev
-
-      try {
-        const raw = localStorage.getItem(OUTLET_APPROVAL_STATUS_KEY)
-        const parsed = raw ? JSON.parse(raw) : {}
-        const rid = String(restaurantData?._id || restaurantData?.id || restaurantMongoId || restaurantId || "default")
-        parsed[rid] = next
-        localStorage.setItem(OUTLET_APPROVAL_STATUS_KEY, JSON.stringify(parsed))
-      } catch (error) {
-        debugError("Failed to sync local approval status:", error)
-      }
-
-      return next
-    })
-  }, [restaurantData?.status, restaurantData?._id, restaurantData?.id, restaurantMongoId, restaurantId])
+    }
+  }, [restaurantData, restaurantMongoId, restaurantId])
 
   const getSectionStatus = (section) => {
     const globalStatus = normalizeApprovalStatus(restaurantData?.status)
+    const profileFields = Array.isArray(restaurantData?.profileUpdateFields) ? restaurantData.profileUpdateFields : []
+    const isLocationPending = restaurantData?.locationUpdateStatus === "pending"
+
+    // If backend is approved and has no pending profile update or location update, section is approved!
+    if (globalStatus === "approved" && profileFields.length === 0 && !isLocationPending) {
+      return "approved"
+    }
+
     const localStatus = getLocalStatusValue(section)
-    const sectionKeys = ["name", "basic", "compliance", "bank"]
-    const anyLocalPending = sectionKeys.some((key) => getLocalStatusValue(key) === "pending")
-
-    // Edited section waiting for admin — always show pending even if global status is stale.
     if (localStatus === "pending") return "pending"
-
     if (globalStatus === "rejected") return "rejected"
     if (globalStatus === "approved") return "approved"
 
     if (globalStatus === "pending") {
-      // Re-approval: only edited sections show pending; onboarding: all sections pending.
+      const sectionKeys = ["name", "basic", "compliance", "bank"]
+      const anyLocalPending = sectionKeys.some((key) => getLocalStatusValue(key) === "pending")
       return anyLocalPending ? "approved" : "pending"
     }
 

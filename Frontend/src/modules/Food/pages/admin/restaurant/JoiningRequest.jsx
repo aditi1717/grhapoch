@@ -64,7 +64,14 @@ export default function JoiningRequest() {
       const response = await adminAPI.getPendingRestaurants()
       const list = response?.data?.data || []
       if (activeTab === "pending") {
-        setPendingRequests(list.filter((r) => r.status === "pending" || r.locationUpdateStatus === "pending"))
+        setPendingRequests(
+          list.filter(
+            (r) =>
+              r.status === "pending" ||
+              r.locationUpdateStatus === "pending" ||
+              (Array.isArray(r.profileUpdateFields) && r.profileUpdateFields.length > 0)
+          )
+        )
       } else {
         setRejectedRequests(list.filter((r) => r.status === "rejected"))
       }
@@ -439,13 +446,33 @@ export default function JoiningRequest() {
                         <span className="text-sm text-slate-700">{request.serviceRadius ? `${request.serviceRadius} KM` : ""}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          request.status === "Pending"
-                            ? "bg-blue-100 text-blue-700"
-                            : "bg-red-100 text-red-700"
-                        }`}>
-                          {request.status}
-                        </span>
+                        <div className="flex flex-col gap-1">
+                          <span className={`px-3 py-1 rounded-full text-xs font-semibold w-fit ${
+                            request.locationUpdateStatus === "pending"
+                              ? "bg-amber-100 text-amber-800 border border-amber-300"
+                              : (Array.isArray(request.profileUpdateFields) && request.profileUpdateFields.length > 0) || (request.approvedAt != null && (request.status === "Pending" || request.status === "pending"))
+                              ? "bg-purple-100 text-purple-800 border border-purple-300"
+                              : request.status === "Pending" || request.status === "pending"
+                              ? "bg-blue-100 text-blue-700 border border-blue-200"
+                              : "bg-red-100 text-red-700"
+                          }`}>
+                            {request.locationUpdateStatus === "pending"
+                              ? "Location Change Request"
+                              : (Array.isArray(request.profileUpdateFields) && request.profileUpdateFields.length > 0) || (request.approvedAt != null && (request.status === "Pending" || request.status === "pending"))
+                              ? "Name & Profile Edit"
+                              : (request.status || "Pending")}
+                          </span>
+                          {request.locationUpdateStatus === "pending" && (
+                            <span className="text-[10px] text-amber-700 font-semibold pl-1">
+                              Address Update Pending
+                            </span>
+                          )}
+                          {((Array.isArray(request.profileUpdateFields) && request.profileUpdateFields.length > 0) || (request.approvedAt != null && (request.status === "Pending" || request.status === "pending"))) && (
+                            <span className="text-[10px] text-purple-700 font-semibold pl-1">
+                              Profile Edit Pending
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-center">
                         <div className="flex items-center justify-center gap-2">
@@ -718,13 +745,207 @@ export default function JoiningRequest() {
                           <span className="text-sm">{r?.restaurantId || r?._id || "N/A"}</span>
                         </div>
                         <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                          approvalStatus === "approved" ? "bg-green-100 text-green-700" : approvalStatus === "rejected" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700"
+                          r?.locationUpdateStatus === "pending"
+                            ? "bg-amber-100 text-amber-800 border border-amber-300 font-bold"
+                            : approvalStatus === "approved"
+                            ? "bg-green-100 text-green-700"
+                            : approvalStatus === "rejected"
+                            ? "bg-red-100 text-red-700"
+                            : "bg-amber-100 text-amber-700"
                         }`}>
-                          {approvalStatus === "approved" ? "Approved" : approvalStatus === "rejected" ? "Rejected" : "Pending Approval"}
+                          {r?.locationUpdateStatus === "pending"
+                            ? "Location Change Request Pending"
+                            : approvalStatus === "approved"
+                            ? "Approved"
+                            : approvalStatus === "rejected"
+                            ? "Rejected"
+                            : "Pending Approval"}
                         </span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Requested Changes / Approval Reason Banner Section */}
+                  {(() => {
+                    const isLocationChange = r?.locationUpdateStatus === "pending" || Boolean(r?.pendingLocation)
+                    const isProfileUpdate = (Array.isArray(r?.profileUpdateFields) && r.profileUpdateFields.length > 0) || (Boolean(r?.approvedAt) && (r?.status === "pending" || r?.status === "Pending"))
+
+                    const oldLoc = r?.location || {}
+                    const newLoc = r?.pendingLocation || {}
+                    const oldAddr = [
+                      r?.addressLine1 || oldLoc?.addressLine1,
+                      r?.addressLine2 || oldLoc?.addressLine2,
+                      r?.area || oldLoc?.area,
+                      r?.city || oldLoc?.city,
+                      r?.state || oldLoc?.state,
+                      r?.pincode || oldLoc?.pincode,
+                    ].filter(Boolean).join(", ") || oldLoc?.formattedAddress || oldLoc?.address || "Current live address"
+
+                    const newAddr = [
+                      newLoc?.addressLine1,
+                      newLoc?.addressLine2,
+                      newLoc?.area,
+                      newLoc?.city,
+                      newLoc?.state,
+                      newLoc?.pincode,
+                    ].filter(Boolean).join(", ") || newLoc?.formattedAddress || newLoc?.address || "New requested address"
+
+                    const oldCoords = oldLoc?.latitude != null ? `${oldLoc.latitude}, ${oldLoc.longitude}` : (oldLoc?.coordinates ? `${oldLoc.coordinates[1]}, ${oldLoc.coordinates[0]}` : "N/A")
+                    const newCoords = newLoc?.latitude != null ? `${newLoc.latitude}, ${newLoc.longitude}` : (newLoc?.coordinates ? `${newLoc.coordinates[1]}, ${newLoc.coordinates[0]}` : "N/A")
+
+                    if (isLocationChange) {
+                      return (
+                        <div className="bg-amber-50 border-2 border-amber-300 rounded-2xl p-5 space-y-4">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center font-bold shrink-0">
+                                <MapPin className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-bold text-amber-950">
+                                  Reason For Approval Request: Address & Location Update
+                                </h4>
+                                <p className="text-xs text-amber-800 font-medium">
+                                  The restaurant owner submitted a change request to update their store location. Current address remains active for users until approved by Admin.
+                                  {r?.locationUpdateRequestedAt ? ` (Submitted on ${new Date(r.locationUpdateRequestedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })})` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 bg-amber-500 text-white text-xs font-bold rounded-full uppercase tracking-wider shrink-0">
+                              Location Change Request
+                            </span>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                            {/* Old / Current Location */}
+                            <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-2 shadow-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current (Live) Address</span>
+                                <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded">Live</span>
+                              </div>
+                              <p className="text-sm font-semibold text-slate-800 leading-snug">
+                                {oldAddr}
+                              </p>
+                              <div className="pt-1 text-xs text-slate-500">
+                                <span className="font-medium text-slate-400">Coordinates: </span>
+                                <span className="font-mono">{oldCoords}</span>
+                              </div>
+                            </div>
+
+                            {/* New Requested Location */}
+                            <div className="bg-amber-100/70 border border-amber-300 rounded-xl p-4 space-y-2 shadow-sm">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800">New Proposed Address</span>
+                                <span className="px-2 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded">Proposed</span>
+                              </div>
+                              <p className="text-sm font-bold text-amber-950 leading-snug">
+                                {newAddr}
+                              </p>
+                              <div className="pt-1 text-xs text-amber-800">
+                                <span className="font-medium text-amber-700">Coordinates: </span>
+                                <span className="font-mono">{newCoords}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    if (isProfileUpdate) {
+                      const pendingUpdate = r?.pendingProfileUpdate || {}
+                      const updatedFields = Array.isArray(r?.profileUpdateFields) && r.profileUpdateFields.length > 0
+                        ? r.profileUpdateFields.map((f) => {
+                            if (f === 'restaurantName' || f === 'restaurantNameNormalized') return 'Restaurant Name'
+                            if (f === 'ownerName') return 'Owner Name'
+                            if (f === 'ownerPhone' || f === 'primaryContactNumber') return 'Phone / Primary Contact'
+                            if (f === 'ownerEmail') return 'Owner Email'
+                            if (f === 'panNumber' || f === 'nameOnPan' || f === 'panImage') return 'PAN Details'
+                            if (f === 'gstNumber' || f === 'gstLegalName' || f === 'gstAddress' || f === 'gstImage') return 'GST Details'
+                            if (f === 'fssaiNumber' || f === 'fssaiExpiry' || f === 'fssaiImage') return 'FSSAI License'
+                            if (f === 'accountNumber' || f === 'ifscCode' || f === 'accountHolderName' || f === 'accountType' || f === 'upiId' || f === 'upiQrImage') return 'Bank & Payment Details'
+                            if (f === 'profileImage' || f === 'coverImages' || f === 'menuImages') return 'Restaurant Images'
+                            return f
+                          })
+                        : ['Restaurant Name & Business Profile Details']
+
+                      const uniqueFieldLabels = Array.from(new Set(updatedFields))
+
+                      return (
+                        <div className="bg-purple-50 border-2 border-purple-300 rounded-2xl p-5 space-y-4 shadow-sm">
+                          <div className="flex items-center justify-between flex-wrap gap-2">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl bg-purple-600 text-white flex items-center justify-center font-bold shrink-0">
+                                <FileText className="w-5 h-5" />
+                              </div>
+                              <div>
+                                <h4 className="text-base font-bold text-purple-950">
+                                  Reason For Approval Request: Restaurant Name & Profile Change
+                                </h4>
+                                <p className="text-xs text-purple-900 font-medium">
+                                  The restaurant owner submitted updates to their profile.
+                                  {r?.approvedAt ? ` This restaurant was approved on ${new Date(r.approvedAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}.` : ''}
+                                  {r?.profileUpdateRequestedAt ? ` (Requested on ${new Date(r.profileUpdateRequestedAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })})` : ''}
+                                </p>
+                              </div>
+                            </div>
+                            <span className="px-3 py-1 bg-purple-600 text-white text-xs font-bold rounded-full uppercase tracking-wider shrink-0">
+                              Name / Profile Edit Request
+                            </span>
+                          </div>
+
+                          {pendingUpdate.restaurantName && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-1">
+                              <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-1 shadow-sm">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Current (Live) Restaurant Name</span>
+                                <p className="text-sm font-semibold text-slate-800">{r?.restaurantName || "N/A"}</p>
+                              </div>
+                              <div className="bg-purple-100/80 border border-purple-300 rounded-xl p-4 space-y-1 shadow-sm">
+                                <span className="text-[11px] font-bold uppercase tracking-wider text-purple-900">New Proposed Restaurant Name</span>
+                                <p className="text-sm font-bold text-purple-950">{pendingUpdate.restaurantName}</p>
+                              </div>
+                            </div>
+                          )}
+
+                          <div className="pt-2 border-t border-purple-200/80">
+                            <span className="text-xs font-bold uppercase tracking-wider text-purple-900 block mb-1.5">
+                              Changed / Requested Updates:
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                              {uniqueFieldLabels.map((lbl, idx) => (
+                                <span key={idx} className="px-3 py-1 bg-purple-100 text-purple-900 border border-purple-300 font-bold text-xs rounded-lg">
+                                  ✏️ {lbl}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )
+                    }
+
+                    return (
+                      <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-5 space-y-3">
+                        <div className="flex items-center justify-between flex-wrap gap-2">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold shrink-0">
+                              <Building2 className="w-5 h-5" />
+                            </div>
+                            <div>
+                              <h4 className="text-base font-bold text-blue-950">
+                                Reason For Approval Request: New Restaurant Partner Registration
+                              </h4>
+                              <p className="text-xs text-blue-800 font-medium">
+                                This is a new restaurant onboarding application. Review owner contact, address, operating timings, and submitted legal documents below to approve or reject.
+                                {r?.createdAt ? ` (Registered on ${new Date(r.createdAt).toLocaleString('en-IN', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })})` : ''}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="px-3 py-1 bg-blue-600 text-white text-xs font-bold rounded-full uppercase tracking-wider shrink-0">
+                            New Joining Application
+                          </span>
+                        </div>
+                      </div>
+                    )
+                  })()}
 
                   {/* Owner Information */}
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

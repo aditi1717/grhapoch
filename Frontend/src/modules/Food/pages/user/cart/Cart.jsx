@@ -625,13 +625,17 @@ export default function Cart() {
     if (!hasRestoredNoteRef.current) return
 
     try {
-      window.localStorage.setItem(
-        CART_ORDER_NOTE_STORAGE_KEY,
-        JSON.stringify({
-          note,
-          showNoteInput,
-        })
-      )
+      if (!note || !note.trim()) {
+        window.localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
+      } else {
+        window.localStorage.setItem(
+          CART_ORDER_NOTE_STORAGE_KEY,
+          JSON.stringify({
+            note,
+            showNoteInput,
+          })
+        )
+      }
     } catch {
       // Ignore storage errors and keep note flow working.
     }
@@ -2124,6 +2128,13 @@ export default function Cart() {
               setShowOrderSuccess(true)
               window.dispatchEvent(new CustomEvent('order-placed', { detail: { order } }))
               clearCart()
+              setNote("")
+              setShowNoteInput(false)
+              try {
+                window.localStorage.removeItem(CART_ORDER_NOTE_STORAGE_KEY)
+              } catch {
+                // ignore
+              }
               setIsPlacingOrder(false)
             } else {
               throw new Error(verifyResponse.data.message || "Payment verification failed")
@@ -2211,6 +2222,16 @@ export default function Cart() {
   const handleGoToOrders = () => {
     setShowOrderSuccess(false)
     navigate(`/user/orders/${placedOrderId}?confirmed=true`)
+  }
+
+  const checkIsVegItem = (item) => {
+    if (!item) return true
+    if (item.isVeg === true) return true
+    if (item.isVeg === false) return false
+    const foodType = String(item.foodType || "").trim().toLowerCase()
+    if (foodType === "non-veg" || foodType === "nonveg") return false
+    if (foodType === "veg" || foodType === "vegetarian") return true
+    return true
   }
 
   // Empty cart state - but don't show if order success or placing order modal is active
@@ -2322,11 +2343,11 @@ export default function Cart() {
                       {/* Veg/Non-veg indicator */}
                       <div
                         className="w-4 h-4 md:w-5 md:h-5 border-2 flex items-center justify-center mt-1 flex-shrink-0"
-                        style={{ borderColor: item.foodType === 'Veg' || item.isVeg === true ? "#16a34a" : "#dc2626" }}
+                        style={{ borderColor: checkIsVegItem(item) ? "#16a34a" : "#dc2626" }}
                       >
                         <div
                           className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full"
-                          style={{ backgroundColor: item.foodType === 'Veg' || item.isVeg === true ? "#16a34a" : "#dc2626" }}
+                          style={{ backgroundColor: checkIsVegItem(item) ? "#16a34a" : "#dc2626" }}
                         />
                       </div>
 
@@ -2411,7 +2432,7 @@ export default function Cart() {
                   />
                   <div className="mt-2 flex items-center justify-between gap-3">
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      Ye note order ke saath save hoga aur assigned delivery partner ko dikh sakta hai.
+                      This note will be saved with your order and shared with the assigned delivery partner.
                     </p>
                     <span className="text-[11px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
                       {note.length}/240
@@ -2441,71 +2462,88 @@ export default function Cart() {
                     </div>
                   ) : (
                     <div className="flex gap-3 md:gap-4 overflow-x-auto pb-2 -mx-4 md:-mx-6 px-4 md:px-6 scrollbar-hide">
-                      {suggestedAddons.map((addon) => (
-                        <div key={addon.id} className="flex-shrink-0 w-28 md:w-36">
-                          <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg md:rounded-xl overflow-hidden">
-                            <img
-                              src={addon.image || (addon.images && addon.images[0]) || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
-                              alt={addon.name}
-                              className="w-full h-28 md:h-36 object-cover rounded-lg md:rounded-xl"
-                              onError={(e) => {
-                                e.target.onerror = null
-                                e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"
-                              }}
-                            />
-                            <div className="absolute top-1 md:top-2 left-1 md:left-2">
-                              <div
-                                className="w-3.5 h-3.5 md:w-4 md:h-4 bg-white border flex items-center justify-center rounded"
-                                style={{ borderColor: addon.foodType === 'Veg' || addon.isVeg === true ? "#16a34a" : "#dc2626" }}
-                              >
+                      {suggestedAddons.map((addon) => {
+                        const isVeg = checkIsVegItem(addon)
+                        const cartAddon = cart.find((c) => String(c.id || c._id) === String(addon.id || addon._id) || c.name === addon.name)
+                        const addonQty = cartAddon?.quantity || 0
+
+                        return (
+                          <div key={addon.id} className="flex-shrink-0 w-28 md:w-36">
+                            <div className="relative bg-gray-100 dark:bg-gray-800 rounded-lg md:rounded-xl overflow-hidden">
+                              <img
+                                src={addon.image || (addon.images && addon.images[0]) || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"}
+                                alt={addon.name}
+                                className="w-full h-28 md:h-36 object-cover rounded-lg md:rounded-xl"
+                                onError={(e) => {
+                                  e.target.onerror = null
+                                  e.target.src = "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=200&h=200&fit=crop"
+                                }}
+                              />
+                              <div className="absolute top-1 md:top-2 left-1 md:left-2">
                                 <div
-                                  className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full"
-                                  style={{ backgroundColor: addon.foodType === 'Veg' || addon.isVeg === true ? "#16a34a" : "#dc2626" }}
-                                />
+                                  className="w-3.5 h-3.5 md:w-4 md:h-4 bg-white border flex items-center justify-center rounded"
+                                  style={{ borderColor: isVeg ? "#16a34a" : "#dc2626" }}
+                                >
+                                  <div
+                                    className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full"
+                                    style={{ backgroundColor: isVeg ? "#16a34a" : "#dc2626" }}
+                                  />
+                                </div>
                               </div>
+                              {addonQty > 0 ? (
+                                <div className="absolute bottom-1 md:bottom-2 right-1 md:right-2 bg-white border border-[#EB590E] rounded flex items-center shadow-sm px-1 py-0.5">
+                                  <button
+                                    onClick={() => updateQuantity(cartAddon.id, addonQty - 1)}
+                                    className="p-0.5 text-[#EB590E] hover:bg-orange-50"
+                                  >
+                                    <Minus className="h-3 w-3" />
+                                  </button>
+                                  <span className="text-xs font-bold text-[#EB590E] px-1.5">{addonQty}</span>
+                                  <button
+                                    onClick={() => updateQuantity(cartAddon.id, addonQty + 1)}
+                                    className="p-0.5 text-[#EB590E] hover:bg-orange-50"
+                                  >
+                                    <Plus className="h-3 w-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    // Use restaurant info from existing cart items to ensure format consistency
+                                    const cartRestaurantId = cart[0]?.restaurantId || restaurantId;
+                                    const cartRestaurantName = cart[0]?.restaurant || restaurantName;
+
+                                    if (!cartRestaurantId || !cartRestaurantName) {
+                                      toast.error('Restaurant information is missing. Please refresh the page.');
+                                      return;
+                                    }
+
+                                    addToCart({
+                                      id: addon.id,
+                                      name: addon.name,
+                                      price: addon.price,
+                                      image: addon.image || (addon.images && addon.images[0]) || "",
+                                      description: addon.description || "",
+                                      isVeg: isVeg,
+                                      foodType: addon.foodType || (isVeg ? "Veg" : "Non-Veg"),
+                                      restaurant: cartRestaurantName,
+                                      restaurantId: cartRestaurantId
+                                    });
+                                  }}
+                                  className="absolute bottom-1 md:bottom-2 right-1 md:right-2 w-6 h-6 md:w-7 md:h-7 bg-white border border-[#EB590E] rounded flex items-center justify-center shadow-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
+                                >
+                                  <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 text-[#EB590E]" />
+                                </button>
+                              )}
                             </div>
-                            <button
-                              onClick={() => {
-                                // Use restaurant info from existing cart items to ensure format consistency
-                                const cartRestaurantId = cart[0]?.restaurantId || restaurantId;
-                                const cartRestaurantName = cart[0]?.restaurant || restaurantName;
-
-                                if (!cartRestaurantId || !cartRestaurantName) {
-                                  debugError('? Cannot add addon: Missing restaurant information', {
-                                    cartRestaurantId,
-                                    cartRestaurantName,
-                                    restaurantId,
-                                    restaurantName,
-                                    cartItem: cart[0]
-                                  });
-                                  toast.error('Restaurant information is missing. Please refresh the page.');
-                                  return;
-                                }
-
-                                addToCart({
-                                  id: addon.id,
-                                  name: addon.name,
-                                  price: addon.price,
-                                  image: addon.image || (addon.images && addon.images[0]) || "",
-                                  description: addon.description || "",
-                                  isVeg: addon.isVeg,
-                                  foodType: addon.foodType,
-                                  restaurant: cartRestaurantName,
-                                  restaurantId: cartRestaurantId
-                                });
-                              }}
-                              className="absolute bottom-1 md:bottom-2 right-1 md:right-2 w-6 h-6 md:w-7 md:h-7 bg-white border border-[#EB590E] rounded flex items-center justify-center shadow-sm hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-colors"
-                            >
-                              <Plus className="h-3.5 w-3.5 md:h-4 md:w-4 text-[#EB590E]" />
-                            </button>
+                            <p className="text-xs md:text-sm font-medium text-gray-800 dark:text-gray-200 mt-1.5 md:mt-2 line-clamp-2 leading-tight">{addon.name}</p>
+                            {addon.description && (
+                              <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{addon.description}</p>
+                            )}
+                            <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">{RUPEE_SYMBOL}{addon.price}</p>
                           </div>
-                          <p className="text-xs md:text-sm font-medium text-gray-800 dark:text-gray-200 mt-1.5 md:mt-2 line-clamp-2 leading-tight">{addon.name}</p>
-                          {addon.description && (
-                            <p className="text-xs md:text-sm text-gray-500 dark:text-gray-400 mt-0.5 line-clamp-1">{addon.description}</p>
-                          )}
-                          <p className="text-xs md:text-sm text-gray-800 dark:text-gray-200 font-semibold mt-0.5">{RUPEE_SYMBOL}{addon.price}</p>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -2789,7 +2827,7 @@ export default function Cart() {
                       />
                     </div>
                     <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                      Agar aap kisi aur ke liye order kar rahe ho, to yahan uska naam aur phone save kar do.
+                      If you are ordering for someone else, enter their name and phone number here.
                     </p>
                   </div>
                 )}

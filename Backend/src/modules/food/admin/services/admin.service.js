@@ -2901,7 +2901,8 @@ export async function getPendingRestaurants() {
     const restaurants = await FoodRestaurant.find({
         $or: [
             { status: { $in: ['pending', 'rejected'] } },
-            { locationUpdateStatus: 'pending' }
+            { locationUpdateStatus: 'pending' },
+            { profileUpdateFields: { $exists: true, $not: { $size: 0 } } }
         ]
     })
         .sort({ createdAt: -1 })
@@ -4019,7 +4020,11 @@ export async function approveRestaurant(id) {
     };
     const $unset = {
         rejectedAt: 1,
-        rejectionReason: 1
+        rejectionReason: 1,
+        profileUpdateFields: 1,
+        profileUpdateRequestedAt: 1,
+        pendingProfileUpdate: 1,
+        profileUpdateRejectionReason: 1
     };
 
     if (existing.locationUpdateStatus === 'pending' && existing.pendingLocation) {
@@ -4037,6 +4042,10 @@ export async function approveRestaurant(id) {
         $unset.pendingLocation = 1;
         $unset.locationUpdateRequestedAt = 1;
         $unset.locationRejectionReason = 1;
+    }
+
+    if (existing.pendingProfileUpdate && typeof existing.pendingProfileUpdate === 'object') {
+        Object.assign($set, existing.pendingProfileUpdate);
     }
 
     const updated = await FoodRestaurant.findByIdAndUpdate(
@@ -4073,14 +4082,17 @@ export async function rejectRestaurant(id, reason) {
     const existing = await FoodRestaurant.findById(id).lean();
     if (!existing) return null;
 
-    if (existing.status === 'approved' && existing.locationUpdateStatus === 'pending') {
+    const rejectionMsg = typeof reason === 'string' ? reason.trim() : '';
+
+    // Case 1: Location change request pending for an existing approved restaurant
+    if (existing.locationUpdateStatus === 'pending') {
         const updated = await FoodRestaurant.findByIdAndUpdate(
             id,
             {
                 $set: {
                     locationUpdateStatus: 'rejected',
                     locationUpdateReviewedAt: new Date(),
-                    locationRejectionReason: typeof reason === 'string' ? reason.trim() : ''
+                    locationRejectionReason: rejectionMsg
                 },
                 $unset: {
                     pendingLocation: 1,
@@ -4092,14 +4104,40 @@ export async function rejectRestaurant(id, reason) {
         return updated;
     }
 
+    // Case 2: Profile/Name update request pending for an existing approved restaurant
+    if (existing.status === 'approved' || existing.approvedAt || (Array.isArray(existing.profileUpdateFields) && existing.profileUpdateFields.length > 0)) {
+        const updated = await FoodRestaurant.findByIdAndUpdate(
+            id,
+            {
+                $set: {
+                    status: 'approved',
+                    profileUpdateRejectionReason: rejectionMsg
+                },
+                $unset: {
+                    pendingProfileUpdate: 1,
+                    profileUpdateFields: 1,
+                    profileUpdateRequestedAt: 1
+                }
+            },
+            { new: true, runValidators: false }
+        ).lean();
+        return updated;
+    }
+
+    // Case 3: Initial onboarding registration request rejection
     const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
         {
             $set: {
                 status: 'rejected',
                 rejectedAt: new Date(),
-                rejectionReason: typeof reason === 'string' ? reason.trim() : undefined,
+                rejectionReason: rejectionMsg,
                 approvedAt: null
+            },
+            $unset: {
+                pendingProfileUpdate: 1,
+                profileUpdateFields: 1,
+                profileUpdateRequestedAt: 1
             }
         },
         { new: true, runValidators: false }

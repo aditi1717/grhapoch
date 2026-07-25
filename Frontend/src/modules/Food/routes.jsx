@@ -1,4 +1,4 @@
-import { Routes, Route, Navigate, useLocation } from "react-router-dom"
+import { Routes, Route, Navigate, useLocation, useNavigationType } from "react-router-dom"
 import { useEffect, Suspense, lazy } from "react"
 import ProtectedRoute from "@food/components/ProtectedRoute"
 import AuthRedirect from "@food/components/AuthRedirect"
@@ -34,10 +34,13 @@ function UserPathRedirect() {
 
 // Scroll to top on route change
 function ScrollToTop() {
-  const { pathname } = useLocation();
+  const location = useLocation();
+  const navigationType = useNavigationType();
   useEffect(() => {
-    window.scrollTo(0, 0);
-  }, [pathname]);
+    if (navigationType !== "POP" && !location.state?.isBack) {
+      window.scrollTo(0, 0);
+    }
+  }, [location.pathname, navigationType, location.state]);
   return null;
 }
 

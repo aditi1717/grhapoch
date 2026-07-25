@@ -14,7 +14,10 @@ import { restaurantAPI } from "@food/api"
 import { API_BASE_URL } from "@food/api/config"
 import { useDelayedLoading } from "@food/hooks/useDelayedLoading"
 
-const BACKEND_ORIGIN = API_BASE_URL.replace(/\/api\/?$/, "")
+const BACKEND_ORIGIN = API_BASE_URL
+  .replace(/\/api\/v\d+\/?$/i, "")
+  .replace(/\/api\/?$/i, "")
+  .replace(/\/+$/, "")
 
 const normalizeImageUrl = (imageUrl) => {
   if (typeof imageUrl !== "string" || !imageUrl.trim()) return ""

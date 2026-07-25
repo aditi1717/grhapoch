@@ -1,4 +1,4 @@
-import { Outlet, useLocation, useNavigate } from "react-router-dom"
+import { Outlet, useLocation, useNavigate, useNavigationType } from "react-router-dom"
 import { useEffect, useState, createContext, useContext, useRef, useCallback } from "react"
 import { ProfileProvider } from "@food/context/ProfileContext"
 import LocationPrompt from "./LocationPrompt"
@@ -166,11 +166,14 @@ function LocationSelectorProvider({ children }) {
 
 export default function UserLayout() {
   const location = useLocation()
+  const navigationType = useNavigationType()
 
   useEffect(() => {
-    // Reset scroll to top whenever location changes (pathname, search, or hash)
-    window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
-  }, [location.pathname, location.search, location.hash])
+    // Reset scroll to top whenever location changes, unless it is a back/forward (POP) navigation or custom isBack state
+    if (navigationType !== 'POP' && !location.state?.isBack) {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    }
+  }, [location.pathname, location.search, location.hash, navigationType, location.state])
 
   useUserNotifications()
 

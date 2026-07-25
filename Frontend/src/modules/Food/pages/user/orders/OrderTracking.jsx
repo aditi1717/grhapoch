@@ -1020,7 +1020,6 @@ export default function OrderTracking() {
       if (message) {
         toast.success(message, {
           duration: 5000,
-          icon: '???',
           position: 'top-center',
           description: estimatedDeliveryTime
             ? `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes`
@@ -1415,13 +1414,6 @@ export default function OrderTracking() {
                 </p>
               )}
             </div>
-            <motion.button
-              onClick={handleRefresh}
-              className="p-2 bg-gray-50 dark:bg-zinc-800 rounded-full"
-              animate={{ rotate: isRefreshing ? 360 : 0 }}
-            >
-              <RefreshCw className="w-5 h-5 text-gray-500 dark:text-gray-400" />
-            </motion.button>
           </div>
         </div>
 

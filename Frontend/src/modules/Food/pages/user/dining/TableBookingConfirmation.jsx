@@ -154,12 +154,25 @@ export default function TableBookingConfirmation() {
         ? "Today"
         : bookingDate.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
 
+    const handleBackNav = () => {
+        if (window.history.length > 2) {
+            navigate(-1)
+        } else {
+            const targetSlug = restaurant?.slug || restaurant?.restaurantNameNormalized || restaurant?._id
+            if (targetSlug) {
+                navigate(`/food/user/dining/book/${targetSlug}`, { state: resolvedState })
+            } else {
+                navigate("/food/user/dining")
+            }
+        }
+    }
+
     return (
         <AnimatedPage className="bg-slate-50 dark:bg-slate-950 min-h-screen pb-20 transition-colors">
             {/* Header */}
             <div className="bg-slate-900 text-white px-3 py-2.5 sticky top-0 z-50 shadow-md">
                 <div className="flex items-center gap-3">
-                    <button onClick={goBack} className="p-1 hover:bg-white/10 rounded-full transition-colors">
+                    <button onClick={handleBackNav} className="p-1 hover:bg-white/10 rounded-full transition-colors">
                         <ArrowLeft className="w-5 h-5 text-white" />
                     </button>
                     <p className="font-semibold text-xs leading-snug">Reach the restaurant 15 minutes before your booking time for a hassle-free experience</p>

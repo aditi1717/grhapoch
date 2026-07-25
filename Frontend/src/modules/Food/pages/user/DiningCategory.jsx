@@ -54,7 +54,7 @@ export default function DiningCategory() {
   const goBack = useAppBackNavigation()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { vegMode, addFavorite, removeFavorite, isFavorite } = useProfile()
 
   const [restaurants, setRestaurants] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -78,6 +78,7 @@ export default function DiningCategory() {
               id: restaurant._id || restaurant.id,
               slug: restaurant.restaurantNameNormalized || slugifyRestaurant(restaurant.restaurantName || restaurant.name),
               name: restaurant.restaurantName || restaurant.name || "Restaurant",
+              pureVegRestaurant: restaurant.pureVegRestaurant === true || restaurant.isPureVeg === true,
               image:
                 restaurant.coverImage ||
                 restaurant.menuImages?.[0] ||
@@ -115,6 +116,11 @@ export default function DiningCategory() {
 
   const cityName = location?.city || "Select location"
   const heading = useMemo(() => formatCategoryHeading(category), [category])
+
+  const filteredRestaurants = useMemo(() => {
+    if (!vegMode) return restaurants
+    return restaurants.filter((r) => r.pureVegRestaurant === true)
+  }, [restaurants, vegMode])
 
   const handleLocationClick = useCallback(() => {
     openLocationSelector()
@@ -161,7 +167,7 @@ export default function DiningCategory() {
             </div>
             <div className="inline-flex items-center gap-2 self-start rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#6b5641] shadow-sm dark:border dark:border-gray-700 dark:bg-[#1a1a1a] dark:text-gray-300">
               <MapPin className="h-4 w-4 text-[#EB590E]" />
-              <span>{restaurants.length} places found</span>
+              <span>{filteredRestaurants.length} places found</span>
             </div>
           </div>
         </div>
@@ -170,13 +176,13 @@ export default function DiningCategory() {
           <div className="py-20 text-center text-[#7f6850] dark:text-gray-400">Loading dining restaurants...</div>
         ) : error ? (
           <div className="py-20 text-center text-red-600">{error}</div>
-        ) : restaurants.length === 0 ? (
+        ) : filteredRestaurants.length === 0 ? (
           <div className="rounded-[24px] border border-dashed border-[#e8d9c5] bg-white px-6 py-16 text-center text-[#7f6850] dark:border-gray-800 dark:bg-[#141414] dark:text-gray-400">
             No restaurants are linked to this dining category yet.
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-3">
-            {restaurants.map((restaurant) => {
+            {filteredRestaurants.map((restaurant) => {
               const favorite = isFavorite(restaurant.slug)
 
               const toggleFavorite = (event) => {

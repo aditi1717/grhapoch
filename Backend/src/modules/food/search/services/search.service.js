@@ -198,6 +198,10 @@ export const searchUnified = async (query = {}, options = {}) => {
     if (hasGeoSorting && results.length > 0) {
         results = results
             .map((restaurant) => addDistanceScore(restaurant, userLat, userLng))
+            .filter((restaurant) => {
+                const maxRad = Number(restaurant.serviceRadius) || Number(radiusKm) || 20;
+                return (restaurant.distanceScore || 0) <= maxRad;
+            })
             .sort((a, b) => (a.distanceScore || 999) - (b.distanceScore || 999));
     }
 

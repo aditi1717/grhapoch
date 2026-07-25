@@ -145,39 +145,66 @@ export async function processBulkMenuUpload(restaurantId, fileBuffer, options = 
     const normalizeHeader = (value) =>
         String(value || '')
             .trim()
+            .replace(/\*/g, '')
             .replace(/\s+/g, ' ')
             .toLowerCase();
 
-    const requiredHeaders = [
-        'Category*',
-        'Item Name*',
-        'Description',
-        'Base Price*',
-        'Food Type (Veg/Non-Veg)*',
-        'Recommended (Yes/No)',
-        'Preparation Time*',
-        'Image URL',
-        'Variant 1 Name',
-        'Variant 1 Price',
-        'Variant 2 Name',
-        'Variant 2 Price',
-        'Variant 3 Name',
-        'Variant 3 Price',
-    ];
-
     const headerRow = sheet.getRow(1);
-    const uploadedHeaders = new Set(
-        (headerRow.values || [])
-            .slice(1)
-            .map((value) => normalizeHeader(value)),
-    );
-    const missingHeaders = requiredHeaders.filter(
-        (header) => !uploadedHeaders.has(normalizeHeader(header)),
-    );
-    if (missingHeaders.length > 0) {
-        throw new ValidationError(
-            `Uploaded Excel is missing required column(s): ${missingHeaders.join(', ')}`,
-        );
+    const colMap = {
+        category: 1,
+        name: 2,
+        description: 3,
+        price: 4,
+        foodType: 5,
+        isRecommended: 6,
+        prepTime: 7,
+        imageUrl: 8,
+        v1Name: 9,
+        v1Price: 10,
+        v2Name: 11,
+        v2Price: 12,
+        v3Name: 13,
+        v3Price: 14
+    };
+
+    let hasCategoryHeader = false;
+    let hasNameHeader = false;
+
+    if (headerRow && headerRow.values) {
+        headerRow.eachCell((cell, colNumber) => {
+            const norm = normalizeHeader(cell.value);
+            if (norm.includes('category')) {
+                colMap.category = colNumber;
+                hasCategoryHeader = true;
+            } else if (norm.includes('item name') || (norm.includes('name') && !norm.includes('variant') && !norm.includes('v1') && !norm.includes('v2') && !norm.includes('v3'))) {
+                colMap.name = colNumber;
+                hasNameHeader = true;
+            } else if (norm.includes('description')) {
+                colMap.description = colNumber;
+            } else if (norm.includes('price') && !norm.includes('variant') && !norm.includes('v1') && !norm.includes('v2') && !norm.includes('v3')) {
+                colMap.price = colNumber;
+            } else if (norm.includes('food type') || norm === 'type' || norm.includes('veg')) {
+                colMap.foodType = colNumber;
+            } else if (norm.includes('recommended')) {
+                colMap.isRecommended = colNumber;
+            } else if (norm.includes('prep') || norm.includes('time')) {
+                colMap.prepTime = colNumber;
+            } else if (norm.includes('image') || norm.includes('url') || norm.includes('photo')) {
+                colMap.imageUrl = colNumber;
+            } else if (norm.includes('variant 1 name') || norm.includes('variant1 name') || norm.includes('v1 name')) {
+                colMap.v1Name = colNumber;
+            } else if (norm.includes('variant 1 price') || norm.includes('variant1 price') || norm.includes('v1 price')) {
+                colMap.v1Price = colNumber;
+            } else if (norm.includes('variant 2 name') || norm.includes('variant2 name') || norm.includes('v2 name')) {
+                colMap.v2Name = colNumber;
+            } else if (norm.includes('variant 2 price') || norm.includes('variant2 price') || norm.includes('v2 price')) {
+                colMap.v2Price = colNumber;
+            } else if (norm.includes('variant 3 name') || norm.includes('variant3 name') || norm.includes('v3 name')) {
+                colMap.v3Name = colNumber;
+            } else if (norm.includes('variant 3 price') || norm.includes('variant3 price') || norm.includes('v3 price')) {
+                colMap.v3Price = colNumber;
+            }
+        });
     }
 
     const restaurant = await FoodRestaurant.findById(restaurantId).lean();
@@ -224,15 +251,18 @@ export async function processBulkMenuUpload(restaurantId, fileBuffer, options = 
         if (rowCount >= maxItems) return;
 
         try {
+            const rawFoodType = getTextValue(row.getCell(colMap.foodType));
+            const rawPrepTime = getTextValue(row.getCell(colMap.prepTime));
+
             const data = {
-                category: getTextValue(row.getCell(1)),
-                name: getTextValue(row.getCell(2)),
-                description: getTextValue(row.getCell(3)),
-                price: getNumericValue(row.getCell(4)),
-                foodType: getTextValue(row.getCell(5)),
-                isRecommended: String(row.getCell(6).value || '').toLowerCase() === 'yes',
-                prepTime: getTextValue(row.getCell(7)),
-                imageUrl: getTextValue(row.getCell(8)),
+                category: getTextValue(row.getCell(colMap.category)),
+                name: getTextValue(row.getCell(colMap.name)),
+                description: getTextValue(row.getCell(colMap.description)),
+                price: getNumericValue(row.getCell(colMap.price)),
+                foodType: rawFoodType || 'Veg',
+                isRecommended: String(row.getCell(colMap.isRecommended).value || '').toLowerCase() === 'yes',
+                prepTime: rawPrepTime || '15-20 mins',
+                imageUrl: getTextValue(row.getCell(colMap.imageUrl)),
                 variants: []
             };
 
@@ -252,14 +282,18 @@ export async function processBulkMenuUpload(restaurantId, fileBuffer, options = 
 
             rowCount++;
 
-            // Parse Variants (Columns 9 to 14)
-            for (let j = 0; j < 3; j++) {
-                const vName = getTextValue(row.getCell(9 + j * 2));
-                const vPrice = getNumericValue(row.getCell(10 + j * 2));
-                if (vName && vPrice > 0) {
-                    data.variants.push({ name: vName, price: vPrice });
-                }
-            }
+            // Parse Variants
+            const v1N = getTextValue(row.getCell(colMap.v1Name));
+            const v1P = getNumericValue(row.getCell(colMap.v1Price));
+            if (v1N && v1P > 0) data.variants.push({ name: v1N, price: v1P });
+
+            const v2N = getTextValue(row.getCell(colMap.v2Name));
+            const v2P = getNumericValue(row.getCell(colMap.v2Price));
+            if (v2N && v2P > 0) data.variants.push({ name: v2N, price: v2P });
+
+            const v3N = getTextValue(row.getCell(colMap.v3Name));
+            const v3P = getNumericValue(row.getCell(colMap.v3Price));
+            if (v3N && v3P > 0) data.variants.push({ name: v3N, price: v3P });
 
             // Backward compatibility guard:
             // Old templates had a pre-filled sample row (Paneer Tikka). Skip it automatically.

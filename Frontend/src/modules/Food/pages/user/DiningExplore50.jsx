@@ -114,7 +114,7 @@ export default function DiningExplore50() {
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
   const { openLocationSelector } = useLocationSelector()
   const { location, loading } = useLocationHook()
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { vegMode, addFavorite, removeFavorite, isFavorite } = useProfile()
   const cityName = location?.city || "Select"
   const stateName = location?.state || "Location"
 
@@ -132,6 +132,10 @@ export default function DiningExplore50() {
 
   const filteredRestaurants = useMemo(() => {
     let filtered = [...popularRestaurants]
+
+    if (vegMode) {
+      filtered = filtered.filter(r => r.pureVegRestaurant === true || r.isPureVeg === true || r.pureVeg === true)
+    }
 
     if (activeFilters.has('delivery-under-30')) {
       filtered = filtered.filter(r => {
@@ -180,7 +184,7 @@ export default function DiningExplore50() {
     }
 
     return filtered
-  }, [activeFilters, selectedCuisine, sortBy])
+  }, [activeFilters, selectedCuisine, sortBy, vegMode])
 
   const handleLocationClick = useCallback(() => {
     openLocationSelector()

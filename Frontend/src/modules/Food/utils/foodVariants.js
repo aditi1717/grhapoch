@@ -24,19 +24,25 @@ export const hasFoodVariants = (item = {}) => getFoodVariants(item).length > 0
 
 export const getDefaultFoodVariant = (item = {}) => getFoodVariants(item)[0] || null
 
+export const formatFoodPrice = (rawPrice) => {
+  const price = Number(rawPrice)
+  if (!Number.isFinite(price) || price <= 0) return 0
+  if (price > 99999) return 99999
+  return Math.round(price)
+}
+
 export const getFoodDisplayPrice = (item = {}) => {
   const variants = getFoodVariants(item)
   if (variants.length > 0) {
-    return Math.min(...variants.map((variant) => Number(variant.price) || 0))
+    return Math.min(...variants.map((variant) => formatFoodPrice(variant.price)))
   }
 
-  const price = Number(item?.price)
-  return Number.isFinite(price) ? price : 0
+  return formatFoodPrice(item?.price)
 }
 
 export const getFoodPriceLabel = (item = {}) => {
   const price = getFoodDisplayPrice(item)
-  return hasFoodVariants(item) ? `Starting from ₹${Math.round(price)}` : `₹${Math.round(price)}`
+  return hasFoodVariants(item) ? `Starting from ₹${price}` : `₹${price}`
 }
 
 export const buildCartLineId = (itemId, variantId = "") =>

@@ -470,15 +470,6 @@ export default function HomeHeader({
                   </div>
                 )}
               </div>
-              <div className="p-3 bg-gray-50/50 dark:bg-gray-800/50 text-center">
-                <Link
-                  to="/food/user/notifications"
-                  onClick={() => closeNotifications()}
-                  className="text-xs font-bold text-gray-400 hover:text-gray-600"
-                >
-                  {mergedNotifications.length > 0 ? "Manage Settings" : "Check Notifications Page"}
-                </Link>
-              </div>
             </motion.div>
           </motion.div>
         )}

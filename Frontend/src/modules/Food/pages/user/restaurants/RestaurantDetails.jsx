@@ -144,6 +144,19 @@ function RestaurantDetailsContent() {
     return quantities[lineItemId] || 0
   }
 
+  const getTotalDishQuantity = (item) => {
+    if (!item) return 0
+    const itemId = String(item.id || item._id || "").trim()
+    if (!itemId) return 0
+    let total = 0
+    Object.keys(quantities).forEach((lineId) => {
+      if (lineId === itemId || lineId.startsWith(`${itemId}:`) || lineId.startsWith(`${itemId}::`)) {
+        total += Number(quantities[lineId]) || 0
+      }
+    })
+    return total
+  }
+
   const isVegDish = (item) => {
     if (!item || typeof item !== "object") return false
     if (item.isVeg === true) return true
@@ -533,7 +546,7 @@ function RestaurantDetailsContent() {
               "Unknown Restaurant",
             cuisine: resolvedTopCategory,
             topCategory: resolvedTopCategory,
-            rating: actualRestaurant?.rating || apiRestaurant?.rating || actualRestaurant?.averageRating || apiRestaurant?.averageRating || 4.5,
+            rating: actualRestaurant?.rating || apiRestaurant?.rating || actualRestaurant?.averageRating || apiRestaurant?.averageRating || null,
             reviews: actualRestaurant?.totalRatings || apiRestaurant?.totalRatings || actualRestaurant?.reviewCount || apiRestaurant?.reviewCount || actualRestaurant?.reviews?.length || apiRestaurant?.reviews?.length || 0,
             deliveryTime: actualRestaurant?.estimatedDeliveryTime || apiRestaurant?.estimatedDeliveryTime || actualRestaurant?.deliveryTime || apiRestaurant?.deliveryTime || actualRestaurant?.avgDeliveryTime || apiRestaurant?.avgDeliveryTime || "25-30 mins",
             distance: stableListingDistance || calculatedDistance || actualRestaurant?.distance || apiRestaurant?.distance || actualRestaurant?.distanceFromUser || apiRestaurant?.distanceFromUser || "1.2 km",
@@ -589,6 +602,10 @@ function RestaurantDetailsContent() {
             menuSections: [],
             // Onboarding data including FSSAI license
             onboarding: actualRestaurant?.onboarding || apiRestaurant?.onboarding || null,
+            isPureVeg: actualRestaurant?.isPureVeg ?? apiRestaurant?.isPureVeg ?? actualRestaurant?.pureVegRestaurant ?? apiRestaurant?.pureVegRestaurant ?? onboardingStep4?.pureVegRestaurant ?? false,
+            pureVegRestaurant: actualRestaurant?.pureVegRestaurant ?? apiRestaurant?.pureVegRestaurant ?? actualRestaurant?.isPureVeg ?? apiRestaurant?.isPureVeg ?? onboardingStep4?.pureVegRestaurant ?? false,
+            restaurantType: actualRestaurant?.restaurantType || apiRestaurant?.restaurantType || "",
+            foodType: actualRestaurant?.foodType || apiRestaurant?.foodType || "",
             // Availability fields for grayscale styling
             isActive: actualRestaurant?.isActive !== false, // Default to true if not specified
             isAcceptingOrders: actualRestaurant?.isAcceptingOrders !== false, // Default to true if not specified
@@ -893,7 +910,7 @@ function RestaurantDetailsContent() {
                 }
 
                 let finalMenuSections = [...menuSections]
-                if (hasPreviousOrderForRestaurant) {
+                if (recommendedItems.length > 0) {
                   finalMenuSections = [{ name: "Recommended for you", items: recommendedItems, subsections: [] }, ...finalMenuSections]
                 }
                 if (searchedDishSection) {
@@ -1142,14 +1159,22 @@ function RestaurantDetailsContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [restaurant?.name, cart])
 
+  const [modalQuantity, setModalQuantity] = useState(1)
+
   useEffect(() => {
     if (!selectedItem) {
       setSelectedVariantId("")
+      setModalQuantity(1)
       return
     }
     const defaultVariant = getDefaultFoodVariant(selectedItem)
-    setSelectedVariantId(defaultVariant?.id || "")
-  }, [selectedItem])
+    const activeVariantId = selectedVariantId || defaultVariant?.id || ""
+    if (!selectedVariantId && defaultVariant?.id) {
+      setSelectedVariantId(defaultVariant.id)
+    }
+    const currentQty = getDishQuantity(selectedItem, activeVariantId)
+    setModalQuantity(currentQty > 0 ? currentQty : 1)
+  }, [selectedItem, selectedVariantId, quantities])
 
   // Helper function to update item quantity in both local state and cart
   const updateItemQuantity = (item, newQuantity, event = null, preferredVariant = null) => {
@@ -1672,11 +1697,11 @@ function RestaurantDetailsContent() {
   }
 
   const handleAddButtonClick = (item, event) => {
-    if (hasFoodVariants(item) && getDishQuantity(item) === 0) {
-      handleItemClick(item)
-      return
+    if (event) {
+      if (typeof event.preventDefault === "function") event.preventDefault()
+      if (typeof event.stopPropagation === "function") event.stopPropagation()
     }
-    updateItemQuantity(item, 1, event)
+    handleItemClick(item)
   }
 
   // Helper function to calculate final price after discount
@@ -2013,6 +2038,56 @@ function RestaurantDetailsContent() {
     }
   }, [highlightOffers.length])
 
+  const isPureVegRestaurant = useMemo(() => {
+    if (!restaurant) return false
+    const typeStr = (restaurant?.restaurantType || restaurant?.foodType || "").toLowerCase()
+    if (
+      restaurant.isPureVeg === true ||
+      restaurant.pureVegRestaurant === true ||
+      restaurant.isVeg === true ||
+      restaurant.onboarding?.step4?.pureVegRestaurant === true ||
+      restaurant.onboarding?.step2?.pureVegRestaurant === true ||
+      restaurant.onboarding?.step1?.pureVegRestaurant === true ||
+      typeStr.includes("pure-veg") ||
+      typeStr.includes("pure veg") ||
+      typeStr.includes("vegetarian") ||
+      typeStr === "veg"
+    ) {
+      return true
+    }
+
+    if (Array.isArray(restaurant.menuSections) && restaurant.menuSections.length > 0) {
+      let hasAnyDishes = false
+      let hasAnyNonVegDish = false
+
+      for (const section of restaurant.menuSections) {
+        const items = [
+          ...(Array.isArray(section?.items) ? section.items : []),
+          ...(Array.isArray(section?.subsections)
+            ? section.subsections.flatMap((sub) => (Array.isArray(sub?.items) ? sub.items : []))
+            : [])
+        ]
+        for (const item of items) {
+          if (item) {
+            hasAnyDishes = true
+            const isVeg = item.isVeg === true || String(item.foodType || "").toLowerCase() === "veg" || String(item.foodType || "").toLowerCase() === "vegetarian"
+            if (!isVeg) {
+              hasAnyNonVegDish = true
+              break
+            }
+          }
+        }
+        if (hasAnyNonVegDish) break
+      }
+
+      if (hasAnyDishes && !hasAnyNonVegDish) {
+        return true
+      }
+    }
+
+    return false
+  }, [restaurant])
+
   // Show loading state
   if (loadingRestaurant) {
     return <RestaurantDetailSkeleton />
@@ -2072,7 +2147,7 @@ function RestaurantDetailsContent() {
   return (
     <AnimatedPage
       id="scrollingelement"
-      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col transition-all duration-300 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
+      className={`min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col transition-all duration-300 pb-36 ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
         }`}
     >
       {/* Header - Back, Search, Menu (like reference image) */}
@@ -2145,24 +2220,27 @@ function RestaurantDetailsContent() {
       {/* Main Content Card */}
       <div className="bg-white dark:bg-[#1a1a1a] rounded-t-3xl relative z-10 min-h-[40vh]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8 lg:px-10 xl:px-12 py-4 sm:py-5 md:py-6 lg:py-8 space-y-3 md:space-y-4 lg:space-y-5 pb-0">
-          {/* Restaurant Name and Rating */}
           <div className="flex items-start justify-between">
             <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{restaurant?.name || "Unknown Restaurant"}</h1>
             </div>
-            <div className="flex flex-col items-end">
-              <Badge
-                className="text-white mb-1 flex items-center gap-1 px-2 py-1 border-0"
-                style={{
-                  backgroundColor: "var(--module-theme-color, #FA0272)",
-                  boxShadow: "0 4px 10px rgba(var(--module-theme-rgb, 250,2,114), 0.28)",
-                }}
-              >
-                <Star className="h-3 w-3 fill-white" />
-                {restaurant?.rating || 4.5}
-              </Badge>
-              <span className="text-xs text-gray-500">By {(restaurant.reviews || 0).toLocaleString()}+</span>
-            </div>
+            {restaurant?.rating && Number(restaurant.rating) > 0 ? (
+              <div className="flex flex-col items-end">
+                <Badge
+                  className="text-white mb-1 flex items-center gap-1 px-2 py-1 border-0"
+                  style={{
+                    backgroundColor: "var(--module-theme-color, #FA0272)",
+                    boxShadow: "0 4px 10px rgba(var(--module-theme-rgb, 250,2,114), 0.28)",
+                  }}
+                >
+                  <Star className="h-3 w-3 fill-white" />
+                  {restaurant.rating}
+                </Badge>
+                {restaurant.reviews > 0 && (
+                  <span className="text-xs text-gray-500">By {(restaurant.reviews || 0).toLocaleString()}+</span>
+                )}
+              </div>
+            ) : null}
           </div>
 
           {/* Top Category */} 
@@ -2265,7 +2343,7 @@ function RestaurantDetailsContent() {
                     <X className="h-3 w-3 text-gray-600" />
                   )}
                 </Button>
-                {!vegMode && (
+                {!vegMode && !isPureVegRestaurant && (
                   <Button
                     variant="outline"
                     size="sm"
@@ -2453,7 +2531,8 @@ function RestaurantDetailsContent() {
                   {isExpanded && sectionItems.length > 0 && (
                     <div className="space-y-0">
                       {sectionItems.map((item) => {
-                        const quantity = getDishQuantity(item)
+                        const totalQuantity = getTotalDishQuantity(item)
+                        const hasVariants = hasFoodVariants(item)
                         // Determine veg/non-veg based on foodType
                         const isVeg = item.foodType === "Veg"
 
@@ -2576,7 +2655,7 @@ function RestaurantDetailsContent() {
                                   }}
                                 />
                               ) : null}
-                              {quantity > 0 ? (
+                              {totalQuantity > 0 ? (
                                 <motion.div
                                   initial={{ opacity: 0, scale: 0.8 }}
                                   animate={{ opacity: 1, scale: 1 }}
@@ -2584,12 +2663,22 @@ function RestaurantDetailsContent() {
                                     ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                     : 'border-[#EB590E] text-[#EB590E] hover:bg-orange-50'
                                     }`}
+                                  onClick={(e) => {
+                                    if (hasVariants) {
+                                      e.stopPropagation()
+                                      handleAddButtonClick(item, e)
+                                    }
+                                  }}
                                 >
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       if (!shouldShowGrayscale) {
-                                        updateItemQuantity(item, Math.max(0, quantity - 1), e)
+                                        if (hasVariants) {
+                                          handleAddButtonClick(item, e)
+                                        } else {
+                                          updateItemQuantity(item, Math.max(0, totalQuantity - 1), e)
+                                        }
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
@@ -2597,12 +2686,16 @@ function RestaurantDetailsContent() {
                                   >
                                     <Minus size={14} />
                                   </button>
-                                  <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                  <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{totalQuantity}</span>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       if (!shouldShowGrayscale) {
-                                        updateItemQuantity(item, quantity + 1, e)
+                                        if (hasVariants) {
+                                          handleAddButtonClick(item, e)
+                                        } else {
+                                          updateItemQuantity(item, totalQuantity + 1, e)
+                                        }
                                       }
                                     }}
                                     disabled={shouldShowGrayscale}
@@ -2680,7 +2773,8 @@ function RestaurantDetailsContent() {
                             {isSubsectionExpanded && subsectionItems.length > 0 && (
                               <div className="space-y-0">
                                 {subsectionItems.map((item) => {
-                                  const quantity = getDishQuantity(item)
+                                  const totalQuantity = getTotalDishQuantity(item)
+                                  const hasVariants = hasFoodVariants(item)
                                   // Determine veg/non-veg based on foodType
                                   const isVeg = item.foodType === "Veg"
 
@@ -2803,7 +2897,7 @@ function RestaurantDetailsContent() {
                                             }}
                                           />
                                         ) : null}
-                                        {quantity > 0 ? (
+                                        {totalQuantity > 0 ? (
                                           <motion.div
                                             initial={{ opacity: 0, scale: 0.8 }}
                                             animate={{ opacity: 1, scale: 1 }}
@@ -2811,12 +2905,22 @@ function RestaurantDetailsContent() {
                                               ? 'border-gray-300 text-gray-400 cursor-not-allowed opacity-50'
                                               : 'border-[#EB590E] text-[#EB590E] hover:bg-orange-50'
                                               }`}
+                                            onClick={(e) => {
+                                              if (hasVariants) {
+                                                e.stopPropagation()
+                                                handleAddButtonClick(item, e)
+                                              }
+                                            }}
                                           >
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
                                                 if (!shouldShowGrayscale) {
-                                                  updateItemQuantity(item, Math.max(0, quantity - 1), e)
+                                                  if (hasVariants) {
+                                                    handleAddButtonClick(item, e)
+                                                  } else {
+                                                    updateItemQuantity(item, Math.max(0, totalQuantity - 1), e)
+                                                  }
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
@@ -2824,12 +2928,16 @@ function RestaurantDetailsContent() {
                                             >
                                               <Minus size={14} />
                                             </button>
-                                            <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{quantity}</span>
+                                            <span className={`mx-2 text-sm ${shouldShowGrayscale ? 'text-gray-400' : ''}`}>{totalQuantity}</span>
                                             <button
                                               onClick={(e) => {
                                                 e.stopPropagation()
                                                 if (!shouldShowGrayscale) {
-                                                  updateItemQuantity(item, quantity + 1, e)
+                                                  if (hasVariants) {
+                                                    handleAddButtonClick(item, e)
+                                                  } else {
+                                                    updateItemQuantity(item, totalQuantity + 1, e)
+                                                  }
                                                 }
                                               }}
                                               disabled={shouldShowGrayscale}
@@ -3104,7 +3212,7 @@ function RestaurantDetailsContent() {
                           <div className="h-4 w-4 rounded-full" style={{ backgroundColor: "#16a34a" }} />
                           <span className="font-medium">Veg</span>
                         </button>
-                        {!vegMode && (
+                        {!vegMode && !isPureVegRestaurant && (
                           <button
                             onClick={() =>
                               setFilters((prev) => ({
@@ -3127,26 +3235,6 @@ function RestaurantDetailsContent() {
                           </button>
                         )}
                       </div>
-                    </div>
-
-                    {/* Top picks */}
-                    <div className="space-y-2">
-                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">Top picks:</h3>
-                      <button
-                        onClick={() =>
-                          setFilters((prev) => ({
-                            ...prev,
-                            highlyReordered: !prev.highlyReordered,
-                          }))
-                        }
-                        className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 transition-all w-full ${filters.highlyReordered
-                          ? "border-[#EB590E] dark:border-[#EB590E] bg-[#FFF2EB] dark:bg-[#EB590E]/20 text-[#EB590E] dark:text-[#EB590E]"
-                          : "border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2a2a2a] text-gray-700 dark:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600"
-                          }`}
-                      >
-                        <RotateCcw className="h-4 w-4" />
-                        <span className="font-medium">Highly reordered</span>
-                      </button>
                     </div>
 
 
@@ -3544,15 +3632,20 @@ function RestaurantDetailsContent() {
                         <button
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
-                              updateItemQuantity(
-                                selectedItem,
-                                Math.max(0, getDishQuantity(selectedItem, selectedVariantId) - 1),
-                                e,
-                                getVariantForDish(selectedItem, selectedVariantId),
-                              )
+                              const newQty = Math.max(1, modalQuantity - 1)
+                              setModalQuantity(newQty)
+                              const currentCartQty = getDishQuantity(selectedItem, selectedVariantId)
+                              if (currentCartQty > 0) {
+                                updateItemQuantity(
+                                  selectedItem,
+                                  Math.max(0, currentCartQty - 1),
+                                  e,
+                                  getVariantForDish(selectedItem, selectedVariantId),
+                                )
+                              }
                             }
                           }}
-                          disabled={getDishQuantity(selectedItem, selectedVariantId) === 0 || shouldShowGrayscale}
+                          disabled={modalQuantity <= 1 || shouldShowGrayscale}
                           className={`${shouldShowGrayscale
                             ? 'text-gray-300 dark:text-gray-600 cursor-not-allowed'
                             : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed'
@@ -3564,17 +3657,22 @@ function RestaurantDetailsContent() {
                           ? 'text-gray-400 dark:text-gray-600'
                           : 'text-gray-900 dark:text-white'
                           }`}>
-                          {getDishQuantity(selectedItem, selectedVariantId)}
+                          {modalQuantity}
                         </span>
                         <button
                           onClick={(e) => {
                             if (!shouldShowGrayscale) {
-                              updateItemQuantity(
-                                selectedItem,
-                                getDishQuantity(selectedItem, selectedVariantId) + 1,
-                                e,
-                                getVariantForDish(selectedItem, selectedVariantId),
-                              )
+                              const newQty = modalQuantity + 1
+                              setModalQuantity(newQty)
+                              const currentCartQty = getDishQuantity(selectedItem, selectedVariantId)
+                              if (currentCartQty > 0) {
+                                updateItemQuantity(
+                                  selectedItem,
+                                  currentCartQty + 1,
+                                  e,
+                                  getVariantForDish(selectedItem, selectedVariantId),
+                                )
+                              }
                             }
                           }}
                           disabled={shouldShowGrayscale}
@@ -3597,11 +3695,14 @@ function RestaurantDetailsContent() {
                           }`}
                         onClick={(e) => {
                           if (!shouldShowGrayscale) {
+                            const activeVariant = getVariantForDish(selectedItem, selectedVariantId)
+                            const currentCartQty = getDishQuantity(selectedItem, selectedVariantId)
+                            const targetQty = currentCartQty > 0 ? currentCartQty : modalQuantity
                             updateItemQuantity(
                               selectedItem,
-                              getDishQuantity(selectedItem, selectedVariantId) + 1,
+                              targetQty,
                               e,
-                              getVariantForDish(selectedItem, selectedVariantId),
+                              activeVariant,
                             )
                             setShowItemDetail(false)
                           }
@@ -3612,13 +3713,13 @@ function RestaurantDetailsContent() {
                         <div className="flex items-center gap-1.5 rounded-lg bg-white/15 px-2 py-0.5">
                           {selectedItem.originalPrice && selectedItem.originalPrice > selectedItem.price && (
                             <span className="text-xs line-through text-white/70">
-                              {RUPEE_SYMBOL}{Math.round(selectedItem.originalPrice)}
+                              {RUPEE_SYMBOL}{Math.round(selectedItem.originalPrice * modalQuantity)}
                             </span>
                           )}
                           <span className="text-sm font-bold tabular-nums">
                             {hasFoodVariants(selectedItem)
-                              ? `${RUPEE_SYMBOL}${Math.round(getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price)}`
-                              : `${RUPEE_SYMBOL}${Math.round(selectedItem.price)}`}
+                              ? `${RUPEE_SYMBOL}${Math.round((getVariantForDish(selectedItem, selectedVariantId)?.price || selectedItem.price) * modalQuantity)}`
+                              : `${RUPEE_SYMBOL}${Math.round(selectedItem.price * modalQuantity)}`}
                           </span>
                         </div>
                       </Button>
@@ -4085,7 +4186,7 @@ function RestaurantDetailsContent() {
       {typeof window !== "undefined" &&
         createPortal(
           <AddToCartAnimation
-            bottomOffset={80}
+            bottomOffset={20}
             linkTo="/food/user/cart"
             hideOnPages={true}
           />,

@@ -77,21 +77,6 @@ export default function VariantSelector({
                     )}
                   </div>
 
-                  <div className="mt-1 flex items-center gap-2 flex-wrap">
-                    <span className="text-[11px] font-medium text-gray-500 dark:text-gray-400">
-                      Portion {index + 1} of {variants.length}
-                    </span>
-                    {priceDiff > 0 && (
-                      <span className="text-[11px] font-medium text-gray-400 dark:text-gray-500">
-                        +{RUPEE_SYMBOL}{Math.round(priceDiff)} vs base
-                      </span>
-                    )}
-                    {priceDiff === 0 && variants.length > 1 && (
-                      <span className="text-[11px] font-medium text-emerald-600 dark:text-emerald-400">
-                        Lowest price
-                      </span>
-                    )}
-                  </div>
                 </div>
 
                 <div className="text-right shrink-0 pl-2">

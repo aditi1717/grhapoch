@@ -24,17 +24,25 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
     return () => clearInterval(timer);
   }, [timeLeft, onReject]);
 
-  const { distanceKm, etaMins } = useMemo(() => {
-    if (!lockedOrder) return { distanceKm: null, etaMins: null };
+  const { distanceText, etaText } = useMemo(() => {
+    if (!lockedOrder) return { distanceText: 'N/A', etaText: 'N/A' };
 
     // A. Use provided data if available (Direct distance from socket)
     const rawDist = lockedOrder.pickupDistanceKm || lockedOrder.distanceKm;
     const rawEta = lockedOrder.estimatedTime || lockedOrder.duration || lockedOrder.eta;
     
     if (rawDist != null) {
+      const distNum = Number(rawDist);
+      if (distNum >= 900) {
+        return { 
+          distanceText: 'Nearby', 
+          etaText: '15-20 MINS'
+        };
+      }
+      const etaVal = rawEta && rawEta > 0 ? Math.ceil(rawEta) : Math.ceil((distNum * 1000) / 416) + 5;
       return { 
-        distanceKm: Number(rawDist).toFixed(1), 
-        etaMins: rawEta && rawEta > 0 ? Math.ceil(rawEta) : Math.ceil((rawDist * 1000) / 416) + 5
+        distanceText: `${distNum.toFixed(1)} KM`, 
+        etaText: `${etaVal} MINS`
       };
     }
 
@@ -49,16 +57,25 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
         resLat, resLng
       );
       const km = distM / 1000;
+      if (km >= 900) {
+        return { 
+          distanceText: 'Nearby', 
+          etaText: '15-20 MINS'
+        };
+      }
       // Assume 25km/h avg for initial estimate (roughly 416m/min)
       const mins = Math.ceil(distM / 416) + (lockedOrder.prepTime || 5);
       
       return { 
-        distanceKm: km.toFixed(1), 
-        etaMins: mins 
+        distanceText: `${km.toFixed(1)} KM`, 
+        etaText: `${mins} MINS` 
       };
     }
 
-    return { distanceKm: '??', etaMins: lockedOrder.prepTime || 15 };
+    return { 
+      distanceText: 'Nearby', 
+      etaText: `${lockedOrder.prepTime || 15} MINS` 
+    };
   }, [lockedOrder, riderLocation]);
 
   if (!lockedOrder) return null;
@@ -134,7 +151,7 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                  </div>
                  <div className="flex flex-col">
                     <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest leading-none mb-1">EST. Time</span>
-                    <span className="text-sm font-black text-gray-900 tracking-tight leading-none">{etaMins} MINS</span>
+                    <span className="text-sm font-black text-gray-900 tracking-tight leading-none">{etaText}</span>
                  </div>
                </div>
                <div className="flex-1 p-3 bg-gray-50 rounded-2xl border border-gray-100 flex items-center gap-3">
@@ -143,7 +160,7 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                  </div>
                  <div className="flex flex-col">
                     <span className="text-[9px] text-gray-400 font-black uppercase tracking-widest leading-none mb-1">Distance</span>
-                    <span className="text-sm font-black text-gray-900 tracking-tight leading-none">{distanceKm} KM</span>
+                    <span className="text-sm font-black text-gray-900 tracking-tight leading-none">{distanceText}</span>
                  </div>
                </div>
             </div>
@@ -165,14 +182,7 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                   </div>
 
                   <div className="pt-1">
-                    <div className="flex items-center justify-between">
                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-blue-600 mb-0.5">Customer Drop</h4>
-                       {mapsLink && (
-                        <a href={mapsLink} target="_blank" rel="noreferrer" className="text-[9px] font-black uppercase tracking-widest text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full hover:bg-blue-100 transition-colors">
-                          Open Map
-                        </a>
-                      )}
-                    </div>
                     <h3 className="text-gray-950 font-black text-lg leading-tight mb-0.5">Delivery Location</h3>
                     <p className="text-gray-500 text-[11px] font-bold line-clamp-1">{customerAddress}</p>
                   </div>

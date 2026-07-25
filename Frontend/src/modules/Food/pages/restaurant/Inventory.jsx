@@ -1088,6 +1088,15 @@ export default function Inventory() {
     fetchMenuAndAddons()
   }, [fetchMenuAndAddons])
 
+  // Re-fetch whenever an item is saved from ItemDetailsPage (it dispatches 'foodsChanged')
+  useEffect(() => {
+    const handleFoodsChanged = () => {
+      fetchMenuAndAddons()
+    }
+    window.addEventListener('foodsChanged', handleFoodsChanged)
+    return () => window.removeEventListener('foodsChanged', handleFoodsChanged)
+  }, [fetchMenuAndAddons])
+
   // Re-apply local stock rules when they change — without refetching menu from API
   useEffect(() => {
     setCategories((prev) => {
@@ -1509,6 +1518,18 @@ export default function Inventory() {
       .filter(Boolean)
   }, [categories, selectedFilter])
 
+  // Lock body scroll when any modal/drawer (like Filter popup) is open
+  useEffect(() => {
+    const isAnyModalOpen = filterOpen || togglePopupOpen || isBulkUploadModalOpen || isAddPopupOpen || isAddAddonOpen || showCalendar || showTimePicker
+    if (isAnyModalOpen) {
+      const prevOverflow = document.body.style.overflow
+      document.body.style.overflow = "hidden"
+      return () => {
+        document.body.style.overflow = prevOverflow || "unset"
+      }
+    }
+  }, [filterOpen, togglePopupOpen, isBulkUploadModalOpen, isAddPopupOpen, isAddAddonOpen, showCalendar, showTimePicker])
+
   // Apply text search on categories & items
   const filteredCategories = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
@@ -1521,9 +1542,15 @@ export default function Inventory() {
           category.name?.toLowerCase().includes(q) ||
           (category.description || "").toLowerCase().includes(q)
 
-        const matchingItems = items.filter(item =>
-          item.name?.toLowerCase().includes(q)
-        )
+        const matchingItems = items.filter(item => {
+          const nameMatch = (item.name || "").toLowerCase().includes(q)
+          const descMatch = (item.description || "").toLowerCase().includes(q)
+          const catMatch = (item.category || "").toLowerCase().includes(q)
+          const foodTypeMatch = (item.foodType || "").toLowerCase().includes(q) || (item.isVeg ? "veg" : "non-veg").includes(q)
+          const priceMatch = String(item.price || "").includes(q)
+          const variantMatch = Array.isArray(item.variants) && item.variants.some(v => String(v.name || "").toLowerCase().includes(q))
+          return nameMatch || descMatch || catMatch || foodTypeMatch || priceMatch || variantMatch
+        })
 
         if (!matchesCategory && matchingItems.length === 0) {
           return null
@@ -1697,6 +1724,7 @@ export default function Inventory() {
     setShowTimePicker(false)
     setTogglePopupOpen(true)
   }
+
 
   // Handle toggle confirm
   const handleToggleConfirm = async () => {
@@ -2032,14 +2060,14 @@ export default function Inventory() {
               ) : null}
             </div>
 
-            <div className="mt-4 flex gap-2 flex-wrap">
-              <div className="flex-1 min-w-[220px] relative">
+            <div className="mt-4 flex flex-col sm:flex-row gap-2">
+              <div className="flex-1 relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={activeTab === "add-ons" ? "Search add-ons by name or status" : "Search categories or menu items"}
+                  placeholder={activeTab === "add-ons" ? "Search add-ons..." : "Search categories or items..."}
                   className="h-12 w-full rounded-[20px] border border-slate-200 bg-slate-50 pl-11 pr-10 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-300 focus:bg-white focus:outline-none"
                 />
                 {searchQuery ? (
@@ -2056,7 +2084,7 @@ export default function Inventory() {
 
               <button
                 onClick={() => setFilterOpen(true)}
-                className="relative flex h-12 items-center justify-center gap-2 rounded-[20px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50"
+                className="relative flex h-12 items-center justify-center gap-2 rounded-[20px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50 shrink-0"
               >
                 <SlidersHorizontal className="w-4 h-4 text-slate-700" />
                 <span>Filters</span>

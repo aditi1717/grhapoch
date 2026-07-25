@@ -119,6 +119,10 @@ export const initSocket = async (server) => {
         if (userId && role) {
             if (role === 'RESTAURANT') socket.join(roomNames.restaurant(userId));
             if (role === 'USER') socket.join(roomNames.user(userId));
+            if (role === 'ADMIN' || role === 'SUPER_ADMIN') {
+                socket.join('admin-room');
+                logger.info(`Socket client ${socket.id} joined admin-room`);
+            }
             if (role === 'DELIVERY_PARTNER') {
                 socket.join(roomNames.delivery(userId));
                 logDeliverySocket('Auto-joined delivery room on connect', {
@@ -128,6 +132,12 @@ export const initSocket = async (server) => {
                 });
             }
         }
+
+        // Explicit join for admins
+        socket.on('join-admin-orders', () => {
+            socket.join('admin-room');
+            socket.emit('admin-room-joined', { room: 'admin-room' });
+        });
 
         // Explicit join (used by existing restaurant client hook).
         socket.on('join-restaurant', (restaurantId) => {

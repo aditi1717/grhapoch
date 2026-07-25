@@ -10,6 +10,8 @@ import {
 import { notifyAdminsSafely, notifyOwnerSafely } from '../../../../core/notifications/firebase.service.js';
 import { ValidationError, AuthError } from '../../../../core/auth/errors.js';
 import { sendResponse } from '../../../../utils/response.js';
+import { getIO, rooms } from '../../../../config/socket.js';
+import { createInboxNotifications } from '../../../../core/notifications/notification.service.js';
 
 export async function getAdPricing(req, res, next) {
     try {
@@ -141,6 +143,21 @@ export async function verifyAdPayment(req, res, next) {
                     adBannerId: adBanner._id.toString()
                 }
             });
+
+            // Emit to socket room for real-time dashboard notifications
+            const io = getIO();
+            if (io) {
+                io.to('admin-room').emit('admin_notification', {
+                    id: adBanner._id.toString(),
+                    title: 'New Ad Request Pending Approval 📢',
+                    message: `A new banner ad campaign request of ₹${adBanner.amountPaid} has been submitted for approval.`,
+                    type: 'ad_banner_request',
+                    createdAt: new Date()
+                });
+                io.to('admin-room').emit('play_notification_sound', {
+                    type: 'ad_banner_request'
+                });
+            }
         } catch (e) {
             console.error("Failed to notify admins of new ad request:", e.message);
         }
@@ -275,6 +292,40 @@ export async function adminApproveAdRequest(req, res, next) {
                     }
                 }
             );
+
+            // Create inbox notification
+            await createInboxNotifications({
+                notifications: [{
+                    ownerType,
+                    ownerId: adBanner.requesterId,
+                    title: 'Ad Banner Approved! 🎉',
+                    message: `Your banner advertisement starting on ${new Date(adBanner.startDate).toLocaleDateString()} was approved by the admin.`,
+                    category: 'ad_banner_status',
+                    source: 'ADMIN_BROADCAST',
+                    metadata: {
+                        adBannerId: adBanner._id.toString(),
+                        status: 'approved'
+                    }
+                }]
+            });
+
+            // Emit Socket event to user
+            const io = getIO();
+            if (io) {
+                const userRoom = ownerType === 'RESTAURANT'
+                    ? rooms.restaurant(adBanner.requesterId)
+                    : rooms.user(adBanner.requesterId);
+                io.to(userRoom).emit('admin_notification', {
+                    id: adBanner._id.toString(),
+                    title: 'Ad Banner Approved! 🎉',
+                    message: `Your banner advertisement starting on ${new Date(adBanner.startDate).toLocaleDateString()} was approved by the admin.`,
+                    type: 'ad_banner_approval',
+                    createdAt: new Date()
+                });
+                io.to(userRoom).emit('play_notification_sound', {
+                    type: 'ad_banner_status'
+                });
+            }
         } catch (e) {
             console.error("Failed to notify user of ad approval:", e.message);
         }
@@ -346,6 +397,41 @@ export async function adminRejectAdRequest(req, res, next) {
                     }
                 }
             );
+
+            // Create inbox notification
+            await createInboxNotifications({
+                notifications: [{
+                    ownerType,
+                    ownerId: adBanner.requesterId,
+                    title: 'Ad Banner Request Update 📢',
+                    message: `Your banner ad request was rejected. Reason: ${reason}. A full refund has been initiated.`,
+                    category: 'ad_banner_status',
+                    source: 'ADMIN_BROADCAST',
+                    metadata: {
+                        adBannerId: adBanner._id.toString(),
+                        status: 'rejected',
+                        rejectionReason: reason
+                    }
+                }]
+            });
+
+            // Emit Socket event to user
+            const io = getIO();
+            if (io) {
+                const userRoom = ownerType === 'RESTAURANT'
+                    ? rooms.restaurant(adBanner.requesterId)
+                    : rooms.user(adBanner.requesterId);
+                io.to(userRoom).emit('admin_notification', {
+                    id: adBanner._id.toString(),
+                    title: 'Ad Banner Request Update 📢',
+                    message: `Your banner ad request was rejected. Reason: ${reason}. A full refund has been initiated.`,
+                    type: 'ad_banner_rejection',
+                    createdAt: new Date()
+                });
+                io.to(userRoom).emit('play_notification_sound', {
+                    type: 'ad_banner_status'
+                });
+            }
         } catch (e) {
             console.error("Failed to notify user of ad rejection:", e.message);
         }

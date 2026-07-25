@@ -6,6 +6,7 @@ import AnimatedPage from "@food/components/user/AnimatedPage"
 import { diningAPI, restaurantAPI } from "@food/api"
 import useAppBackNavigation from "@food/hooks/useAppBackNavigation"
 import Loader from "@food/components/Loader"
+import { isModuleAuthenticated } from "@food/utils/auth"
 import { toast } from "sonner"
 
 const BOOKING_DRAFT_KEY = "food_dining_booking_draft_v1"
@@ -363,6 +364,11 @@ export default function TableBooking() {
   const canProceed = Boolean(isDiningEnabled && restaurant && selectedSlot && selectedDate && selectedGuests)
 
   const handleProceed = () => {
+    if (!isModuleAuthenticated("user")) {
+      toast.error("Please login to book a table")
+      navigate("/food/user/auth/login", { state: { from: location.pathname } })
+      return
+    }
     if (!isDiningEnabled) {
       toast.error("Dining bookings are currently paused for this restaurant.")
       return

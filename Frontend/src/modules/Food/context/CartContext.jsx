@@ -602,7 +602,14 @@ export function CartProvider({ children }) {
     return safeCart.find((i) => i.id === resolvedItemId) || null
   }
 
-  const clearCart = () => setCart([])
+  const clearCart = () => {
+    setCart([])
+    try {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem("food-cart-order-note-v1")
+      }
+    } catch {}
+  }
 
   const replaceCart = (items) => {
     const normalizedItems = normalizeCartData(items).filter((item) => {

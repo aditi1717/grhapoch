@@ -144,7 +144,7 @@ export default function Dining() {
   const { openSearch, closeSearch, setSearchValue } = useSearchOverlay()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
-  const { addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { vegMode, addFavorite, removeFavorite, isFavorite } = useProfile()
 
   const [categories, setCategories] = useState([])
   const [restaurantList, setRestaurantList] = useState([])
@@ -255,6 +255,7 @@ export default function Dining() {
           ...restaurant,
           id: restaurant?._id || restaurant?.id || `restaurant-${index}`,
           name: restaurantName,
+          pureVegRestaurant: restaurant?.pureVegRestaurant === true || restaurant?.isPureVeg === true,
           slug: String(restaurant?.restaurantNameNormalized || "").trim() || slugifyValue(restaurantName),
           cuisine: Array.isArray(restaurant?.cuisines) && restaurant.cuisines.length > 0
             ? restaurant.cuisines.join(", ")
@@ -343,6 +344,23 @@ export default function Dining() {
   const filteredRestaurants = useMemo(() => {
     let filtered = [...nearbyPopularRestaurants]
 
+    if (vegMode) {
+      filtered = filtered.filter(r => r.pureVegRestaurant === true)
+    }
+
+    if (heroSearch && heroSearch.trim()) {
+      const q = heroSearch.trim().toLowerCase()
+      filtered = filtered.filter(r => {
+        const nameMatch = (r.name || "").toLowerCase().includes(q)
+        const cuisineMatch = (r.cuisine || "").toLowerCase().includes(q)
+        const areaMatch = (r.address || "").toLowerCase().includes(q)
+        const categoryMatch = (r.diningType || "").toLowerCase().includes(q)
+        const offerMatch = (r.offer || "").toLowerCase().includes(q)
+        const featuredMatch = (r.featuredDish || "").toLowerCase().includes(q)
+        return nameMatch || cuisineMatch || areaMatch || categoryMatch || offerMatch || featuredMatch
+      })
+    }
+
     if (activeFilters.has('delivery-under-30')) {
       filtered = filtered.filter(r => {
         const timeMatch = r.deliveryTime.match(/(\d+)/)
@@ -390,7 +408,7 @@ export default function Dining() {
     }
 
     return filtered
-  }, [nearbyPopularRestaurants, activeFilters, selectedCuisine, sortBy])
+  }, [nearbyPopularRestaurants, activeFilters, selectedCuisine, sortBy, vegMode, heroSearch])
 
   useEffect(() => {
     setCurrentBannerIndex((prev) => {
@@ -537,27 +555,28 @@ export default function Dining() {
                 <Input
                   value={heroSearch}
                   onChange={(e) => setHeroSearch(e.target.value)}
-                  onFocus={handleSearchFocus}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && heroSearch.trim()) {
-                      navigate(`/user/search?q=${encodeURIComponent(heroSearch.trim())}`)
-                      closeSearch()
-                      setHeroSearch("")
-                    }
-                  }}
                   className="pl-0 pr-2 h-10 w-full bg-transparent border-0 text-[14px] font-bold text-gray-800 dark:text-white shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:font-semibold placeholder:text-gray-400 dark:placeholder:text-gray-500"
                   placeholder='Search for dining...'
                 />
               </div>
-              <div className="flex items-center border-l-2 border-gray-200 dark:border-gray-700 pl-2 pr-1">
+              {heroSearch ? (
                 <button
                   type="button"
-                  onClick={handleSearchFocus}
-                  className="flex-shrink-0 p-2 bg-white dark:bg-gray-900 rounded-full shadow-sm hover:shadow-md transition-all active:scale-95 text-[#FA0272]"
+                  onClick={() => setHeroSearch("")}
+                  className="pr-3 p-1 rounded-full text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 flex-shrink-0"
                 >
-                  <Mic className="h-4 w-4" strokeWidth={2.5} />
+                  <X className="h-4 w-4" />
                 </button>
-              </div>
+              ) : (
+                <div className="flex items-center border-l-2 border-gray-200 dark:border-gray-700 pl-2 pr-1">
+                  <button
+                    type="button"
+                    className="flex-shrink-0 p-2 bg-white dark:bg-gray-900 rounded-full shadow-sm hover:shadow-md transition-all active:scale-95 text-[#FA0272]"
+                  >
+                    <Mic className="h-4 w-4" strokeWidth={2.5} />
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -725,7 +744,7 @@ export default function Dining() {
           <div className="mb-6">
             <div className="flex items-center justify-between mb-4 px-1">
               <h3 className="text-lg sm:text-xl font-bold text-gray-900 dark:text-white tracking-tight">
-                Popular Restaurants Within 10km
+                {heroSearch.trim() ? `Search Results for "${heroSearch.trim()}"` : "Popular Restaurants Within 10km"}
               </h3>
               <p className="text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400">
                 {filteredRestaurants.length} nearby places

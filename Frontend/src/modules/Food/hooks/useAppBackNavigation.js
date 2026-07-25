@@ -65,7 +65,15 @@ const resolveBackPath = ({ pathname, search, state }) => {
     return explicitBackPath || "/food/user"
   }
 
-  if (normalizedPath.startsWith("/user/dining") || normalizedPath === "/user/under-250") {
+  if (normalizedPath === "/user/dining/book-confirmation") {
+    return explicitBackPath || -1
+  }
+
+  if (normalizedPath.startsWith("/user/dining")) {
+    return explicitBackPath || "/food/user/dining"
+  }
+
+  if (normalizedPath === "/user/under-250") {
     return "/food/user"
   }
 
@@ -131,6 +139,6 @@ export default function useAppBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
-    navigate(resolveBackPath(location))
+    navigate(resolveBackPath(location), { state: { isBack: true } })
   }, [location, navigate])
 }

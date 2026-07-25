@@ -100,12 +100,14 @@ const buildSwitch99RestaurantRow = (restaurant, menuItems, index, effectiveLocat
         .replace(/\s+/g, "-"),
     name: restaurant?.restaurantName || restaurant?.name || "Restaurant",
     rating: Number(restaurant?.rating || 0),
+    pureVegRestaurant: restaurant?.pureVegRestaurant === true || restaurant?.isPureVeg === true,
     totalRatings: Number(restaurant?.totalRatings || restaurant?.ratingCount || 0),
     deliveryTime:
       restaurant?.estimatedDeliveryTime ||
       (deliveryMinutes ? `${deliveryMinutes} mins` : "30 mins"),
     distance: distanceInKm !== null ? formatDistance(distanceInKm) : fallbackDistance,
     distanceInKm,
+    userVisibilityRadius: Number(restaurant?.userVisibilityRadius) || Number(restaurant?.serviceRadius) || null,
     originalIndex: index,
     menuItems,
     isActive: restaurant.isActive,
@@ -157,7 +159,7 @@ export default function Under250() {
   const initialFiltersRef = useRef(readUnder250Filters())
   const { location } = useLocation()
   const { openLocationSelector } = useLocationSelector()
-  const { getDefaultAddress } = useProfile()
+  const { vegMode, vegModeOption, getDefaultAddress } = useProfile()
   const [deliveryAddressMode, setDeliveryAddressMode] = useState(() => {
     if (typeof window === "undefined") return "saved"
     return window.localStorage.getItem("deliveryAddressMode") || "saved"
@@ -303,10 +305,7 @@ export default function Under250() {
 
   const filterCandidateRestaurants = useCallback((restaurants = []) => {
     return restaurants.filter((restaurant) => {
-      const availability = getRestaurantAvailabilityStatus(restaurant, new Date())
-      if (!availability.isOpen) return false
-
-      // Keep candidate set broad; final eligibility is menu-item based (price contains "99").
+      // Include all restaurants (open & closed) so closed restaurants can be shown in black & white
       return true
     })
   }, [])
@@ -367,11 +366,42 @@ export default function Under250() {
   // Sort and filter restaurants based on selected sort and filters
   const sortedAndFilteredRestaurants = useMemo(() => {
     let filtered = under250Restaurants
-      .filter(r => {
+      .map(r => {
         const availability = getRestaurantAvailabilityStatus(r, new Date(availabilityTick));
-        return availability.isOpen;
+        return {
+          ...r,
+          availability,
+          isOpen: availability.isOpen,
+          menuItems: [...(r.menuItems || [])]
+        };
       })
-      .map(r => ({ ...r, menuItems: [...(r.menuItems || [])] }))
+      .filter(r => {
+        // Radius check: exclude if distanceInKm exceeds userVisibilityRadius (or fallback 10km)
+        const maxRadius = Number(r.userVisibilityRadius) || 10;
+        if (Number.isFinite(r.distanceInKm) && r.distanceInKm > maxRadius) {
+          return false;
+        }
+        return true;
+      })
+
+    // Apply Veg Mode filtering
+    if (vegMode) {
+      if (vegModeOption === "pure-veg") {
+        // Pure Veg mode: hide restaurants that are not pure veg
+        filtered = filtered.filter(r => r.pureVegRestaurant === true);
+      }
+
+      // Veg mode (both pure-veg and all): hide non-veg dishes
+      filtered = filtered
+        .map(restaurant => {
+          const vegMenuItems = (restaurant.menuItems || []).filter(item => item.isVeg === true || item.isVeg);
+          if (vegMenuItems.length > 0) {
+            return { ...restaurant, menuItems: vegMenuItems };
+          }
+          return null;
+        })
+        .filter(Boolean);
+    }
 
     // Apply category filter
     if (activeCategory) {
@@ -436,12 +466,19 @@ export default function Under250() {
         return (a.originalIndex || 0) - (b.originalIndex || 0)
       })
     } else {
-      // Default: Relevance (keep original order from backend - already sorted by rating)
-      // No additional sorting needed
+      // Default: Relevance — sort open restaurants first, then by backend order/rating
+      filtered.sort((a, b) => {
+        const aOpen = a.isOpen ? 1 : 0
+        const bOpen = b.isOpen ? 1 : 0
+        if (aOpen !== bOpen) {
+          return bOpen - aOpen
+        }
+        return (a.originalIndex || 0) - (b.originalIndex || 0)
+      })
     }
 
     return filtered
-  }, [under250Restaurants, selectedSort, under30MinsFilter, activeCategory, categories, availabilityTick])
+  }, [under250Restaurants, selectedSort, under30MinsFilter, activeCategory, categories, availabilityTick, vegMode, vegModeOption])
 
   // Fetch under-250 banner from public API
   const displayBanners = useMemo(() => {
@@ -1300,17 +1337,28 @@ export default function Under250() {
         ) : (
           sortedAndFilteredRestaurants.map((restaurant) => {
             const restaurantSlug = restaurant.slug || restaurant.name.toLowerCase().replace(/\s+/g, "-")
+            const isClosed = !restaurant.isOpen
+            const shouldGrayscaleRestaurant = isOutOfService || isClosed
             return (
-              <section key={restaurant.id} className="pt-4 sm:pt-6 md:pt-8 lg:pt-10">
+              <section key={restaurant.id} className={`pt-4 sm:pt-6 md:pt-8 lg:pt-10 transition-all ${shouldGrayscaleRestaurant ? 'grayscale opacity-75' : ''}`}>
                 {/* Restaurant Header */}
                 <div className="flex items-start justify-between mb-3 md:mb-4 lg:mb-6">
                   <div className="flex-1">
-                    <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2">
-                      {restaurant.name}
-                    </h3>
+                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+                      <h3 className="text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-4xl font-bold text-gray-900 dark:text-white mb-1 md:mb-2">
+                        {restaurant.name}
+                      </h3>
+                      {isClosed && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-rose-100 text-rose-800 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-800/40">
+                          Closed Now
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2 text-sm md:text-base lg:text-lg text-gray-500 dark:text-gray-400">
                       <Clock className="h-4 w-4 md:h-5 md:w-5 lg:h-6 lg:w-6" strokeWidth={1.5} />
-                      <span className="font-medium">{restaurant.deliveryTime}</span>
+                      <span className="font-medium">
+                        {isClosed ? (restaurant.availability?.openingTime ? `Opens at ${restaurant.availability.openingTime}` : "Closed now") : restaurant.deliveryTime}
+                      </span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end">
@@ -1433,19 +1481,19 @@ export default function Under250() {
                                   <Button
                                     variant={"outline"}
                                     size="sm"
-                                    disabled={shouldShowGrayscale}
-                                    className={`h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base ${shouldShowGrayscale
-                                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-50'
+                                    disabled={shouldGrayscaleRestaurant}
+                                    className={`h-7 md:h-8 lg:h-9 px-3 md:px-4 lg:px-5 text-xs md:text-sm lg:text-base ${shouldGrayscaleRestaurant
+                                      ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 border-gray-300 dark:border-gray-700 cursor-not-allowed opacity-60'
                                       : 'bg-[#FFF2EB] text-[#EB590E] border-[#EB590E] hover:bg-[#EB590E] hover:text-white'
                                       }`}
                                     onClick={(e) => {
                                       e.stopPropagation()
-                                      if (!shouldShowGrayscale) {
+                                      if (!shouldGrayscaleRestaurant) {
                                         handleAddButtonClick(item, restaurant, e)
                                       }
                                     }}
                                   >
-                                    Add
+                                    {isClosed ? 'Closed' : 'Add'}
                                   </Button>
                                 )}
                               </div>

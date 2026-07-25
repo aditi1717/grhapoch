@@ -1424,14 +1424,29 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         'menuImages'
     ]);
 
-    const requiresReview = Object.keys(update).some((field) => reviewRequiredFields.has(field));
+    const changedProfileFields = Object.keys(update).filter((field) => reviewRequiredFields.has(field));
+    const requiresReview = changedProfileFields.length > 0;
     const isLocationChangeRequest = update.locationUpdateStatus === 'pending' && Boolean(update.pendingLocation);
 
     if (requiresReview) {
-        update.status = 'pending';
+        if (currentRestaurant.status === 'pending') {
+            update.status = 'pending';
+        } else {
+            const pendingUpdateObj = {};
+            changedProfileFields.forEach((f) => {
+                pendingUpdateObj[f] = update[f];
+                delete update[f];
+            });
+            update.pendingProfileUpdate = {
+                ...(currentRestaurant.pendingProfileUpdate || {}),
+                ...pendingUpdateObj
+            };
+        }
+        update.profileUpdateRequestedAt = new Date();
+        update.profileUpdateFields = changedProfileFields;
     }
 
-    const updateOps = requiresReview
+    const updateOps = (requiresReview && currentRestaurant.status === 'pending')
         ? {
             $set: update,
             $unset: {
@@ -1540,19 +1555,23 @@ export const uploadRestaurantProfileImage = async (restaurantId, file) => {
     if (!currentRestaurant) throw new ValidationError('Restaurant not found');
 
     const url = await uploadImageBuffer(file.buffer, 'food/restaurants/profile');
+    const isAlreadyPending = currentRestaurant.status === 'pending';
+    const updatePayload = {
+        $set: {
+            profileImage: url,
+            ...(isAlreadyPending ? { status: 'pending' } : {})
+        }
+    };
+    if (isAlreadyPending) {
+        updatePayload.$unset = {
+            approvedAt: 1,
+            rejectedAt: 1,
+            rejectionReason: 1
+        };
+    }
     const doc = await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
-        {
-            $set: {
-                profileImage: url,
-                status: 'pending'
-            },
-            $unset: {
-                approvedAt: 1,
-                rejectedAt: 1,
-                rejectionReason: 1
-            }
-        },
+        updatePayload,
         { new: true, projection: 'profileImage coverImages restaurantName cuisines location menuImages addressLine1 addressLine2 area city state pincode landmark ownerName ownerEmail ownerPhone primaryContactNumber pureVegRestaurant openingTime closingTime openDays status createdAt updatedAt' }
     ).lean();
 
@@ -1599,25 +1618,28 @@ export const uploadRestaurantCoverImages = async (restaurantId, files = []) => {
         if (!nextCoverImages.includes(url)) nextCoverImages.push(url);
     });
 
+    const isAlreadyPending = currentRestaurant.status === 'pending';
     const update = {
         coverImages: nextCoverImages.slice(0, 20),
-        status: 'pending'
+        ...(isAlreadyPending ? { status: 'pending' } : {})
     };
 
     if (!toUrl(currentRestaurant.profileImage) && uploadedUrls[0]) {
         update.profileImage = uploadedUrls[0];
     }
 
+    const updatePayload = { $set: update };
+    if (isAlreadyPending) {
+        updatePayload.$unset = {
+            approvedAt: 1,
+            rejectedAt: 1,
+            rejectionReason: 1
+        };
+    }
+
     await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
-        {
-            $set: update,
-            $unset: {
-                approvedAt: 1,
-                rejectedAt: 1,
-                rejectionReason: 1
-            }
-        },
+        updatePayload,
         { new: true }
     ).lean();
 
@@ -1659,19 +1681,24 @@ export const uploadRestaurantMenuImages = async (restaurantId, files = []) => {
         if (!nextMenuImages.includes(url)) nextMenuImages.push(url);
     });
 
+    const isAlreadyPending = currentRestaurant.status === 'pending';
+    const updatePayload = {
+        $set: {
+            menuImages: nextMenuImages.slice(0, 20),
+            ...(isAlreadyPending ? { status: 'pending' } : {})
+        }
+    };
+    if (isAlreadyPending) {
+        updatePayload.$unset = {
+            approvedAt: 1,
+            rejectedAt: 1,
+            rejectionReason: 1
+        };
+    }
+
     await FoodRestaurant.findByIdAndUpdate(
         restaurantId,
-        {
-            $set: {
-                menuImages: nextMenuImages.slice(0, 20),
-                status: 'pending'
-            },
-            $unset: {
-                approvedAt: 1,
-                rejectedAt: 1,
-                rejectionReason: 1
-            }
-        },
+        updatePayload,
         { new: true }
     ).lean();
 

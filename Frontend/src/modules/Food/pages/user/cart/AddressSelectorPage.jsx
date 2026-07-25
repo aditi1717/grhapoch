@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef, useCallback } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
-import { ChevronLeft, ChevronRight, Plus, MapPin, MoreHorizontal, Navigation, Home, Building2, Briefcase, Phone, X, Crosshair, Search } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, MapPin, MoreHorizontal, Navigation, Home, Building2, Briefcase, Phone, X, Crosshair, Search, Pencil, Trash2 } from "lucide-react"
 import { Button } from "@food/components/ui/button"
 import { Input } from "@food/components/ui/input"
 import { Label } from "@food/components/ui/label"
@@ -51,8 +51,9 @@ export default function AddressSelectorPage() {
   const routerLocation = useLocation()
   const goBack = useAppBackNavigation()
   const { location, loading, requestLocation } = useGeoLocation()
-  const { addresses = [], addAddress, updateAddress, setDefaultAddress, userProfile } = useProfile()
+  const { addresses = [], addAddress, updateAddress, deleteAddress, setDefaultAddress, userProfile } = useProfile()
   const [showAddressForm, setShowAddressForm] = useState(false)
+  const [editingAddressId, setEditingAddressId] = useState(null)
   const [mapPosition, setMapPosition] = useState([
     Number.isFinite(location?.latitude) ? location.latitude : 20.5937,
     Number.isFinite(location?.longitude) ? location.longitude : 78.9629,
@@ -486,6 +487,16 @@ export default function AddressSelectorPage() {
       navigate("/food/user/auth/login", { state: { from: routerLocation.pathname } })
       return
     }
+    setEditingAddressId(null)
+    setAddressFormData({
+      street: "",
+      city: "",
+      state: "",
+      zipCode: "",
+      additionalDetails: "",
+      label: "Home",
+      phone: "",
+    })
     setShowAddressForm(true)
   }
 
@@ -711,6 +722,45 @@ export default function AddressSelectorPage() {
     setKeywordAddressSuggestions([])
   }
 
+
+  const handleEditAddressClick = (e, addr) => {
+    e.stopPropagation()
+    const id = getAddressId(addr)
+    setEditingAddressId(id)
+    setAddressFormData({
+      street: addr.street || "",
+      city: addr.city || "",
+      state: addr.state || "",
+      zipCode: addr.zipCode || "",
+      additionalDetails: addr.additionalDetails || "",
+      label: addr.label === "Office" ? "Work" : (addr.label || "Home"),
+      phone: addr.phone || "",
+    })
+    const formattedAddr = [addr.additionalDetails, addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean).join(", ")
+    setCurrentAddress(formattedAddr)
+    const lat = Number.isFinite(addr.location?.coordinates?.[1])
+      ? addr.location.coordinates[1]
+      : (Number.isFinite(addr.latitude) ? addr.latitude : mapPosition[0])
+    const lng = Number.isFinite(addr.location?.coordinates?.[0])
+      ? addr.location.coordinates[0]
+      : (Number.isFinite(addr.longitude) ? addr.longitude : mapPosition[1])
+    setMapPosition([lat, lng])
+    setShowAddressForm(true)
+  }
+
+  const handleDeleteAddressClick = async (e, addr) => {
+    e.stopPropagation()
+    const addressId = getAddressId(addr)
+    if (!addressId) return
+    if (!window.confirm(`Are you sure you want to delete this address (${addr.label || "Address"})?`)) return
+    try {
+      await deleteAddress(addressId)
+      toast.success("Address deleted successfully!")
+    } catch (err) {
+      toast.error("Failed to delete address")
+    }
+  }
+
   const handleAddressFormSubmit = async (e) => {
     e.preventDefault()
     const street = String(addressFormData.street || "").trim()
@@ -732,19 +782,28 @@ export default function AddressSelectorPage() {
         latitude: mapPosition[0],
         longitude: mapPosition[1]
       }
-      const created = await addAddress(payload)
-      if (created) {
-        const id = getAddressId(created)
+
+      let resAddress = null
+      if (editingAddressId) {
+        resAddress = await updateAddress(editingAddressId, payload)
+        toast.success("Address updated successfully!")
+      } else {
+        resAddress = await addAddress(payload)
+        toast.success("Address saved successfully!")
+      }
+
+      if (resAddress) {
+        const id = getAddressId(resAddress) || editingAddressId
         if (id) await setDefaultAddress(id)
         try {
           localStorage.setItem("deliveryAddressMode", "saved")
           window.dispatchEvent(new Event("deliveryAddressModeChanged"))
         } catch {}
-        toast.success("Address saved")
-        handleBack()
+        setShowAddressForm(false)
+        setEditingAddressId(null)
       }
     } catch (error) {
-      toast.error("Failed to save address")
+      toast.error(editingAddressId ? "Failed to update address" : "Failed to save address")
     } finally {
       setLoadingAddress(false)
     }
@@ -1052,13 +1111,14 @@ export default function AddressSelectorPage() {
             ) : (
               addresses.map((addr, idx) => {
                 const Icon = getAddressIcon(addr)
+                const addressId = getAddressId(addr) || idx
                 return (
-                  <button
-                    key={getAddressId(addr) || idx}
+                  <div
+                    key={addressId}
                     onClick={() => handleSelectSavedAddress(addr)}
-                    className="w-full flex items-start gap-4 p-4 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-left group"
+                    className="w-full flex items-center gap-3 p-4 bg-slate-50 dark:bg-[#1a1a1a] rounded-xl hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-left group cursor-pointer border border-gray-100 dark:border-gray-800"
                   >
-                    <div className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm">
+                    <div className="h-10 w-10 rounded-full bg-white dark:bg-gray-800 flex items-center justify-center shadow-sm flex-shrink-0">
                       <Icon className="h-5 w-5 text-gray-600 dark:text-gray-400" />
                     </div>
                     <div className="flex-1 min-w-0">
@@ -1067,10 +1127,30 @@ export default function AddressSelectorPage() {
                         {[addr.additionalDetails, addr.street, addr.city, addr.state].filter(Boolean).join(", ")}
                       </p>
                     </div>
-                    <div className="h-6 w-6 rounded-full border border-gray-200 dark:border-gray-700 mt-2 flex items-center justify-center group-hover:border-[#EB590E]">
-                       <ChevronRight className="h-3 w-3 text-gray-400 group-hover:text-[#EB590E]" />
+                    <div className="flex items-center gap-1 flex-shrink-0">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleEditAddressClick(e, addr)}
+                        className="h-8 w-8 p-0 rounded-full text-gray-500 hover:text-[#EB590E] hover:bg-orange-100/80 dark:hover:bg-orange-950/40 transition-colors"
+                        title="Edit address"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => handleDeleteAddressClick(e, addr)}
+                        className="h-8 w-8 p-0 rounded-full text-gray-500 hover:text-red-600 hover:bg-red-100/80 dark:hover:bg-red-950/40 transition-colors"
+                        title="Delete address"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                      <ChevronRight className="h-4 w-4 text-gray-400 group-hover:text-[#EB590E] ml-0.5" />
                     </div>
-                  </button>
+                  </div>
                 )
               })
             )}
