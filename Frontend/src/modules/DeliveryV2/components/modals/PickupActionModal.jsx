@@ -95,7 +95,13 @@ export const PickupActionModal = ({
     order.restaurantId?.phone ||
     '';
   const items = order.items || [];
-  const restaurantLogo = order.restaurantImage || order.restaurant?.logo || order.restaurant?.profileImage || 'https://cdn-icons-png.flaticon.com/512/3170/3170733.png';
+  const restaurantLogo =
+    order.restaurantImage ||
+    order.restaurant?.logo ||
+    order.restaurant?.profileImage ||
+    order.restaurantId?.profileImage ||
+    order.restaurantId?.logo ||
+    'https://cdn-icons-png.flaticon.com/512/3170/3170733.png';
 
   return (
     <div className="absolute inset-0 z-[110] flex items-end justify-center">
@@ -273,12 +279,6 @@ export const PickupActionModal = ({
                     </div>
                  )}
 
-                 {billImageUploaded && (
-                    <div className="w-full flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-emerald-50 text-emerald-700 border border-emerald-100 font-black text-[11px] uppercase tracking-widest shadow-inner">
-                       <CheckCircle2 className="w-5 h-5" />
-                       <span>Bill Verified ✓</span>
-                    </div>
-                 )}
 
                  <input
                    ref={cameraInputRef}

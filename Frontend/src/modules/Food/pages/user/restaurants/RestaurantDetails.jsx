@@ -1513,9 +1513,9 @@ function RestaurantDetailsContent() {
     if (isFavorite) {
       // If already bookmarked, remove it
       removeDishFavorite(dishId, restaurantId)
-      toast.success("Dish removed from favorites")
+      toast.success("Dish removed from collections")
     } else {
-      // Add to favorites
+      // Add to collections
       const dishData = {
         id: dishId,
         name: item.name,
@@ -1531,7 +1531,7 @@ function RestaurantDetailsContent() {
         customisable: item.customisable,
       }
       addDishFavorite(dishData)
-      toast.success("Dish added to favorites")
+      toast.success("Dish added to collections")
     }
   }
 
@@ -3456,7 +3456,7 @@ function RestaurantDetailsContent() {
                       </div>
                       <div className="flex-1 text-left">
                         <div className="flex items-center justify-between">
-                          <span className="text-base font-medium text-gray-900 dark:text-white">Bookmarks</span>
+                          <span className="text-base font-medium text-gray-900 dark:text-white">Collections</span>
                           {selectedItem && (
                             <Checkbox
                               checked={isDishFavorite(selectedItem.id, restaurant?.restaurantId || restaurant?._id || restaurant?.id)}

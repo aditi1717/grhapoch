@@ -337,6 +337,9 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     tracking: apiOrder?.tracking || previousOrder?.tracking || {},
     deliveryState: apiOrder?.deliveryState || previousOrder?.deliveryState || null,
     createdAt: apiOrder?.createdAt || previousOrder?.createdAt || null,
+    estimatedDeliveryTime: apiOrder?.estimatedDeliveryTime || apiOrder?.estimatedTime || previousOrder?.estimatedDeliveryTime || 35,
+    estimatedTime: apiOrder?.estimatedTime || apiOrder?.estimatedDeliveryTime || previousOrder?.estimatedTime || 35,
+    preparingTimestamp: apiOrder?.preparingTimestamp || previousOrder?.preparingTimestamp || null,
     totalAmount: apiOrder?.pricing?.total || apiOrder?.totalAmount || previousOrder?.totalAmount || 0,
     deliveryFee: apiOrder?.pricing?.deliveryFee || apiOrder?.deliveryFee || previousOrder?.deliveryFee || 0,
     gst: apiOrder?.pricing?.tax || apiOrder?.pricing?.gst || apiOrder?.gst || apiOrder?.tax || previousOrder?.gst || 0,
@@ -440,6 +443,7 @@ export default function OrderTracking() {
   const confirmed = searchParams.get("confirmed") === "true"
   const { getOrderById } = useOrders()
   const { profile, getDefaultAddress } = useProfile()
+  const { location: userLiveLocation } = useUserLocation()
   // State for order data
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
@@ -911,11 +915,11 @@ export default function OrderTracking() {
       if (pollRef.current) pollRef.current(false);
     };
 
-    const pollInterval = (isSocketConnected || window.orderSocketConnected) ? 25000 : 10000;
+    const pollInterval = window.orderSocketConnected ? 25000 : 10000;
     const interval = setInterval(tick, pollInterval);
 
     return () => clearInterval(interval);
-  }, [orderId, isSocketConnected]);
+  }, [orderId]);
 
   useEffect(() => {
     if (!order) return
@@ -935,15 +939,16 @@ export default function OrderTracking() {
     if (!order) return;
     
     const calculateTimeRemaining = () => {
-      const orderTime = new Date(
-        order.createdAt || order.orderDate || order.created_at || order.date || Date.now()
-      );
+      const baseTime = order.preparingTimestamp
+        ? new Date(order.preparingTimestamp)
+        : new Date(order.createdAt || order.orderDate || order.created_at || order.date || Date.now());
+
       const estimatedMinutes =
         order.estimatedDeliveryTime ||
         order.estimatedTime ||
         order.estimated_delivery_time ||
         35;
-      const deliveryTime = new Date(orderTime.getTime() + estimatedMinutes * 60000);
+      const deliveryTime = new Date(baseTime.getTime() + estimatedMinutes * 60000);
       return Math.max(0, Math.floor((deliveryTime - new Date()) / 60000));
     };
 
@@ -967,7 +972,7 @@ export default function OrderTracking() {
       clearInterval(timer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [order?.createdAt, order?.estimatedDeliveryTime, order?.estimatedTime]);
+  }, [order?.createdAt, order?.estimatedDeliveryTime, order?.estimatedTime, order?.preparingTimestamp]);
 
   // Listen for order status updates from socket (e.g., "Delivery partner on the way")
   useEffect(() => {
@@ -998,6 +1003,9 @@ export default function OrderTracking() {
             return {
               ...prev,
               status: payload.orderStatus || payload.status || prev.status,
+              estimatedDeliveryTime: payload.estimatedDeliveryTime !== undefined ? payload.estimatedDeliveryTime : prev.estimatedDeliveryTime,
+              estimatedTime: payload.estimatedTime !== undefined ? payload.estimatedTime : prev.estimatedTime,
+              preparingTimestamp: payload.preparingTimestamp !== undefined ? payload.preparingTimestamp : prev.preparingTimestamp,
               note: payload.note || prev.note
             };
           });
@@ -1200,6 +1208,8 @@ export default function OrderTracking() {
     )
   }
 
+  const isRiderAssigned = !!(order?.deliveryPartnerId || order?.deliveryPartner);
+
   const statusConfig = {
     placed: {
       title: "Order Placed",
@@ -1215,7 +1225,9 @@ export default function OrderTracking() {
     },
     preparing: {
       title: "Food is being prepared",
-      subtitle: typeof estimatedTime === 'number' ? `Arriving in ${estimatedTime} mins` : "Cooking your meal",
+      subtitle: typeof estimatedTime === 'number'
+        ? (isRiderAssigned ? `Arriving in ${estimatedTime} mins` : `Food ready in ${estimatedTime} mins`)
+        : "Cooking your meal",
       color: "bg-green-600",
       iconType: 'food'
     },

@@ -563,6 +563,7 @@ export async function createOrder(userId, dto) {
       scheduledAt: dto.scheduledAt ? new Date(dto.scheduledAt) : null,
       riderEarning: Number(riderEarning) || 0,
       platformProfit: Number(platformProfit) || 0,
+      estimatedDeliveryTime: Number(restaurant?.estimatedDeliveryTimeMinutes) || 35,
     });
 
     let razorpayPayload = null;
@@ -1429,6 +1430,7 @@ export async function updateOrderStatusRestaurant(
   restaurantId,
   orderStatus,
   note = "",
+  estimatedDeliveryTime = undefined,
 ) {
   await expireUnacceptedOrders({
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
@@ -1457,6 +1459,17 @@ export async function updateOrderStatusRestaurant(
   }
 
   order.orderStatus = orderStatus;
+  if (estimatedDeliveryTime !== undefined && estimatedDeliveryTime !== null) {
+    order.estimatedDeliveryTime = estimatedDeliveryTime;
+  } else if ((orderStatus === "preparing" || orderStatus === "confirmed") && (order.estimatedDeliveryTime === undefined || order.estimatedDeliveryTime === null)) {
+    const rest = await mongoose.model('Restaurant').findById(restaurantId).select('estimatedDeliveryTimeMinutes');
+    if (rest && Number.isFinite(rest.estimatedDeliveryTimeMinutes)) {
+      order.estimatedDeliveryTime = rest.estimatedDeliveryTimeMinutes;
+    } else {
+      order.estimatedDeliveryTime = 35;
+    }
+  }
+
   if (note && String(note).trim()) {
     order.note = String(note).trim();
   }
@@ -1529,6 +1542,12 @@ export async function updateOrderStatusRestaurant(
         note: order.note || note || "",
         title,
         message: body,
+        estimatedDeliveryTime: order.estimatedDeliveryTime,
+        estimatedTime: order.estimatedDeliveryTime,
+        preparingTimestamp: (() => {
+          const preparingEntry = (order.statusHistory || []).find((entry) => entry.to === 'preparing' || entry.to === 'confirmed');
+          return preparingEntry?.at || order.createdAt || null;
+        })(),
       };
       
       const restRoom = rooms.restaurant(restaurantId);

@@ -1564,6 +1564,7 @@ export default function Home() {
     };
   }, [refreshLanding]);
   const [showToast, setShowToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [showManageCollections, setShowManageCollections] = useState(false);
   const [selectedRestaurantSlug, setSelectedRestaurantSlug] = useState(null);
 
@@ -3189,8 +3190,12 @@ export default function Home() {
 
                   const handleToggleFavorite = (slug, res) => {
                     if (favorite) {
-                      setSelectedRestaurantSlug(slug);
-                      setShowManageCollections(true);
+                      removeFavorite(slug);
+                      setToastMessage("Removed from collections");
+                      setShowToast(true);
+                      setTimeout(() => {
+                        setShowToast(false);
+                      }, 3000);
                     } else {
                       addFavorite({
                         slug: slug,
@@ -3202,6 +3207,7 @@ export default function Home() {
                         priceRange: res.priceRange,
                         image: res.image,
                       });
+                      setToastMessage("Added to collections");
                       setShowToast(true);
                       setTimeout(() => {
                         setShowToast(false);
@@ -4221,7 +4227,7 @@ export default function Home() {
                 exit={{ y: 100, opacity: 0 }}
                 transition={{ duration: 0.3, type: "spring", damping: 25 }}
                 className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[10001] bg-black text-white px-6 py-3 rounded-lg shadow-2xl">
-                <p className="text-sm font-medium">Added to bookmark</p>
+                <p className="text-sm font-medium">{toastMessage}</p>
               </motion.div>
             )}
           </AnimatePresence>,
@@ -4270,12 +4276,12 @@ export default function Home() {
 
                   {/* Collections List */}
                   <div className="px-4 py-4 space-y-2 max-h-[60vh] overflow-y-auto">
-                    {/* Bookmarks Collection */}
+                    {/* Collections */}
                     <div
-                      className="w-full flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
+                       className="w-full flex items-start gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors cursor-pointer"
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Don't close modal on click, let checkbox handle it
+                         // Don't close modal on click, let checkbox handle it
                       }}>
                       <div className="h-12 w-12 rounded-lg bg-pink-100 flex items-center justify-center flex-shrink-0">
                         <Bookmark className="h-6 w-6 text-red-500 fill-red-500" />
@@ -4283,7 +4289,7 @@ export default function Home() {
                       <div className="flex-1 text-left">
                         <div className="flex items-center justify-between">
                           <span className="text-base font-medium text-gray-900">
-                            Bookmarks
+                            Collections
                           </span>
                           {selectedRestaurantSlug && (
                             <div onClick={(e) => e.stopPropagation()}>

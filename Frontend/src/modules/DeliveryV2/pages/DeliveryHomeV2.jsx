@@ -485,6 +485,45 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
     return () => clearInterval(pingInterval);
   }, [activeOrder, isOnline]);
 
+  // 3.6 Active Trip Assignment Verification
+  useEffect(() => {
+    if (!activeOrder) return;
+
+    let isSubscribed = true;
+    const interval = setInterval(async () => {
+      try {
+        const response = await deliveryAPI.getCurrentDelivery();
+        const rawData = response?.data?.data?.activeOrder || response?.data?.data;
+        const serverData = (rawData && (rawData._id || rawData.orderId)) ? rawData : null;
+
+        if (!isSubscribed) return;
+
+        // If the server says there is no active order for this rider, clear it!
+        if (!serverData) {
+          clearActiveOrder();
+          toast.info("Active order was cancelled or unassigned.");
+          return;
+        }
+
+        // If the order is no longer assigned to this rider
+        const myId = getStoredDeliveryPartnerId();
+        const serverRiderId = serverData.deliveryPartnerId || serverData.dispatch?.deliveryPartnerId;
+        if (serverRiderId && String(serverRiderId) !== String(myId)) {
+          clearActiveOrder();
+          toast.info("Order was reassigned to another rider.");
+          return;
+        }
+      } catch (err) {
+        console.warn("[ActiveOrderVerify] Verification failed:", err);
+      }
+    }, 15000); // Verify every 15 seconds
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [activeOrder, clearActiveOrder]);
+
   useEffect(() => {
     if (!newOrder) return;
     setIncomingOrder((prev) => (prev ? prev : newOrder));

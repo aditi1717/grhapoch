@@ -143,7 +143,7 @@ export default function FoodsList() {
     try {
       setLoading(true)
 
-      const params = { page: currentPage, limit: pageSize }
+      const params = { page: currentPage, limit: pageSize, approvalStatus: "approved" }
       if (selectedRestaurant !== "all") params.restaurantId = selectedRestaurant
       if (debouncedSearchQuery) params.search = debouncedSearchQuery
 
@@ -173,7 +173,7 @@ export default function FoodsList() {
             isAvailable: f.isAvailable !== false,
             createdAt: f.createdAt,
             updatedAt: f.updatedAt,
-          }))
+          })).filter((f) => f.approvalStatus === "approved")
         : []
 
       setFoods(normalizedFoods)
@@ -697,10 +697,10 @@ export default function FoodsList() {
             <button
               type="button"
               onClick={openBulkUploadModal}
-              className="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 inline-flex items-center gap-2"
+              className="px-4 py-2.5 rounded-lg bg-red-600 text-black text-sm font-semibold hover:bg-red-700 inline-flex items-center gap-2"
             >
-              <Upload className="w-4 h-4" />
-              <span>Bulk Upload</span>
+              <Upload className="w-4 h-4 text-black" />
+              <span className="text-black">Bulk Upload</span>
             </button>
             {isRestaurantSelected && selectedDeleteCount > 0 && (
               <button
@@ -1357,10 +1357,10 @@ export default function FoodsList() {
                     type="button"
                     onClick={handleBulkUpload}
                     disabled={!bulkUploadRestaurantId || !bulkUploadFile || isBulkUploading}
-                    className="px-4 py-2.5 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-60 inline-flex items-center gap-2"
+                    className="px-4 py-2.5 rounded-lg bg-red-600 text-black text-sm font-semibold hover:bg-red-700 disabled:opacity-60 inline-flex items-center gap-2"
                   >
-                    {isBulkUploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                    <span>{isBulkUploading ? "Uploading..." : "Start Bulk Upload"}</span>
+                    {isBulkUploading ? <Loader2 className="w-4 h-4 animate-spin text-black" /> : <Upload className="w-4 h-4 text-black" />}
+                    <span className="text-black">{isBulkUploading ? "Uploading..." : "Start Bulk Upload"}</span>
                   </button>
                 </div>
               </>

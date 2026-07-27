@@ -1,4 +1,4 @@
-﻿import { Link } from "react-router-dom"
+import { Link } from "react-router-dom"
 import { useState } from "react"
 
 import { Heart, Star, Clock, MapPin, ArrowRight, ArrowLeft, Bookmark } from "lucide-react"
@@ -18,18 +18,18 @@ export default function Favorites() {
   const handleRemoveFavorite = (e, slug) => {
     e.preventDefault()
     e.stopPropagation()
-    if (window.confirm("Remove this restaurant from favorites?")) {
+    if (window.confirm("Remove this restaurant from collections?")) {
       removeFavorite(slug)
-      toast.success("Restaurant removed from favorites")
+      toast.success("Restaurant removed from collections")
     }
   }
 
   const handleRemoveDishFavorite = (e, dishId, restaurantId) => {
     e.preventDefault()
     e.stopPropagation()
-    if (window.confirm("Remove this dish from favorites?")) {
+    if (window.confirm("Remove this dish from collections?")) {
       removeDishFavorite(dishId, restaurantId)
-      toast.success("Dish removed from favorites")
+      toast.success("Dish removed from collections")
     }
   }
 
@@ -46,7 +46,7 @@ export default function Favorites() {
                   <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
           </Link>
-          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">My Favorites</h1>
+          <h1 className="text-lg sm:text-xl md:text-2xl font-bold">My Collections</h1>
         </div>
       </ScrollReveal>
       <Card>
@@ -55,7 +55,7 @@ export default function Favorites() {
               className="h-16 w-16 mx-auto mb-4"
               style={{ color: "var(--module-theme-color, #FA0272)" }}
             />
-            <p className="text-muted-foreground text-lg mb-4">You haven't added any favorites yet</p>
+            <p className="text-muted-foreground text-lg mb-4">You haven't added any collections yet</p>
             <Link to="/user">
               <Button
                 className="text-white border-0"
@@ -86,7 +86,7 @@ export default function Favorites() {
                 </Button>
               </Link>
               <div>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold">My Favorites</h1>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold">My Collections</h1>
                 <p className="text-gray-700 dark:text-gray-300 mt-1 text-sm font-semibold">
                   {dishFavorites.length || 0} {dishFavorites.length === 1 ? "dish" : "dishes"} • {restaurantFavorites.length || 0} {restaurantFavorites.length === 1 ? "restaurant" : "restaurants"}
                 </p>
@@ -125,7 +125,7 @@ export default function Favorites() {
             {restaurantFavorites.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <Heart className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground text-lg mb-4">No restaurants saved yet</p>
+                <p className="text-muted-foreground text-lg mb-4">No restaurants in collections yet</p>
                 <Link to="/user">
                   <Button
                     className="text-white border-0"
@@ -209,7 +209,7 @@ export default function Favorites() {
             {dishFavorites.length === 0 ? (
               <div className="col-span-full text-center py-12">
                 <Bookmark className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground text-lg mb-4">No dishes saved yet</p>
+                <p className="text-muted-foreground text-lg mb-4">No dishes in collections yet</p>
                 <Link to="/user">
                   <Button
                     className="text-white border-0"

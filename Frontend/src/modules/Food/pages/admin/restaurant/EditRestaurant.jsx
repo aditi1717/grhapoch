@@ -392,26 +392,24 @@ export default function EditRestaurant() {
                   <Input value={detailsForm.name} onChange={(e) => setDetailsForm((p) => ({ ...p, name: e.target.value }))} />
                 </div>
                 <div>
-                  <Label>Pure Veg</Label>
+                  <Label>Pure Veg (Not editable)</Label>
                   <div className="mt-2 flex items-center gap-2">
                     <button
                       type="button"
-                      onClick={() => setDetailsForm((p) => ({ ...p, pureVegRestaurant: true }))}
-                      className={`px-3 py-1.5 text-xs rounded-full border ${
+                      className={`px-3 py-1.5 text-xs rounded-full border pointer-events-none select-none ${
                         detailsForm.pureVegRestaurant === true
-                          ? "bg-green-800 text-white border-green-800 font-semibold"
-                          : "bg-white text-slate-700 border-slate-300"
+                          ? "bg-green-100 text-black border-green-600 font-semibold"
+                          : "bg-slate-100 text-slate-900 border-slate-200"
                       }`}
                     >
                       Yes
                     </button>
                     <button
                       type="button"
-                      onClick={() => setDetailsForm((p) => ({ ...p, pureVegRestaurant: false }))}
-                      className={`px-3 py-1.5 text-xs rounded-full border ${
+                      className={`px-3 py-1.5 text-xs rounded-full border pointer-events-none select-none ${
                         detailsForm.pureVegRestaurant === false
-                          ? "bg-slate-900 text-white border-slate-900"
-                          : "bg-white text-slate-700 border-slate-300"
+                          ? "bg-slate-200 text-black border-slate-400 font-semibold"
+                          : "bg-slate-100 text-slate-900 border-slate-200"
                       }`}
                     >
                       No

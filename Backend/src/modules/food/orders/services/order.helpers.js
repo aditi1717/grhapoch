@@ -176,6 +176,9 @@ export function normalizeOrderForClient(orderDoc) {
   else if (String(cancellationEntry?.byRole || "").toUpperCase() === "ADMIN")
     cancelledBy = "admin";
 
+  const preparingEntry = statusHistory.find((entry) => entry.to === 'preparing' || entry.to === 'confirmed');
+  const preparingTimestamp = preparingEntry?.at || order?.createdAt || null;
+
   return {
     ...order,
     orderMongoId: mongoId,
@@ -184,11 +187,14 @@ export function normalizeOrderForClient(orderDoc) {
     cancellationReason,
     cancelledBy,
     cancelledAt: cancellationEntry?.at || null,
+    preparingTimestamp,
     deliveredAt:
       order?.deliveryState?.deliveredAt || order?.deliveredAt || null,
     deliveryPartnerId:
       order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerId || null,
     rating: order?.ratings?.restaurant?.rating ?? order?.rating ?? null,
+    estimatedDeliveryTime: order?.estimatedDeliveryTime ?? 35,
+    estimatedTime: order?.estimatedDeliveryTime ?? 35,
     deliveryState: {
       ...(order?.deliveryState || {}),
       currentLocation: order?.lastRiderLocation?.coordinates?.length >= 2 ? {
@@ -282,6 +288,12 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
     dispatch: order?.dispatch,
     createdAt: order?.createdAt,
     updatedAt: order?.updatedAt,
+    estimatedDeliveryTime: order?.estimatedDeliveryTime ?? 35,
+    estimatedTime: order?.estimatedDeliveryTime ?? 35,
+    preparingTimestamp: (() => {
+      const preparingEntry = (order?.statusHistory || []).find((entry) => entry.to === 'preparing' || entry.to === 'confirmed');
+      return preparingEntry?.at || order?.createdAt || null;
+    })(),
   };
 }
 

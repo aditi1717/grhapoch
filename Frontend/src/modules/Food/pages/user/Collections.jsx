@@ -29,12 +29,12 @@ export default function Collections() {
 
   // Delivery collections
   const [deliveryCollections, setDeliveryCollections] = useState([
-    { id: "bookmarks", name: "Bookmarks", dishes: 0, restaurants: 0, isDefault: true }
+    { id: "bookmarks", name: "Collections", dishes: 0, restaurants: 0, isDefault: true }
   ])
 
   // Dining collections
   const [diningCollections, setDiningCollections] = useState([
-    { id: "bookmarks", name: "Bookmarks", dishes: 0, restaurants: 0, isDefault: true }
+    { id: "bookmarks", name: "Collections", dishes: 0, restaurants: 0, isDefault: true }
   ])
 
   const currentCollections = activeTab === "delivery" ? deliveryCollections : diningCollections

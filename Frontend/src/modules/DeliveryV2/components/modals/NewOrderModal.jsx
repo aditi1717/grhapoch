@@ -29,7 +29,12 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
 
     // A. Use provided data if available (Direct distance from socket)
     const rawDist = lockedOrder.pickupDistanceKm || lockedOrder.distanceKm;
-    const rawEta = lockedOrder.estimatedTime || lockedOrder.duration || lockedOrder.eta;
+    const prepStart = lockedOrder.preparingTimestamp
+      ? new Date(lockedOrder.preparingTimestamp)
+      : (lockedOrder.createdAt ? new Date(lockedOrder.createdAt) : new Date());
+    const elapsedMinutes = Math.max(0, Math.floor((Date.now() - prepStart.getTime()) / 60000));
+    const baseEta = lockedOrder.estimatedTime || lockedOrder.duration || lockedOrder.eta || 35;
+    const rawEta = Math.max(1, baseEta - elapsedMinutes);
     
     if (rawDist != null) {
       const distNum = Number(rawDist);
@@ -60,11 +65,12 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
       if (km >= 900) {
         return { 
           distanceText: 'Nearby', 
-          etaText: '15-20 MINS'
+          etaText: `${rawEta} MINS`
         };
       }
-      // Assume 25km/h avg for initial estimate (roughly 416m/min)
-      const mins = Math.ceil(distM / 416) + (lockedOrder.prepTime || 5);
+      // Assume 25km/h avg for initial travel estimate (roughly 416m/min)
+      const travelMins = Math.ceil(distM / 416);
+      const mins = Math.max(travelMins, rawEta);
       
       return { 
         distanceText: `${km.toFixed(1)} KM`, 
@@ -74,7 +80,7 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
 
     return { 
       distanceText: 'Nearby', 
-      etaText: `${lockedOrder.prepTime || 15} MINS` 
+      etaText: `${rawEta} MINS` 
     };
   }, [lockedOrder, riderLocation]);
 
