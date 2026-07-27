@@ -86,11 +86,8 @@ async function disablePushWhenLoggedOut() {
 }
 
 function isModuleOnline(moduleName = normalizeModuleFromPath()) {
-  if (typeof document === "undefined" || typeof window === "undefined") return false;
-  const isVisible = document.visibilityState === "visible";
-  const isFocused = typeof document.hasFocus === "function" ? document.hasFocus() : true;
-  const isWindowFocused = typeof window === "undefined" || typeof window.focus !== "function" ? true : isFocused;
-  return isVisible && isWindowFocused;
+  if (typeof document === "undefined") return false;
+  return document.visibilityState === "visible";
 }
 
 function isRecord(value) {
@@ -609,11 +606,23 @@ function getMessagingFirebaseApp(config) {
 }
 
 function getSavedToken(moduleName) {
-  return localStorage.getItem(`${tokenCachePrefix}${moduleName}`) || "";
+  try {
+    if (typeof window === "undefined") return "";
+    const accessToken = localStorage.getItem(`${moduleName}_accessToken`) || localStorage.getItem("accessToken") || "";
+    const suffix = accessToken ? `_${accessToken.slice(-15)}` : "";
+    return localStorage.getItem(`${tokenCachePrefix}${moduleName}${suffix}`) || "";
+  } catch {
+    return "";
+  }
 }
 
 function setSavedToken(moduleName, token) {
-  localStorage.setItem(`${tokenCachePrefix}${moduleName}`, token);
+  try {
+    if (typeof window === "undefined") return;
+    const accessToken = localStorage.getItem(`${moduleName}_accessToken`) || localStorage.getItem("accessToken") || "";
+    const suffix = accessToken ? `_${accessToken.slice(-15)}` : "";
+    localStorage.setItem(`${tokenCachePrefix}${moduleName}${suffix}`, token);
+  } catch {}
 }
 
 async function saveTokenByModule(moduleName, token, platform = "web") {
@@ -663,7 +672,7 @@ async function registerNativeWebViewFcmToken(moduleName) {
   }
 }
 
-function showForegroundNotification(payload = {}) {
+async function showForegroundNotification(payload = {}) {
   if (!isRecord(payload)) {
     pushDebugWarn(PUSH_DEBUG_PREFIX, "Ignoring malformed foreground notification payload", { payload });
     return;
@@ -671,10 +680,6 @@ function showForegroundNotification(payload = {}) {
   const moduleName = normalizeModuleFromPath();
   if (!hasModuleSession(moduleName)) {
     pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping foreground notification: module is logged out", { moduleName });
-    return;
-  }
-  if (!isModuleOnline(moduleName)) {
-    pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping foreground notification: module is not online", { moduleName });
     return;
   }
   const notificationKey = getNotificationKey(payload);
@@ -694,24 +699,55 @@ function showForegroundNotification(payload = {}) {
   const title = titleCandidate || bodyCandidate || "New update";
   const body = titleCandidate ? (bodyCandidate || inferredBody) : "";
 
-  // Play sound only when app is in foreground
+  if (!title && !body) {
+    pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping blank foreground notification after sanitize");
+    return;
+  }
+
+  // Play sound/vibration
   playPushSound(payload);
 
-  // App is in foreground - just show in-app toast, NOT system notification
-  // System notification will be handled by service worker only when app is closed/background
-  if (typeof document !== "undefined" && document.visibilityState === "visible") {
-    if (!title && !body) {
-      pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping blank foreground notification after sanitize");
-      return;
-    }
-    if (body) {
-      toast.success(`${title}: ${body}`);
+  if (typeof document !== "undefined") {
+    if (document.visibilityState === "visible") {
+      if (body) {
+        toast.success(`${title}: ${body}`);
+      } else {
+        toast.success(title);
+      }
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Foreground notification shown as toast", { title, body });
     } else {
-      toast.success(title);
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try {
+          if ("serviceWorker" in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, {
+              body,
+              icon: "/favicon.ico",
+              tag: notificationKey,
+              data: payload?.data || {},
+            });
+            pushDebugLog(PUSH_DEBUG_PREFIX, "Background tab notification shown via SW", { title, body });
+          } else {
+            new Notification(title, {
+              body,
+              icon: "/favicon.ico",
+              tag: notificationKey,
+            });
+            pushDebugLog(PUSH_DEBUG_PREFIX, "Background tab notification shown via Web Notification", { title, body });
+          }
+        } catch (err) {
+          new Notification(title, {
+            body,
+            icon: "/favicon.ico",
+            tag: notificationKey,
+          });
+          pushDebugLog(PUSH_DEBUG_PREFIX, "Background tab notification shown via fallback Web Notification", { title, body });
+        }
+      }
     }
-    pushDebugLog(PUSH_DEBUG_PREFIX, "Foreground notification shown as toast", { title, body });
   }
 }
+
 
 function attachServiceWorkerMessageListener() {
   if (serviceWorkerMessageListenerAttached || typeof window === "undefined") {

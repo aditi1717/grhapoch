@@ -270,14 +270,9 @@ export const exportReviewsToPDF = (reviews, filename = "deliveryman_reviews", op
     </html>
   `
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 
 export const exportReviewsToJSON = (reviews, filename = "deliveryman_reviews") => {

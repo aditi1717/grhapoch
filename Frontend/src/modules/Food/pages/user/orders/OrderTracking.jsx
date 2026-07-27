@@ -36,7 +36,6 @@ import { useLocation as useUserLocation } from "@food/hooks/useLocation"
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap"
 import { orderAPI, restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
-import { useUserNotifications } from "@food/hooks/useUserNotifications"
 import circleIcon from "@food/assets/circleicon.png"
 import { RESTAURANT_PIN_SVG, CUSTOMER_PIN_SVG, RIDER_BIKE_SVG } from "@food/constants/mapIcons"
 
@@ -441,10 +440,6 @@ export default function OrderTracking() {
   const confirmed = searchParams.get("confirmed") === "true"
   const { getOrderById } = useOrders()
   const { profile, getDefaultAddress } = useProfile()
-  const { location: userLiveLocation } = useUserLocation()
-
-  const { isConnected: isSocketConnected } = useUserNotifications()
-
   // State for order data
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)

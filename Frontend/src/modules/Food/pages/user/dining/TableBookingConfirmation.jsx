@@ -205,7 +205,7 @@ export default function TableBookingConfirmation() {
                                 <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider block">Date &amp; Time</span>
                                 <div className="flex items-center gap-1 mt-0.5 min-w-0">
                                     <Calendar className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                                    <span className="font-bold text-xs text-gray-900 dark:text-slate-100 truncate">{formattedDate}, {timeSlot}</span>
+                                    <span className="font-bold text-xs text-gray-900 dark:text-slate-100">{formattedDate}, {timeSlot}</span>
                                 </div>
                             </div>
                             {/* Guests */}

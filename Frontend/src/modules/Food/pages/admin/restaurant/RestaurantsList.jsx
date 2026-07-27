@@ -1680,7 +1680,7 @@ export default function RestaurantsList() {
                         <div>
                           <h4 className="text-base font-semibold text-slate-900">Location Editor</h4>
                           <p className="text-xs text-indigo-700 mt-1">
-                            Update restaurant location using dropdown suggestions and service zone selection.
+                            Update restaurant location using address search and coordinate mapping.
                           </p>
                         </div>
                         <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-indigo-200 bg-white text-indigo-700 text-xs font-semibold">

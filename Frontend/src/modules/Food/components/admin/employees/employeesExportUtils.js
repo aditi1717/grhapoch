@@ -46,8 +46,7 @@ export const exportEmployeesToExcel = (employees, headers, filename = "employees
 };
 
 export const exportEmployeesToPDF = (employees, headers, filename = "employees", title = "Employee Report") => {
-  const printWindow = window.open("", "_blank");
-  printWindow.document.write(`
+  const htmlContent = `
     <html>
       <head>
         <title>${title}</title>
@@ -81,9 +80,10 @@ export const exportEmployeesToPDF = (employees, headers, filename = "employees",
         </table>
       </body>
     </html>
-  `);
-  printWindow.document.close();
-  printWindow.print();
+  `;
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 };
 
 export const exportEmployeesToJSON = (employees, filename = "employees") => {

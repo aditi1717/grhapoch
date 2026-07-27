@@ -67,7 +67,6 @@ export const exportAdvertisementsToPDF = (ads, filename = "advertisements") => {
     ad.duration || ""
   ])
   
-  const printWindow = window.open("", "_blank")
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -95,9 +94,9 @@ export const exportAdvertisementsToPDF = (ads, filename = "advertisements") => {
       </body>
     </html>
   `
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.print()
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 
 export const exportAdvertisementsToJSON = (ads, filename = "advertisements") => {

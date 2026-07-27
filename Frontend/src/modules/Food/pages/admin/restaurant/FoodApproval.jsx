@@ -216,9 +216,9 @@ export default function FoodApproval() {
                   }
                 }}
                 disabled={processing}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-bold rounded-xl hover:bg-green-700 transition-all shadow-lg shadow-green-100 disabled:opacity-50"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#FF0000] text-black text-sm font-black rounded-xl hover:bg-[#E60000] transition-all shadow-lg border-2 border-black disabled:opacity-50"
               >
-                <CheckCircle2 className="w-4 h-4" />
+                <CheckCircle2 className="w-4 h-4 text-black" />
                 Bulk Approve All
               </button>
             )}

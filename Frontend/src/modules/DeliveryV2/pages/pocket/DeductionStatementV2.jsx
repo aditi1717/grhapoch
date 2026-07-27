@@ -95,7 +95,7 @@ export const DeductionStatementV2 = () => {
                 </div>
                 <p className="text-gray-900 text-lg font-black mb-2 tracking-tight">No Transactions</p>
                 <p className="text-gray-400 text-[10px] font-bold uppercase tracking-widest leading-relaxed max-w-[250px] mx-auto">
-                   Is hafton mein koi deduction nahi hui.
+                   No deductions recorded this week.
                 </p>
              </div>
           ) : (

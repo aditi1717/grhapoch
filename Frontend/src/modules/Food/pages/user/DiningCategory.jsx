@@ -54,7 +54,43 @@ export default function DiningCategory() {
   const goBack = useAppBackNavigation()
   const { openLocationSelector } = useLocationSelector()
   const { location } = useLocationHook()
-  const { vegMode, addFavorite, removeFavorite, isFavorite } = useProfile()
+  const { vegMode, addFavorite, removeFavorite, isFavorite, getDefaultAddress } = useProfile()
+
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress]
+  )
+
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = Number(coords[0])
+      const lat = Number(coords[1])
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng, city: defaultSavedAddress.city }
+      }
+    }
+
+    const lat = Number(
+      defaultSavedAddress?.latitude || defaultSavedAddress?.lat
+    )
+    const lng = Number(
+      defaultSavedAddress?.longitude || defaultSavedAddress?.lng
+    )
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng, city: defaultSavedAddress.city }
+    }
+
+    return null
+  }, [defaultSavedAddress])
+
+  const effectiveLocation = useMemo(() => {
+    const useSavedAddress =
+      Number.isFinite(defaultSavedAddressLocation?.latitude) &&
+      Number.isFinite(defaultSavedAddressLocation?.longitude)
+
+    return useSavedAddress ? defaultSavedAddressLocation : location
+  }, [defaultSavedAddressLocation, location])
 
   const [restaurants, setRestaurants] = useState([])
   const [isLoading, setIsLoading] = useState(true)
@@ -66,9 +102,9 @@ export default function DiningCategory() {
         setIsLoading(true)
         const response = await diningAPI.getRestaurants({
           category,
-          city: location?.city || undefined,
-          lat: location?.latitude,
-          lng: location?.longitude
+          city: effectiveLocation?.city || undefined,
+          lat: effectiveLocation?.latitude,
+          lng: effectiveLocation?.longitude
         })
 
         if (response?.data?.success) {
@@ -93,7 +129,7 @@ export default function DiningCategory() {
               price: restaurant.costForTwo ? `Rs ${restaurant.costForTwo} for two` : "Price on request",
               rating: Number(restaurant.rating || restaurant.avgRating || 0).toFixed(1),
               offer: restaurant.offer || "Pre-book tables and dining offers",
-              featuredDish: restaurant.featuredDish || "Chef's special",
+              featuredDish: restaurant.featuredDish || "",
               featuredPrice: restaurant.featuredPrice || null,
               availability,
             }
@@ -112,9 +148,9 @@ export default function DiningCategory() {
     }
 
     fetchRestaurants()
-  }, [category, location?.city])
+  }, [category, effectiveLocation?.city, effectiveLocation?.latitude, effectiveLocation?.longitude])
 
-  const cityName = location?.city || "Select location"
+  const cityName = effectiveLocation?.city || location?.city || "Select location"
   const heading = useMemo(() => formatCategoryHeading(category), [category])
 
   const filteredRestaurants = useMemo(() => {
@@ -222,10 +258,12 @@ export default function DiningCategory() {
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
 
                       <div className="absolute left-4 right-4 top-4 flex items-start justify-between gap-3">
-                        <div className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
-                          {restaurant.featuredDish}
-                          {restaurant.featuredPrice ? ` • ${"\u20B9"}${restaurant.featuredPrice}` : ""}
-                        </div>
+                        {restaurant.featuredDish && (
+                          <div className="rounded-full bg-black/60 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm">
+                            {restaurant.featuredDish}
+                            {restaurant.featuredPrice > 0 ? ` • ${"\u20B9"}${restaurant.featuredPrice}` : ""}
+                          </div>
+                        )}
                         <Button
                           variant="ghost"
                           size="icon"

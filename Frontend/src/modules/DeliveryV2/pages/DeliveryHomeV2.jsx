@@ -74,15 +74,20 @@ function BottomPopup({ isOpen, onClose, title, children, maxHeight = "85vh" }) {
         style={{ maxHeight }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="w-full flex justify-center py-3">
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full" />
+        {/* Centered Close Arrow at the Top */}
+        <div className="w-full flex justify-center pt-4">
+          <button 
+            onClick={onClose} 
+            className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 hover:text-gray-905 hover:bg-gray-100 transition-all active:scale-90"
+            aria-label="Close"
+          >
+            <ChevronDown className="w-6 h-6" />
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-12">
+
+        <div className="flex-1 overflow-y-auto no-scrollbar px-8 pb-12 pt-2">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-2xl font-black text-gray-900 uppercase tracking-tight">{title}</h2>
-            <button onClick={onClose} className="w-10 h-10 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all active:scale-95">
-              <AlertTriangle className="w-5 h-5" />
-            </button>
           </div>
           {children}
         </div>
@@ -90,6 +95,8 @@ function BottomPopup({ isOpen, onClose, title, children, maxHeight = "85vh" }) {
     </div>
   );
 }
+
+
 
 /**
  * DeliveryHomeV2 - Premium 1:1 Match with Original App UI.
@@ -1068,9 +1075,12 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
         </motion.div>
       )}
 
-      {/* ─── 3. BOTTOM NAV (Ultra Premium Minimalist Island) ─── */}
-      <div className="absolute bottom-0 left-0 right-0 w-full pb-8 pt-2 flex justify-center z-[200] bg-transparent pointer-events-none">
-        <div className="bg-[#111111]/95 backdrop-blur-md border border-white/10 rounded-full p-1.5 flex items-center shadow-[0_20px_40px_rgba(0,0,0,0.6)] pointer-events-auto">
+      {/* ─── 3. BOTTOM NAV (Sticky Full-Width Bar) ─── */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 w-full pt-2 flex justify-center z-[200] bg-[#111111]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-10px_30px_rgba(0,0,0,0.3)]"
+        style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+      >
+        <div className="w-full max-w-md px-4 flex items-center justify-around">
           {[
             { id: 'feed', icon: LayoutGrid, label: 'Feed' },
             { id: 'pocket', icon: Wallet, label: 'Pocket' },
@@ -1110,6 +1120,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
           })}
         </div>
       </div>
+
     </div>
   );
 }

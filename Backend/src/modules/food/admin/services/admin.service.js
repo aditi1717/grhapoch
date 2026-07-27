@@ -607,8 +607,8 @@ export async function getDashboardStats(query = {}) {
         FoodItem.countDocuments({ approvalStatus: 'approved' }),
         FoodAddon.countDocuments({ approvalStatus: 'approved', isDeleted: { $ne: true } }),
         FoodUser.countDocuments({}),
-        FoodRestaurant.find({ ...restaurantMatch, status: 'pending' }).sort({ createdAt: -1 }).limit(5).select('restaurantName createdAt').lean(),
-        FoodDeliveryPartner.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(5).select('name createdAt').lean(),
+        FoodRestaurant.find({ ...restaurantMatch, status: 'pending' }).sort({ createdAt: -1 }).limit(5).select('restaurantName name createdAt').lean(),
+        FoodDeliveryPartner.find({ status: 'pending' }).sort({ createdAt: -1 }).limit(5).select('name ownerName fullName createdAt').lean(),
         FoodOrder.find({ 
             ...orderMatch,
             orderStatus: { $in: PENDING_ORDER_STATUSES },
@@ -626,7 +626,7 @@ export async function getDashboardStats(query = {}) {
         liveSignals.push({
             type: 'restaurant',
             title: 'New Restaurant Request',
-            detail: `${r.restaurantName} is waiting for approval`,
+            detail: `${r.restaurantName || r.name || 'New Restaurant'} is waiting for approval`,
             time: formatTimeAgo(r.createdAt),
             timestamp: r.createdAt
         });
@@ -636,7 +636,7 @@ export async function getDashboardStats(query = {}) {
         liveSignals.push({
             type: 'delivery',
             title: 'New Delivery Partner',
-            detail: `${d.name} requested to join`,
+            detail: `${d.name || d.ownerName || d.fullName || 'New Delivery Partner'} requested to join`,
             time: formatTimeAgo(d.createdAt),
             timestamp: d.createdAt
         });
@@ -2511,98 +2511,121 @@ function formatSubscriptionPlanLabel(plan) {
  * (calendar-month postpaid billing).
  */
 async function buildRestaurantSubscriptionSummary(restaurantId) {
-    const rId = new mongoose.Types.ObjectId(String(restaurantId));
+    try {
+        const rId = new mongoose.Types.ObjectId(String(restaurantId));
 
-    const [
-        { FoodSubscriptionInvoice },
-        { FoodSubscriptionTransaction },
-        billingService,
-    ] = await Promise.all([
-        import('../../restaurant/models/subscriptionInvoice.model.js'),
-        import('../../restaurant/models/subscriptionTransaction.model.js'),
-        import('../../restaurant/services/subscriptionBilling.service.js'),
-    ]);
+        const [
+            { FoodSubscriptionInvoice },
+            { FoodSubscriptionTransaction },
+            billingService,
+        ] = await Promise.all([
+            import('../../restaurant/models/subscriptionInvoice.model.js'),
+            import('../../restaurant/models/subscriptionTransaction.model.js'),
+            import('../../restaurant/services/subscriptionBilling.service.js'),
+        ]);
 
-    const currentMonth = billingService.formatBillingMonth(new Date());
-    const { start: monthStart } = billingService.getMonthWindow(currentMonth);
+        const currentMonth = billingService.formatBillingMonth(new Date());
+        const { start: monthStart } = billingService.getMonthWindow(currentMonth);
 
-    const [invoiceAgg, latestInvoice, lastPaymentTx, currentGmv, invoices] = await Promise.all([
-        FoodSubscriptionInvoice.aggregate([
-            { $match: { restaurantId: rId } },
-            {
-                $group: {
-                    _id: null,
-                    totalBilled: { $sum: { $ifNull: ['$totalAmount', 0] } },
-                    totalPaid: { $sum: { $ifNull: ['$paidAmount', 0] } },
-                    totalWaived: { $sum: { $ifNull: ['$waivedAmount', 0] } },
-                    totalOutstanding: { $sum: { $ifNull: ['$outstandingAmount', 0] } },
-                    invoiceCount: { $sum: 1 },
+        const [invoiceAgg, latestInvoice, lastPaymentTx, currentGmv, invoices] = await Promise.all([
+            FoodSubscriptionInvoice.aggregate([
+                { $match: { restaurantId: rId } },
+                {
+                    $group: {
+                        _id: null,
+                        totalBilled: { $sum: { $ifNull: ['$totalAmount', 0] } },
+                        totalPaid: { $sum: { $ifNull: ['$paidAmount', 0] } },
+                        totalWaived: { $sum: { $ifNull: ['$waivedAmount', 0] } },
+                        totalOutstanding: { $sum: { $ifNull: ['$outstandingAmount', 0] } },
+                        invoiceCount: { $sum: 1 },
+                    },
                 },
-            },
-        ]),
-        FoodSubscriptionInvoice.findOne({ restaurantId: rId, billingMonth: { $ne: 'legacy' } })
-            .sort({ billingMonth: -1 })
-            .lean(),
-        FoodSubscriptionTransaction.findOne({
-            restaurantId: rId,
-            type: { $in: ['wallet_deduction', 'manual_payment'] },
-        })
-            .sort({ createdAt: -1 })
-            .lean(),
-        billingService.computeMonthlyGmv(rId, monthStart, new Date()),
-        FoodSubscriptionInvoice.find({ restaurantId: rId })
-            .sort({ billingMonth: -1 })
-            .limit(12)
-            .lean(),
-    ]);
+            ]),
+            FoodSubscriptionInvoice.findOne({ restaurantId: rId, billingMonth: { $ne: 'legacy' } })
+                .sort({ billingMonth: -1 })
+                .lean(),
+            FoodSubscriptionTransaction.findOne({
+                restaurantId: rId,
+                type: { $in: ['wallet_deduction', 'manual_payment'] },
+            })
+                .sort({ createdAt: -1 })
+                .lean(),
+            billingService.computeMonthlyGmv(rId, monthStart, new Date()),
+            FoodSubscriptionInvoice.find({ restaurantId: rId })
+                .sort({ billingMonth: -1 })
+                .limit(12)
+                .lean(),
+        ]);
 
-    const walletDeductionAgg = await FoodSubscriptionTransaction.aggregate([
-        { $match: { restaurantId: rId, type: 'wallet_deduction' } },
-        { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } }, count: { $sum: 1 } } },
-    ]);
+        const walletDeductionAgg = await FoodSubscriptionTransaction.aggregate([
+            { $match: { restaurantId: rId, type: 'wallet_deduction' } },
+            { $group: { _id: null, total: { $sum: { $ifNull: ['$amount', 0] } }, count: { $sum: 1 } } },
+        ]);
 
-    const agg = invoiceAgg?.[0] || {};
-    const dueAmount = Math.max(0, Number(agg.totalOutstanding) || 0);
-    const planKey = String(latestInvoice?.planName || '').trim().toLowerCase();
+        const agg = invoiceAgg?.[0] || {};
+        const dueAmount = Math.max(0, Number(agg.totalOutstanding) || 0);
+        const planKey = String(latestInvoice?.planName || '').trim().toLowerCase();
 
-    return {
-        billingModel: 'calendar_month_postpaid',
-        currentBillingMonth: currentMonth,
-        currentMonthGmv: Number(currentGmv?.gmv) || 0,
-        plan: planKey,
-        planLabel: latestInvoice ? formatSubscriptionPlanLabel(planKey) : 'Not billed yet',
-        cycleFee: Math.max(0, Number(latestInvoice?.totalAmount) || 0),
-        lastBilledMonth: latestInvoice?.billingMonth || null,
-        status: dueAmount > 0 ? 'due' : 'paid',
-        statusLabel: dueAmount > 0 ? 'Outstanding dues pending' : 'No outstanding dues',
-        dueAmount,
-        paidAmount: Math.max(0, Number(agg.totalPaid) || 0),
-        totalBilled: Math.max(0, Number(agg.totalBilled) || 0),
-        totalWaived: Math.max(0, Number(agg.totalWaived) || 0),
-        totalCollected: Math.max(0, Number(agg.totalPaid) || 0),
-        walletDeductionsTotal: Math.max(0, Number(walletDeductionAgg?.[0]?.total) || 0),
-        invoiceCount: Math.max(0, Number(agg.invoiceCount) || 0),
-        invoices: invoices.map((inv) => ({
-            billingMonth: inv.billingMonth,
-            billingMonthLabel: billingService.billingMonthLabel(inv.billingMonth),
-            gmv: inv.gmv,
-            planName: inv.planName,
-            totalAmount: inv.totalAmount,
-            paidAmount: inv.paidAmount,
-            waivedAmount: inv.waivedAmount,
-            outstandingAmount: inv.outstandingAmount,
-            status: inv.status,
-        })),
-        lastPayment: lastPaymentTx
-            ? {
-                amount: Math.max(0, Number(lastPaymentTx.amount) || 0),
-                eventType: String(lastPaymentTx.type || ''),
-                paymentType: lastPaymentTx.type === 'wallet_deduction' ? 'wallet' : 'manual',
-                date: lastPaymentTx.createdAt || null,
-                note: String(lastPaymentTx.remarks || '').trim(),
-            }
-            : null,
-    };
+        return {
+            billingModel: 'calendar_month_postpaid',
+            currentBillingMonth: currentMonth,
+            currentMonthGmv: Number(currentGmv?.gmv) || 0,
+            plan: planKey,
+            planLabel: latestInvoice ? formatSubscriptionPlanLabel(planKey) : 'Not billed yet',
+            cycleFee: Math.max(0, Number(latestInvoice?.totalAmount) || 0),
+            lastBilledMonth: latestInvoice?.billingMonth || null,
+            status: dueAmount > 0 ? 'due' : 'paid',
+            statusLabel: dueAmount > 0 ? 'Outstanding dues pending' : 'No outstanding dues',
+            dueAmount,
+            paidAmount: Math.max(0, Number(agg.totalPaid) || 0),
+            totalBilled: Math.max(0, Number(agg.totalBilled) || 0),
+            totalWaived: Math.max(0, Number(agg.totalWaived) || 0),
+            totalCollected: Math.max(0, Number(agg.totalPaid) || 0),
+            walletDeductionsTotal: Math.max(0, Number(walletDeductionAgg?.[0]?.total) || 0),
+            invoiceCount: Math.max(0, Number(agg.invoiceCount) || 0),
+            invoices: invoices.map((inv) => ({
+                billingMonth: inv.billingMonth,
+                billingMonthLabel: billingService.billingMonthLabel(inv.billingMonth),
+                gmv: inv.gmv,
+                planName: inv.planName,
+                totalAmount: inv.totalAmount,
+                paidAmount: inv.paidAmount,
+                waivedAmount: inv.waivedAmount,
+                outstandingAmount: inv.outstandingAmount,
+                status: inv.status,
+            })),
+            lastPayment: lastPaymentTx
+                ? {
+                    amount: Math.max(0, Number(lastPaymentTx.amount) || 0),
+                    eventType: String(lastPaymentTx.type || ''),
+                    paymentType: lastPaymentTx.type === 'wallet_deduction' ? 'wallet' : 'manual',
+                    date: lastPaymentTx.createdAt || null,
+                    note: String(lastPaymentTx.remarks || '').trim(),
+                }
+                : null,
+        };
+    } catch (err) {
+        return {
+            billingModel: 'calendar_month_postpaid',
+            currentBillingMonth: '',
+            currentMonthGmv: 0,
+            plan: '',
+            planLabel: 'Not billed yet',
+            cycleFee: 0,
+            lastBilledMonth: null,
+            status: 'paid',
+            statusLabel: 'No outstanding dues',
+            dueAmount: 0,
+            paidAmount: 0,
+            totalBilled: 0,
+            totalWaived: 0,
+            totalCollected: 0,
+            walletDeductionsTotal: 0,
+            invoiceCount: 0,
+            invoices: [],
+            lastPayment: null,
+        };
+    }
 }
 
 export async function getRestaurantAnalytics(restaurantId) {
@@ -4291,6 +4314,48 @@ export async function deleteAdminOffer(id) {
     if (!deleted) return null;
     await FoodOfferUsage.deleteMany({ offerId: new mongoose.Types.ObjectId(id) });
     return { id };
+}
+
+export async function updateAdminOffer(id, body) {
+    if (!id || !mongoose.Types.ObjectId.isValid(id)) return null;
+
+    if (body.couponCode) {
+        const existing = await FoodOffer.findOne({ 
+            couponCode: body.couponCode, 
+            _id: { $ne: new mongoose.Types.ObjectId(id) } 
+        }).lean();
+        if (existing) {
+            throw new ValidationError('Coupon code already exists');
+        }
+    }
+
+    const updateFields = {
+        couponCode: body.couponCode,
+        discountType: body.discountType,
+        discountValue: body.discountValue,
+        customerScope: body.customerScope,
+        restaurantScope: body.restaurantScope,
+        restaurantId: body.restaurantScope === 'selected' ? body.restaurantId : undefined,
+        restaurantIds: body.restaurantScope === 'selected' ? body.restaurantIds : [],
+        minOrderValue: body.minOrderValue ?? 0,
+        maxDiscount: body.maxDiscount ?? null,
+        usageLimit: body.usageLimit ?? null,
+        perUserLimit: body.perUserLimit ?? null,
+        startDate: body.startDate,
+        isFirstOrderOnly: body.isFirstOrderOnly ?? false,
+        endDate: body.endDate,
+        status: body.endDate && new Date(body.endDate).getTime() <= Date.now() ? 'inactive' : 'active',
+        adminBearPercentage: body.adminBearPercentage ?? 100,
+        restaurantBearPercentage: body.restaurantBearPercentage ?? 0
+    };
+
+    const updated = await FoodOffer.findByIdAndUpdate(
+        id,
+        { $set: updateFields },
+        { new: true }
+    ).lean();
+
+    return updated;
 }
 
 export async function expireExpiredOffers() {

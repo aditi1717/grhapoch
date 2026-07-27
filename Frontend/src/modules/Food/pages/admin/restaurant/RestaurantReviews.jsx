@@ -32,7 +32,6 @@ export default function RestaurantReviews() {
   const [searchQuery, setSearchQuery] = useState("")
   const [reviews, setReviews] = useState([])
   const [isLoading, setIsLoading] = useState(true)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [isReviewModalOpen, setIsReviewModalOpen] = useState(false)
   const [selectedReview, setSelectedReview] = useState(null)
   const [visibleColumns, setVisibleColumns] = useState({
@@ -165,10 +164,10 @@ export default function RestaurantReviews() {
             </div>
 
             <div className="flex items-center gap-3">
-              <div className="relative flex-1 sm:flex-initial min-w-[250px]">
+              <div className="relative flex-1 sm:flex-initial sm:w-[480px]">
                 <input
                   type="text"
-                  placeholder="Search by restaurant or customer"
+                  placeholder="Search by restaurant, customer, review, or order ID..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
@@ -205,12 +204,6 @@ export default function RestaurantReviews() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
             </div>
           </div>
 

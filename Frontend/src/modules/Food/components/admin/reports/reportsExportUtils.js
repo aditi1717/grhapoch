@@ -112,14 +112,9 @@ export const exportReportsToPDF = (data, headers, filename = "report", title = "
     </html>
   `
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 
 export const exportReportsToJSON = (data, filename = "report") => {
@@ -267,14 +262,9 @@ export const exportTransactionReportToPDF = (transactions, filename = "transacti
     </html>
   `
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 
 export const exportTransactionReportToJSON = (transactions, filename = "transaction_report") => {

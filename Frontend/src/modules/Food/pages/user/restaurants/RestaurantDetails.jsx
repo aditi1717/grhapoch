@@ -128,6 +128,38 @@ function RestaurantDetailsContent() {
   const [loadingMenuItems, setLoadingMenuItems] = useState(true)
   const [selectedMenuCategory, setSelectedMenuCategory] = useState("all")
   const dishCardRefs = useRef({})
+  useEffect(() => {
+    const isAnyModalOpen =
+      showMenuOptionsSheet ||
+      showFilterSheet ||
+      showLocationSheet ||
+      showScheduleSheet ||
+      showOffersSheet ||
+      showMenuSheet ||
+      showShareModal ||
+      showItemDetail ||
+      showManageCollections;
+
+    if (isAnyModalOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [
+    showMenuOptionsSheet,
+    showFilterSheet,
+    showLocationSheet,
+    showScheduleSheet,
+    showOffersSheet,
+    showMenuSheet,
+    showShareModal,
+    showItemDetail,
+    showManageCollections
+  ]);
 
   const getLineItemIdForDish = (item, variant = null) =>
     buildCartLineId(item?.id || item?._id || "", variant?.id || variant?._id || "")

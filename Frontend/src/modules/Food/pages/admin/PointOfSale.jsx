@@ -36,6 +36,39 @@ const formatSubscriptionPaymentLabel = (eventType = '') => {
   return 'Subscription payment'
 }
 
+const formatRestaurantId = (id) => {
+  if (!id) return "REST000000"
+
+  const idString = String(id)
+  const parts = idString.split(/[-.]/)
+  let lastDigits = ""
+
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1]
+    const digits = lastPart.match(/\d+/g)
+    if (digits && digits.length > 0) {
+      const allDigits = digits.join("")
+      lastDigits = allDigits.slice(-6).padStart(6, "0")
+    } else {
+      const allParts = parts.join("")
+      const allDigits = allParts.match(/\d+/g)
+      if (allDigits && allDigits.length > 0) {
+        const combinedDigits = allDigits.join("")
+        lastDigits = combinedDigits.slice(-6).padStart(6, "0")
+      }
+    }
+  }
+
+  if (!lastDigits) {
+    const hash = idString.split("").reduce((acc, char) => {
+      return ((acc << 5) - acc) + char.charCodeAt(0) | 0
+    }, 0)
+    lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0")
+  }
+
+  return `REST${lastDigits}`
+}
+
 export default function PointOfSale() {
   const [restaurants, setRestaurants] = useState([])
   const [selectedRestaurant, setSelectedRestaurant] = useState('')
@@ -438,74 +471,10 @@ export default function PointOfSale() {
         {/* Restaurant Selection Card */}
         <div className="bg-white rounded-lg shadow-sm border border-[#e3e6ef] p-6 mb-6">
           <div className="flex flex-col gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-[#334257] mb-2">
-                Search Restaurant by Name or ID <span className="text-red-500">*</span>
-                  </label>
-                  <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 z-10" />
-                    <input
-                      type="text"
-                      value={searchQuery}
-                  onChange={handleSearchChange}
-                  onFocus={() => {
-                    if (searchQuery.trim()) {
-                      setShowSearchResults(true)
-                    }
-                  }}
-                  onBlur={() => {
-                    // Delay to allow click on results
-                    setTimeout(() => setShowSearchResults(false), 200)
-                  }}
-                  placeholder="Type restaurant name or ID to search..."
-                  className="w-full h-11 pl-10 pr-3 rounded-md border border-[#e3e6ef] bg-white text-sm text-[#4a5671] focus:outline-none focus:ring-1 focus:ring-[#006fbd]"
-                />
-                
-                {/* Search Results Dropdown */}
-                {showSearchResults && filteredRestaurants.length > 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-[#e3e6ef] rounded-md shadow-lg max-h-60 overflow-y-auto">
-                    {filteredRestaurants.map(restaurant => (
-                      <button
-                        key={restaurant._id}
-                        type="button"
-                        onMouseDown={(e) => {
-                          e.preventDefault()
-                          handleRestaurantSelect(restaurant._id)
-                        }}
-                        className="w-full px-4 py-3 text-left hover:bg-[#f9fafc] cursor-pointer border-b border-[#e3e6ef] last:border-b-0 transition-colors"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm font-medium text-[#334257]">{restaurant.name}</p>
-                            <p className="text-xs text-[#8a94aa]">ID: {restaurant.restaurantId || restaurant._id}</p>
-                          </div>
-                          {selectedRestaurant === restaurant._id && (
-                            <div className="w-2 h-2 bg-[#006fbd] rounded-full"></div>
-                          )}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                
-                {/* No Results Message */}
-                {showSearchResults && searchQuery.trim() && filteredRestaurants.length === 0 && (
-                  <div className="absolute z-50 w-full mt-1 bg-white border border-[#e3e6ef] rounded-md shadow-lg p-4">
-                    <p className="text-sm text-[#8a94aa] text-center">No restaurants found matching "{searchQuery}"</p>
-                  </div>
-                )}
-                  </div>
-              {selectedRestaurant && (
-                <p className="text-xs text-green-600 mt-2">
-                  Selected: {getSelectedRestaurantName()}
-                </p>
-              )}
-        </div>
-
             {/* Restaurant Picker */}
             <div>
               <label className="block text-sm font-medium text-[#334257] mb-2">
-                Or Select from Dropdown
+                Select Restaurant <span className="text-red-500">*</span>
               </label>
               <div className="relative" ref={pickerDropdownRef}>
                 <button
@@ -527,7 +496,7 @@ export default function PointOfSale() {
                       </p>
                       {selectedRestaurant ? (
                         <p className="text-xs text-[#8a94aa] truncate mt-0.5">
-                          ID: {restaurants.find((r) => r._id === selectedRestaurant)?.restaurantId || selectedRestaurant}
+                          ID: {formatRestaurantId(restaurants.find((r) => r._id === selectedRestaurant)?.restaurantId || selectedRestaurant)}
                         </p>
                       ) : (
                         <p className="text-xs text-[#8a94aa] mt-0.5">
@@ -588,7 +557,7 @@ export default function PointOfSale() {
                                   <div className="min-w-0">
                                     <p className="text-sm font-semibold text-[#334257] truncate">{restaurant.name}</p>
                                     <p className="text-xs text-[#8a94aa] truncate">
-                                      ID: {restaurant.restaurantId || restaurant._id}
+                                      ID: {formatRestaurantId(restaurant.restaurantId || restaurant._id)}
                                     </p>
                                   </div>
                                 </div>
@@ -612,8 +581,8 @@ export default function PointOfSale() {
                 )}
               </div>
             </div>
-                  </div>
-                </div>
+          </div>
+        </div>
 
         {/* Analytics Dashboard */}
         {selectedRestaurant && !loading ? (

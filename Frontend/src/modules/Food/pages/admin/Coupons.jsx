@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react"
-import { Check, ChevronDown, Search, X } from "lucide-react"
+import { Check, ChevronDown, Search, X, ChevronLeft, ChevronRight } from "lucide-react"
 import { adminAPI } from "@food/api"
 const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
@@ -199,6 +199,8 @@ function RestaurantMultiSelect({ restaurants, value, onChange, error }) {
 
 export default function Coupons() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
   const [offers, setOffers] = useState([])
   const [restaurants, setRestaurants] = useState([])
   const [loading, setLoading] = useState(true)
@@ -209,6 +211,7 @@ export default function Coupons() {
   const [submitSuccess, setSubmitSuccess] = useState("")
   const [updatingCartVisibility, setUpdatingCartVisibility] = useState({})
   const [deletingOffer, setDeletingOffer] = useState({})
+  const [editOfferId, setEditOfferId] = useState(null)
   const [errors, setErrors] = useState({})
   const [formData, setFormData] = useState({
     couponCode: "",
@@ -406,6 +409,40 @@ export default function Coupons() {
       adminBearPercentage: "100",
       restaurantBearPercentage: "0",
     })
+    setEditOfferId(null)
+  }
+
+  const handleEditOffer = (offer) => {
+    // Derive endDate string (YYYY-MM-DD) from ISO date
+    const toDateStr = (iso) => {
+      if (!iso) return ""
+      const d = new Date(iso)
+      if (isNaN(d.getTime())) return ""
+      return d.toISOString().split("T")[0]
+    }
+    setFormData({
+      couponCode: offer.couponCode || "",
+      discountType: offer.discountType || "percentage",
+      discountValue: offer.discountType === "flat-price" ? String(offer.originalPrice || "") : String(offer.discountPercentage || ""),
+      customerScope: offer.customerGroup === "new" ? "first-time" : "all",
+      restaurantScope: offer.restaurantScope || "all",
+      restaurantIds: [],
+      endDate: toDateStr(offer.endDate),
+      startDate: "",
+      minOrderValue: offer.minOrderValue !== undefined && offer.minOrderValue !== null ? String(offer.minOrderValue) : "",
+      maxDiscount: offer.maxDiscount !== undefined && offer.maxDiscount !== null ? String(offer.maxDiscount) : "",
+      usageLimit: offer.usageLimit !== undefined && offer.usageLimit !== null ? String(offer.usageLimit) : "",
+      perUserLimit: "",
+      isFirstOrderOnly: Boolean(offer.customerGroup === "new"),
+      adminBearPercentage: String(offer.adminBearPercentage ?? 100),
+      restaurantBearPercentage: String(offer.restaurantBearPercentage ?? 0),
+    })
+    setEditOfferId(offer.offerId)
+    setErrors({})
+    setSubmitError("")
+    setSubmitSuccess("")
+    setIsAddOpen(true)
+    window.scrollTo({ top: 0, behavior: "smooth" })
   }
 
   const handleCreateCoupon = async (e) => {
@@ -453,14 +490,18 @@ export default function Coupons() {
         adminBearPercentage: Number(formData.adminBearPercentage),
         restaurantBearPercentage: Number(formData.restaurantBearPercentage),
       }
-      await adminAPI.createAdminOffer(payload)
-
-      setSubmitSuccess("Coupon created successfully")
+      if (editOfferId) {
+        await adminAPI.updateAdminOffer(editOfferId, payload)
+        setSubmitSuccess("Coupon updated successfully")
+      } else {
+        await adminAPI.createAdminOffer(payload)
+        setSubmitSuccess("Coupon created successfully")
+      }
       resetForm()
       await fetchOffers()
     } catch (err) {
-      debugError("Error creating coupon:", err)
-      setSubmitError(err?.response?.data?.message || "Failed to create coupon")
+      debugError("Error saving coupon:", err)
+      setSubmitError(err?.response?.data?.message || (editOfferId ? "Failed to update coupon" : "Failed to create coupon"))
     } finally {
       setIsSubmitting(false)
     }
@@ -500,6 +541,11 @@ export default function Coupons() {
     }
   }
 
+  // Reset page to 1 when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
   // Filter offers based on search query
   const filteredOffers = useMemo(() => {
     if (!searchQuery.trim()) {
@@ -514,6 +560,15 @@ export default function Coupons() {
     )
   }, [offers, searchQuery])
 
+  const totalPages = useMemo(() => {
+    return Math.ceil(filteredOffers.length / pageSize) || 1
+  }, [filteredOffers, pageSize])
+
+  const paginatedOffers = useMemo(() => {
+    const startIndex = (currentPage - 1) * pageSize
+    return filteredOffers.slice(startIndex, startIndex + pageSize)
+  }, [filteredOffers, currentPage, pageSize])
+
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen">
       <div className="max-w-7xl mx-auto">
@@ -524,7 +579,12 @@ export default function Coupons() {
             <button
               type="button"
               onClick={() => {
-                setIsAddOpen((prev) => !prev)
+                if (isAddOpen) {
+                  setIsAddOpen(false)
+                  resetForm()
+                } else {
+                  setIsAddOpen(true)
+                }
                 setSubmitError("")
                 setSubmitSuccess("")
               }}
@@ -539,7 +599,7 @@ export default function Coupons() {
               onSubmit={handleCreateCoupon}
               className="border border-slate-200 rounded-xl p-4 mb-5 bg-slate-50"
             >
-              <h3 className="text-base font-semibold text-slate-900 mb-3">Create Coupon</h3>
+              <h3 className="text-base font-semibold text-slate-900 mb-3">{editOfferId ? "Edit Coupon" : "Create Coupon"}</h3>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 <div>
@@ -750,14 +810,23 @@ export default function Coupons() {
                 </div>
               )}
 
-              <div className="mt-4">
+              <div className="mt-4 flex gap-3">
                 <button
                   type="submit"
                   disabled={isSubmitting || Object.keys(errors).length > 0}
                   className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
-                  {isSubmitting ? "Creating..." : "Create Coupon"}
+                  {isSubmitting ? (editOfferId ? "Updating..." : "Creating...") : (editOfferId ? "Update Coupon" : "Create Coupon")}
                 </button>
+                {editOfferId && (
+                  <button
+                    type="button"
+                    onClick={() => { resetForm(); setIsAddOpen(false); }}
+                    className="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 text-sm font-semibold hover:bg-slate-100 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                )}
               </div>
             </form>
           )}
@@ -804,8 +873,9 @@ export default function Coupons() {
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full">
+            <>
+              <div className="overflow-x-auto">
+                <table className="w-full">
                 <thead className="bg-slate-50 border-b border-slate-200">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold text-slate-700 uppercase tracking-wider whitespace-nowrap">SI</th>
@@ -825,10 +895,10 @@ export default function Coupons() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredOffers.map((offer) => (
+                  {paginatedOffers.map((offer, index) => (
                     <tr key={`${offer.offerId}-${offer.dishId}`} className="hover:bg-slate-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm font-medium text-slate-700">{offer.sl}</span>
+                        <span className="text-sm font-medium text-slate-700">{(currentPage - 1) * pageSize + index + 1}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span className="text-sm font-medium text-slate-900">
@@ -938,20 +1008,83 @@ export default function Coupons() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <button
-                          type="button"
-                          onClick={() => handleDeleteOffer(offer.offerId)}
-                          disabled={!!deletingOffer[offer.offerId]}
-                          className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60"
-                        >
-                          {deletingOffer[offer.offerId] ? "Deleting..." : "Delete"}
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleEditOffer(offer)}
+                            className="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs font-semibold hover:bg-blue-700 transition-colors"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleDeleteOffer(offer.offerId)}
+                            disabled={!!deletingOffer[offer.offerId]}
+                            className="px-3 py-1.5 rounded-lg bg-red-600 text-white text-xs font-semibold hover:bg-red-700 disabled:opacity-60 transition-colors"
+                          >
+                            {deletingOffer[offer.offerId] ? "Deleting..." : "Delete"}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
+            {!loading && filteredOffers.length > 0 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50">
+                <div className="text-sm text-slate-600">
+                  Showing{" "}
+                  <span className="font-semibold text-slate-800">{(currentPage - 1) * pageSize + 1}</span>
+                  {" "}to{" "}
+                  <span className="font-semibold text-slate-800">
+                    {Math.min((currentPage - 1) * pageSize + paginatedOffers.length, filteredOffers.length)}
+                  </span>
+                  {" "}of{" "}
+                  <span className="font-semibold text-slate-800">{filteredOffers.length}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value))
+                      setCurrentPage(1)
+                    }}
+                    className="px-2.5 py-1.5 text-sm rounded-md border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+                  >
+                    <option value={10}>10 / page</option>
+                    <option value={20}>20 / page</option>
+                    <option value={50}>50 / page</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                    disabled={currentPage === 1}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                    Prev
+                  </button>
+
+                  <span className="px-3 py-1.5 text-sm font-medium text-slate-700">
+                    {currentPage} / {totalPages}
+                  </span>
+
+                  <button
+                    type="button"
+                    onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    Next
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+            </>
           )}
         </div>
       </div>

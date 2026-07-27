@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router-dom"
 import AnimatedPage from "@food/components/user/AnimatedPage"
 import { Button } from "@food/components/ui/button"
@@ -112,7 +112,13 @@ export default function Support() {
   }
 
   const getOrderLabel = (order) => {
-    const restaurantName = order?.restaurantName || order?.restaurant?.restaurantName || "Restaurant"
+    const restaurantName =
+      order?.restaurantName ||
+      order?.restaurantId?.restaurantName ||
+      order?.restaurantId?.name ||
+      order?.restaurant?.restaurantName ||
+      order?.restaurant?.name ||
+      "Restaurant"
     const dateValue = order?.createdAt || order?.date
     const dateLabel = dateValue ? new Date(dateValue).toLocaleDateString() : "No date"
     const amount = order?.pricing?.total ?? order?.total ?? 0
@@ -128,7 +134,14 @@ export default function Support() {
   const filteredOrders = orders.filter((order) => {
     const q = orderSearch.trim().toLowerCase()
     if (!q) return true
-    const restaurantName = (order?.restaurantName || order?.restaurant?.restaurantName || "").toLowerCase()
+    const restaurantName = (
+      order?.restaurantName ||
+      order?.restaurantId?.restaurantName ||
+      order?.restaurantId?.name ||
+      order?.restaurant?.restaurantName ||
+      order?.restaurant?.name ||
+      ""
+    ).toLowerCase()
     const orderId = String(order?._id || order?.id || "").toLowerCase()
     return restaurantName.includes(q) || orderId.includes(q)
   })

@@ -923,17 +923,17 @@ export default function DiningReservations() {
                                 </p>
                             </div>
 
-                            <div className="flex items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
-                                <span className="text-sm font-bold text-slate-500">₹</span>
+                            <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
+                                <span className="text-sm font-bold text-slate-500 shrink-0">₹</span>
                                 {!editingFeaturedPrice ? (
                                     <>
-                                        <span className="flex-1 text-sm font-semibold text-slate-900">
+                                        <span className="flex-1 min-w-0 text-sm font-semibold text-slate-900 truncate">
                                             {featuredPrice || "Not set"}
                                         </span>
                                         <button
                                             type="button"
                                             onClick={() => setEditingFeaturedPrice(true)}
-                                            className="inline-flex items-center justify-center rounded-lg bg-slate-900 p-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800"
+                                            className="inline-flex items-center justify-center rounded-lg bg-slate-900 p-1.5 text-xs font-semibold text-white transition-colors hover:bg-slate-800 shrink-0"
                                         >
                                             <Pencil className="w-3.5 h-3.5" />
                                         </button>
@@ -947,10 +947,10 @@ export default function DiningReservations() {
                                             value={featuredPrice}
                                             onChange={(event) => setFeaturedPrice(event.target.value)}
                                             placeholder="300"
-                                            className="flex-1 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0"
+                                            className="flex-1 min-w-0 bg-transparent text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0"
                                             autoFocus
                                         />
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-2 shrink-0">
                                             <button
                                                 type="button"
                                                 onClick={() => {

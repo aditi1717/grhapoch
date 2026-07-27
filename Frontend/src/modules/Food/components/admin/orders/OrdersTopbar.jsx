@@ -37,7 +37,7 @@ export default function OrdersTopbar({
               placeholder="Search by order ID, customer, phone, or restaurant..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-4 pr-12 py-2.5 w-full sm:w-80 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all"
+              className="pl-4 pr-12 py-2.5 w-full sm:w-[450px] text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400 transition-all"
             />
             <button className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-md hover:bg-slate-100">
               <Search className="w-4 h-4 text-slate-500" />

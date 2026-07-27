@@ -178,6 +178,42 @@ export default function Dining() {
     return formatSavedAddress(defaultAddress);
   }, [getDefaultAddress, formatSavedAddress]);
 
+  const defaultSavedAddress = useMemo(
+    () => getDefaultAddress?.() || null,
+    [getDefaultAddress]
+  );
+
+  const defaultSavedAddressLocation = useMemo(() => {
+    const coords = defaultSavedAddress?.location?.coordinates;
+    if (Array.isArray(coords) && coords.length >= 2) {
+      const lng = Number(coords[0]);
+      const lat = Number(coords[1]);
+      if (Number.isFinite(lat) && Number.isFinite(lng)) {
+        return { latitude: lat, longitude: lng, city: defaultSavedAddress.city };
+      }
+    }
+
+    const lat = Number(
+      defaultSavedAddress?.latitude || defaultSavedAddress?.lat
+    );
+    const lng = Number(
+      defaultSavedAddress?.longitude || defaultSavedAddress?.lng
+    );
+    if (Number.isFinite(lat) && Number.isFinite(lng)) {
+      return { latitude: lat, longitude: lng, city: defaultSavedAddress.city };
+    }
+
+    return null;
+  }, [defaultSavedAddress]);
+
+  const effectiveLocation = useMemo(() => {
+    const useSavedAddress =
+      Number.isFinite(defaultSavedAddressLocation?.latitude) &&
+      Number.isFinite(defaultSavedAddressLocation?.longitude);
+
+    return useSavedAddress ? defaultSavedAddressLocation : location;
+  }, [defaultSavedAddressLocation, location]);
+
   const displayLocation = savedAddressText || location?.formattedAddress || location?.address || (location?.area && location?.city 
     ? `${location.area}, ${location.city}` 
     : location?.area || location?.city || "Select Location");
@@ -190,9 +226,9 @@ export default function Dining() {
           diningAPI.getHeroBanners().catch(() => ({ data: { success: false, data: { banners: [] } } })),
           diningAPI.getCategories(),
           diningAPI.getRestaurants({
-            city: location?.city || undefined,
-            lat: location?.latitude,
-            lng: location?.longitude
+            city: effectiveLocation?.city || undefined,
+            lat: effectiveLocation?.latitude,
+            lng: effectiveLocation?.longitude
           }),
         ])
 
@@ -225,7 +261,7 @@ export default function Dining() {
       }
     }
     fetchDiningData()
-  }, [location?.city])
+  }, [effectiveLocation?.city, effectiveLocation?.latitude, effectiveLocation?.longitude])
 
   const safeCategories = useMemo(() => {
     return (Array.isArray(categories) ? categories : [])
@@ -249,7 +285,7 @@ export default function Dining() {
     return (Array.isArray(restaurantList) ? restaurantList : [])
       .filter((restaurant) => String(restaurant?.restaurantName || restaurant?.name || "").trim().length > 0)
       .map((restaurant, index) => {
-        const distanceKm = getDistanceKm(location, restaurant)
+        const distanceKm = getDistanceKm(effectiveLocation, restaurant)
         const restaurantName = String(restaurant?.restaurantName || restaurant?.name || "").trim()
         return {
           ...restaurant,
@@ -271,7 +307,7 @@ export default function Dining() {
             ""
           ).trim(),
           offer: String(restaurant?.offer || "Pre-book table").trim(),
-          featuredDish: String(restaurant?.featuredDish || "Chef's special").trim(),
+          featuredDish: String(restaurant?.featuredDish || "").trim(),
           featuredPrice: Number(restaurant?.featuredPrice || 0),
           rating: Number(restaurant?.rating || restaurant?.avgRating || 0),
           deliveryTime: String(
@@ -559,7 +595,7 @@ export default function Dining() {
                   placeholder='Search for dining...'
                 />
               </div>
-              {heroSearch ? (
+              {heroSearch && (
                 <button
                   type="button"
                   onClick={() => setHeroSearch("")}
@@ -567,15 +603,6 @@ export default function Dining() {
                 >
                   <X className="h-4 w-4" />
                 </button>
-              ) : (
-                <div className="flex items-center border-l-2 border-gray-200 dark:border-gray-700 pl-2 pr-1">
-                  <button
-                    type="button"
-                    className="flex-shrink-0 p-2 bg-white dark:bg-gray-900 rounded-full shadow-sm hover:shadow-md transition-all active:scale-95 text-[#FA0272]"
-                  >
-                    <Mic className="h-4 w-4" strokeWidth={2.5} />
-                  </button>
-                </div>
               )}
             </div>
           </div>
@@ -947,18 +974,20 @@ export default function Dining() {
                           />
 
                           {/* Featured Dish Badge - Top Left */}
-                          <motion.div
-                            className="absolute top-3 left-3 flex items-center z-10"
-                            variants={{
-                              rest: { scale: 1, y: 0 },
-                              hover: { scale: 1.05, y: -2 }
-                            }}
-                            transition={{ duration: 0.3 }}
-                          >
-                            <div className="bg-gray-800/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium shadow-lg">
-                              {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
-                            </div>
-                          </motion.div>
+                          {restaurant.featuredDish && (
+                            <motion.div
+                              className="absolute top-3 left-3 flex items-center z-10"
+                              variants={{
+                                rest: { scale: 1, y: 0 },
+                                hover: { scale: 1.05, y: -2 }
+                              }}
+                              transition={{ duration: 0.3 }}
+                            >
+                              <div className="bg-gray-800/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium shadow-lg">
+                                {restaurant.featuredDish} {restaurant.featuredPrice > 0 ? `• ₹${restaurant.featuredPrice}` : ""}
+                              </div>
+                            </motion.div>
+                          )}
 
                           {/* Bookmark Icon - Top Right */}
                           <motion.div
@@ -1176,11 +1205,13 @@ export default function Dining() {
                           />
 
                           {/* Featured Dish Badge - Top Left */}
-                          <div className="absolute top-3 left-3">
-                            <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
-                              {restaurant.featuredDish} • ₹{restaurant.featuredPrice}
+                          {restaurant.featuredDish && (
+                            <div className="absolute top-3 left-3">
+                              <div className="bg-gray-800/80 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium">
+                                {restaurant.featuredDish} {restaurant.featuredPrice > 0 ? `• ₹${restaurant.featuredPrice}` : ""}
+                              </div>
                             </div>
-                          </div>
+                          )}
 
                           {/* Bookmark Icon - Top Right */}
                           <Button

@@ -399,7 +399,7 @@ export default function EditRestaurant() {
                       onClick={() => setDetailsForm((p) => ({ ...p, pureVegRestaurant: true }))}
                       className={`px-3 py-1.5 text-xs rounded-full border ${
                         detailsForm.pureVegRestaurant === true
-                          ? "bg-green-600 text-white border-green-600"
+                          ? "bg-green-800 text-white border-green-800 font-semibold"
                           : "bg-white text-slate-700 border-slate-300"
                       }`}
                     >

@@ -65,7 +65,6 @@ export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") =>
     restaurant.rating || 0
   ])
   
-  const printWindow = window.open("", "_blank")
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -137,16 +136,11 @@ export const exportRestaurantsToPDF = (restaurants, filename = "restaurants") =>
             `).join("")}
           </tbody>
         </table>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => window.close(), 100);
-          }
-        </script>
       </body>
     </html>
   `
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 

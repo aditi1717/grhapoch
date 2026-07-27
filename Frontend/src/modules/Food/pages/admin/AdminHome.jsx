@@ -531,10 +531,10 @@ export default function AdminHome() {
                         <div className="mt-0.5">{getIcon(item.type)}</div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center justify-between gap-2">
-                            <p className="text-sm font-semibold text-neutral-900 truncate">{item.title}</p>
+                            <p className="text-sm font-semibold text-neutral-900">{item.title}</p>
                             <span className="text-[10px] text-neutral-400 whitespace-nowrap">{item.time}</span>
                           </div>
-                          <p className="text-xs text-neutral-600 line-clamp-1">{item.detail}</p>
+                          <p className="text-xs text-neutral-600">{item.detail}</p>
                         </div>
                       </div>
                     )

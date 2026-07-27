@@ -171,28 +171,28 @@ export const PocketBalanceV2 = () => {
   };
 
   const DetailRow = ({ label, value, subLabel }) => (
-     <div className="py-4 flex justify-between items-start border-b border-gray-100/60 last:border-0">
+     <div className="py-2.5 flex justify-between items-start border-b border-gray-100/60 last:border-0">
         <div className="flex-1 pr-4">
-           <p className="text-sm font-black text-gray-800 tracking-tight">{label}</p>
-           {subLabel && <p className="text-[10px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed mt-1">{subLabel}</p>}
+           <p className="text-[13px] font-black text-gray-800 tracking-tight">{label}</p>
+           {subLabel && <p className="text-[9px] text-gray-400 font-bold uppercase tracking-widest leading-relaxed mt-0.5">{subLabel}</p>}
         </div>
-        <p className="text-sm font-black text-gray-900">{value}</p>
+        <p className="text-[13px] font-black text-gray-900">{value}</p>
      </div>
   );
 
   return (
-    <div className="min-h-screen bg-[#f8f9fa] font-poppins pb-32">
+    <div className="min-h-screen bg-[#f8f9fa] font-poppins pb-24">
        {/* Header */}
-       <div className="fixed top-0 inset-x-0 h-20 bg-[#f8f9fa]/90 backdrop-blur-xl z-50 px-5 flex items-center justify-between pb-2 pt-6">
-          <div className="flex items-center gap-3">
-             <button onClick={goBack} className="p-3 bg-white hover:bg-gray-50 border border-gray-100 shadow-sm rounded-[20px] transition-all active:scale-95">
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
+       <div className="fixed top-0 inset-x-0 h-14 bg-[#f8f9fa]/90 backdrop-blur-xl z-50 px-4 flex items-center justify-between py-2 pt-4">
+          <div className="flex items-center gap-2.5">
+             <button onClick={goBack} className="p-2 bg-white hover:bg-gray-50 border border-gray-100 shadow-sm rounded-xl transition-all active:scale-95">
+                <ArrowLeft className="w-4.5 h-4.5 text-gray-700" />
              </button>
-             <h1 className="text-xl font-black text-gray-900 tracking-tight">Pocket Balance</h1>
+             <h1 className="text-base font-black text-gray-900 tracking-tight leading-none">Pocket Balance</h1>
           </div>
        </div>
 
-       <div className="pt-24 px-5 space-y-4 max-w-lg mx-auto">
+       <div className="pt-20 px-4 space-y-3.5 max-w-lg mx-auto">
        {loading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
              <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
@@ -202,25 +202,25 @@ export const PocketBalanceV2 = () => {
           <>
              {/* Warning Banner */}
              {!walletState.canWithdraw && (
-               <div className="bg-orange-50 border border-orange-100 p-5 rounded-[28px] flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-[16px] bg-orange-100/50 flex items-center justify-center shrink-0">
-                     <AlertTriangle className="w-5 h-5 text-orange-500" />
-                  </div>
-                  <div>
-                     <p className="text-sm font-black text-orange-900 tracking-tight mb-0.5">Withdraw Disabled</p>
-                     <p className="text-[10px] font-bold text-orange-600 uppercase tracking-widest leading-relaxed">
-                        {walletState.withdrawableAmount <= 0 ? 'Withdrawable amount is ₹0' : `Minimum withdrawal requirement is ₹${walletState.withdrawalLimit}`}
-                     </p>
-                  </div>
-               </div>
+                <div className="bg-orange-50 border border-orange-100 p-3.5 rounded-2xl flex items-start gap-3">
+                   <div className="w-8 h-8 rounded-xl bg-orange-100/50 flex items-center justify-center shrink-0">
+                      <AlertTriangle className="w-4 h-4 text-orange-500" />
+                   </div>
+                   <div>
+                      <p className="text-xs font-black text-orange-900 tracking-tight mb-0.5">Withdraw Disabled</p>
+                      <p className="text-[9px] font-bold text-orange-600 uppercase tracking-widest leading-relaxed">
+                         {walletState.withdrawableAmount <= 0 ? 'Withdrawable amount is ₹0' : `Minimum withdrawal requirement is ₹${walletState.withdrawalLimit}`}
+                      </p>
+                   </div>
+                </div>
              )}
 
              {/* Top Withdraw Section */}
-             <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-[0_8px_30px_rgba(0,0,0,0.04)] text-center relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50 rounded-full -mr-16 -mt-16 blur-2xl transition-colors" />
+             <div className="bg-white p-5 rounded-2xl border border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.02)] text-center relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-50 rounded-full -mr-12 -mt-12 blur-2xl transition-colors" />
                 <div className="relative z-10">
-                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-3">Withdrawable Amount</p>
-                   <h2 className="text-[56px] font-black text-gray-900 mb-8 tracking-tighter leading-none">₹{walletState.withdrawableAmount.toFixed(0)}</h2>
+                   <p className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5">Withdrawable Amount</p>
+                   <h2 className="text-3xl font-black text-gray-900 mb-5 tracking-tighter leading-none">₹{walletState.withdrawableAmount.toFixed(0)}</h2>
                    
                    <button 
                      onClick={() => {
@@ -228,27 +228,27 @@ export const PocketBalanceV2 = () => {
                        setShowWithdrawModal(true);
                      }}
                      disabled={!walletState.canWithdraw || withdrawSubmitting}
-                     className={`w-full py-4 rounded-[20px] font-black text-sm tracking-widest uppercase transition-all active:scale-[0.98] ${
+                     className={`w-full py-3 rounded-xl font-black text-[11px] tracking-widest uppercase transition-all active:scale-[0.98] ${
                         walletState.canWithdraw 
                         ? 'text-white' 
                         : 'bg-gray-100 text-gray-400 cursor-not-allowed border border-gray-200'
                      } flex items-center justify-center gap-2`}
                      style={walletState.canWithdraw ? {
                        background: "linear-gradient(135deg, rgba(var(--module-theme-rgb, 0,183,97), 0.88), var(--module-theme-color, #00B761))",
-                       boxShadow: "0 8px 20px rgba(var(--module-theme-rgb, 0,183,97), 0.30)",
+                       boxShadow: "0 4px 12px rgba(var(--module-theme-rgb, 0,183,97), 0.2)",
                      } : undefined}
                    >
-                      {withdrawSubmitting && <Loader2 className="w-4 h-4 animate-spin" />}
+                      {withdrawSubmitting && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
                       {withdrawSubmitting ? 'PROCESSING...' : 'WITHDRAW'}
                    </button>
                 </div>
              </div>
 
              {/* Details Section */}
-             <div className="pt-4">
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-3">Pocket Details</h3>
-                <div className="bg-white rounded-[32px] p-2 border border-gray-100 shadow-[0_4px_20px_rgba(0,0,0,0.02)]">
-                   <div className="px-4">
+             <div className="pt-2">
+                <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-[0.2em] px-2 mb-1.5">Pocket Details</h3>
+                <div className="bg-white rounded-2xl p-1.5 border border-gray-100 shadow-[0_4px_15px_rgba(0,0,0,0.01)]">
+                   <div className="px-3">
                       <DetailRow label="Earnings" value={formatCurrency(walletState.weeklyEarnings)} />
                       <DetailRow label="Bonus" value={formatCurrency(walletState.totalBonus)} />
                       <DetailRow label="Amount withdrawn" value={formatCurrency(walletState.totalWithdrawn)} />
@@ -260,11 +260,11 @@ export const PocketBalanceV2 = () => {
                          value={formatCurrency(walletState.withdrawalLimit)} 
                          subLabel="Withdrawal allowed only when withdrawable amount reaches this limit."
                       />
-                      <div className="py-4 flex justify-between items-start border-t border-gray-100 mt-2">
+                      <div className="py-2.5 flex justify-between items-start border-t border-gray-100 mt-2">
                          <div className="flex-1 pr-4">
-                            <p className="text-sm font-black text-gray-900 tracking-tight">Withdrawable amount</p>
+                            <p className="text-[13px] font-black text-gray-900 tracking-tight">Withdrawable amount</p>
                          </div>
-                         <p className="text-sm font-black text-emerald-600">{formatCurrency(walletState.withdrawableAmount)}</p>
+                         <p className="text-[13px] font-black text-emerald-600">{formatCurrency(walletState.withdrawableAmount)}</p>
                       </div>
                    </div>
                 </div>

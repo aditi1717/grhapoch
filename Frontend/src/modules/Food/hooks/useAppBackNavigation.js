@@ -69,6 +69,10 @@ const resolveBackPath = ({ pathname, search, state }) => {
     return explicitBackPath || -1
   }
 
+  if (/^\/user\/dining\/book\/[^/]+$/.test(normalizedPath)) {
+    return explicitBackPath || -1
+  }
+
   if (normalizedPath.startsWith("/user/dining")) {
     return explicitBackPath || "/food/user/dining"
   }

@@ -80,7 +80,7 @@ export default function LandingPageSettings({ type = "admin" }) {
     { id: "en", label: "English(EN)" },
     { id: "bn", label: "Bengali - বাংলা(BN)" },
     { id: "ar", label: "Arabic - العربية (AR)" },
-    { id: "es", label: "Spanish - espa�ol(ES)" },
+    { id: "es", label: "Spanish - espa�ol(ES)" },
   ];
 
   const handleImageUpload = (e, setter, field) => {
@@ -1652,41 +1652,6 @@ export default function LandingPageSettings({ type = "admin" }) {
             </div>
           </div>
         )}
-
-        {/* Available zone */}
-        {reactActiveTab === "Available zone" && (
-          <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-3 sm:p-4 max-w-full overflow-hidden">
-            <h2 className="text-base sm:text-lg font-semibold text-slate-900 mb-1.5">
-              Available Zone Section
-            </h2>
-            <p className="text-xs sm:text-sm text-slate-600 mb-4">
-              Configure available delivery zones display.
-            </p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                  Section Title
-                </label>
-                <input
-                  type="text"
-                  placeholder="Enter section title"
-                  className="w-full px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs sm:text-sm font-semibold text-slate-700 mb-1.5">
-                  Enable Zone Display
-                </label>
-                <div className="flex items-center gap-2">
-                  <input type="checkbox" className="w-4 h-4 text-blue-600 rounded border-slate-300" />
-                  <span className="text-xs sm:text-sm text-slate-700">Show available zones</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 mt-4">
-              <button
-                type="button"
-                onClick={handleReset}
                 className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5"
               >
                 <RotateCcw className="w-3 h-3" />

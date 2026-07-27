@@ -265,6 +265,7 @@ router.post('/foods/bulk-approve', adminController.bulkApproveFoodItems);
 // ----- Offers & Coupons -----
 router.get('/offers', adminController.getAllOffers);
 router.post('/offers', adminController.createAdminOffer);
+router.put('/offers/:id', adminController.updateAdminOffer);
 router.patch('/offers/:id/cart-visibility', adminController.updateAdminOfferCartVisibility);
 router.delete('/offers/:id', adminController.deleteAdminOffer);
 

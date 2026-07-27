@@ -115,7 +115,6 @@ export const exportCampaignsToPDF = (campaigns, filename = "campaigns", isFoodCa
     ])
   }
   
-  const printWindow = window.open("", "_blank")
   const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -146,17 +145,12 @@ export const exportCampaignsToPDF = (campaigns, filename = "campaigns", isFoodCa
             `).join("")}
           </tbody>
         </table>
-        <script>
-          window.onload = function() {
-            window.print();
-            setTimeout(() => window.close(), 100);
-          }
-        </script>
       </body>
     </html>
   `
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 
 export const exportCampaignsToJSON = (campaigns, filename = "campaigns") => {

@@ -93,14 +93,9 @@ export const exportPaymentMethodsToPDF = (methods, filename = "payment_methods")
     </html>
   `
   
-  const printWindow = window.open("", "_blank")
-  printWindow.document.write(htmlContent)
-  printWindow.document.close()
-  printWindow.focus()
-  setTimeout(() => {
-    printWindow.print()
-    printWindow.close()
-  }, 250)
+  import("../pdfExportHelper.js").then(({ downloadHTMLAsPDF }) => {
+    downloadHTMLAsPDF(htmlContent, filename)
+  })
 }
 
 export const exportPaymentMethodsToJSON = (methods, filename = "payment_methods") => {

@@ -11,8 +11,6 @@ const debugError = (...args) => {}
 import SearchOverlay from "./SearchOverlay"
 import BottomNavigation from "./BottomNavigation"
 import DesktopNavbar from "./DesktopNavbar"
-import { useUserNotifications } from "../../hooks/useUserNotifications"
-
 // Create SearchOverlay context with default value
 const SearchOverlayContext = createContext({
   isSearchOpen: false,
@@ -175,7 +173,6 @@ export default function UserLayout() {
     }
   }, [location.pathname, location.search, location.hash, navigationType, location.state])
 
-  useUserNotifications()
 
   // Note: Authentication checks and redirects are handled by ProtectedRoute components
   // UserLayout should not interfere with authentication redirects

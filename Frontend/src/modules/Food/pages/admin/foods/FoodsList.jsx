@@ -270,12 +270,8 @@ export default function FoodsList() {
   }, [restaurantsForFilter])
 
   const filteredRestaurantOptions = useMemo(() => {
-    const query = restaurantFilterSearch.trim().toLowerCase()
-    if (!query) return restaurantOptions
-    return restaurantOptions.filter((restaurant) =>
-      restaurant.name.toLowerCase().includes(query)
-    )
-  }, [restaurantOptions, restaurantFilterSearch])
+    return restaurantOptions
+  }, [restaurantOptions])
 
   const filteredBulkUploadRestaurants = useMemo(() => {
     const query = bulkUploadRestaurantSearch.trim().toLowerCase()
@@ -720,34 +716,25 @@ export default function FoodsList() {
             <div className="relative flex-1 sm:flex-initial min-w-[200px]">
               <input
                 type="text"
-                placeholder="Ex : Foods"
+                placeholder="Search for food..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-10 pr-4 py-2.5 w-full text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
               />
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             </div>
-            <div className="flex flex-col gap-2 min-w-[240px]">
-              <input
-                type="text"
-                placeholder="Search restaurant..."
-                value={restaurantFilterSearch}
-                onChange={(e) => setRestaurantFilterSearch(e.target.value)}
-                className="px-3 py-2 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-              />
-              <select
-                value={selectedRestaurant}
-                onChange={(e) => setSelectedRestaurant(e.target.value)}
-                className="px-4 py-2.5 min-w-[240px] text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
-              >
-                <option value="all">All Restaurants</option>
-                {filteredRestaurantOptions.map((restaurant) => (
-                  <option key={restaurant.id} value={restaurant.id}>
-                    {restaurant.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={selectedRestaurant}
+              onChange={(e) => setSelectedRestaurant(e.target.value)}
+              className="px-4 py-2.5 min-w-[240px] text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-slate-400"
+            >
+              <option value="all">All Restaurants</option>
+              {filteredRestaurantOptions.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
       </div>
