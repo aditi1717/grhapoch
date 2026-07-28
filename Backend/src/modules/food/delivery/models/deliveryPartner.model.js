@@ -19,7 +19,7 @@ const deliveryPartnerSchema = new mongoose.Schema(
             trim: true,
             unique: true
         },
-        email: { type: String, trim: true },
+        email: { type: String, required: [true, 'Email is required'], trim: true },
         countryCode: {
             type: String,
             default: '+91'

@@ -54,6 +54,7 @@ const restaurantSchema = new mongoose.Schema(
     },
     ownerEmail: {
       type: String,
+      required: [true, 'Owner email is required'],
       trim: true,
     },
     ownerPhone: {

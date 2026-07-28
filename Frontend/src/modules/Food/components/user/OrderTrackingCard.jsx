@@ -34,6 +34,7 @@ const CookingAnimation = memo(() => (
 
 import { useOrders } from "@food/context/OrdersContext";
 import { orderAPI } from "@food/api";
+import { resolveMediaUrl } from "@food/utils/common";
 
 const getOrderKey = (order) => order?.id || order?._id || order?.orderId || null;
 
@@ -84,15 +85,16 @@ const isActiveOrder = (order) => {
 const getTimeRemaining = (order) => {
   if (!order) return null;
 
-  const orderTime = new Date(
-    order.createdAt || order.orderDate || order.created_at || order.date || Date.now(),
-  );
+  const baseTime = order.preparingTimestamp
+    ? new Date(order.preparingTimestamp)
+    : new Date(order.createdAt || order.orderDate || order.created_at || order.date || Date.now());
+
   const estimatedMinutes =
     order.estimatedDeliveryTime ||
     order.estimatedTime ||
     order.estimated_delivery_time ||
     35;
-  const deliveryTime = new Date(orderTime.getTime() + estimatedMinutes * 60000);
+  const deliveryTime = new Date(baseTime.getTime() + estimatedMinutes * 60000);
   return Math.max(0, Math.floor((deliveryTime - new Date()) / 60000));
 };
 
@@ -349,7 +351,8 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
   }
 
   const restaurantName =
-    activeOrder.restaurant || activeOrder.restaurantName || "Restaurant";
+    activeOrder.restaurant || activeOrder.restaurantName || activeOrder.restaurantId?.restaurantName || "Restaurant";
+  const restaurantImage = activeOrder.restaurantId?.profileImage || activeOrder.restaurantImage || activeOrder.restaurantLogo || "";
   const statusText = (() => {
     const s = String(orderStatus);
     const p = String(orderPhase);
@@ -412,12 +415,23 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
           </button>
 
           <div className="flex items-center gap-4 relative z-10 w-full">
-            <CookingAnimation />
+            {restaurantImage ? (
+              <img
+                src={resolveMediaUrl(restaurantImage)}
+                alt={restaurantName}
+                className="w-12 h-12 rounded-xl object-cover border border-orange-100 shadow-[0_4px_15px_rgba(235,89,14,0.15)] shrink-0"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            ) : (
+              <CookingAnimation />
+            )}
 
             <div className="flex-1 min-w-0 pr-4">
               <p className="text-gray-900 font-bold text-base md:text-lg truncate tracking-tight">{restaurantName}</p>
               <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-gray-500 font-medium text-xs md:text-sm truncate">{statusText}</p>
+                <p className="text-gray-500 font-medium text-xs md:text-sm">{statusText}</p>
                 <ChevronRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-1 transition-transform" style={{ color: themeColor }} />
               </div>
             </div>

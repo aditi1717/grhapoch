@@ -3089,9 +3089,9 @@ export async function updateRestaurantStatus(id, body = {}) {
 
     const approvedAt = status === 'approved' ? new Date() : undefined;
     const rejectedAt = status === 'rejected' ? new Date() : undefined;
-    const rejectionReason = status === 'rejected' ? 'Disabled by admin' : undefined;
+    const rejectionReason = status === 'rejected' ? (body.rejectionReason || body.reason || 'Disabled by admin') : undefined;
 
-    return FoodRestaurant.findByIdAndUpdate(
+    const updated = await FoodRestaurant.findByIdAndUpdate(
         id,
         {
             $set: {
@@ -3103,6 +3103,25 @@ export async function updateRestaurantStatus(id, body = {}) {
         },
         { new: true, runValidators: false }
     ).lean();
+
+    if (updated && updated.ownerEmail) {
+        if (status === 'approved' || status === 'rejected') {
+            try {
+                const { sendRestaurantOnboardingStatusEmail } = await import('../../../../utils/email.js');
+                void sendRestaurantOnboardingStatusEmail(
+                    updated.ownerEmail,
+                    updated.restaurantName,
+                    status,
+                    rejectionReason || ''
+                );
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn('Failed to trigger restaurant status email send:', err.message);
+            }
+        }
+    }
+
+    return updated;
 }
 
 export async function updateRestaurantLocation(id, body = {}) {
@@ -4078,6 +4097,20 @@ export async function approveRestaurant(id) {
     ).lean();
 
     if (updated) {
+        if (updated.ownerEmail) {
+            try {
+                const { sendRestaurantOnboardingStatusEmail } = await import('../../../../utils/email.js');
+                void sendRestaurantOnboardingStatusEmail(
+                    updated.ownerEmail,
+                    updated.restaurantName,
+                    'approved'
+                );
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn('Failed to trigger restaurant onboarding approval email:', err.message);
+            }
+        }
+
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
@@ -4167,12 +4200,27 @@ export async function rejectRestaurant(id, reason) {
     ).lean();
 
     if (updated) {
+        if (updated.ownerEmail) {
+            try {
+                const { sendRestaurantOnboardingStatusEmail } = await import('../../../../utils/email.js');
+                void sendRestaurantOnboardingStatusEmail(
+                    updated.ownerEmail,
+                    updated.restaurantName,
+                    'rejected',
+                    rejectionMsg || 'Incomplete documents'
+                );
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn('Failed to trigger restaurant onboarding rejection email:', err.message);
+            }
+        }
+
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated._id }],
                 {
-                    title: 'Update on Registration ðŸ“‹',
+                    title: 'Update on Registration 📋',
                     body: `Your restaurant registration for "${updated.restaurantName}" has been rejected. Reason: ${reason || 'Incomplete documents'}.`,
                     image: updated.profileImage || undefined,
                     data: {
@@ -5419,6 +5467,20 @@ export async function approveDeliveryPartner(id) {
     partner.rejectionReason = undefined;
     await partner.save();
 
+    if (partner.email) {
+        try {
+            const { sendDeliveryPartnerOnboardingStatusEmail } = await import('../../../../utils/email.js');
+            void sendDeliveryPartnerOnboardingStatusEmail(
+                partner.email,
+                partner.name,
+                'approved'
+            );
+        } catch (err) {
+            // eslint-disable-next-line no-console
+            console.warn('Failed to trigger delivery partner approval email:', err.message);
+        }
+    }
+
     try {
         const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
         await notifyOwnerSafely(
@@ -5502,6 +5564,21 @@ export async function rejectDeliveryPartner(id, reason) {
     ).lean();
 
     if (updated) {
+        if (updated.email) {
+            try {
+                const { sendDeliveryPartnerOnboardingStatusEmail } = await import('../../../../utils/email.js');
+                void sendDeliveryPartnerOnboardingStatusEmail(
+                    updated.email,
+                    updated.name,
+                    'rejected',
+                    reason || 'Incomplete documents'
+                );
+            } catch (err) {
+                // eslint-disable-next-line no-console
+                console.warn('Failed to trigger delivery partner rejection email:', err.message);
+            }
+        }
+
         try {
             const { notifyOwnerSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnerSafely(

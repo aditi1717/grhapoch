@@ -16,7 +16,7 @@ const drivingLicenseRegex = /^[A-Z]{2}[0-9A-Z]{8,16}$/;
 const deliveryRegisterSchema = z.object({
     name: z.string().min(1, 'Name is required'),
     phone: phoneSchema,
-    email: z.string().email().optional().or(z.literal('')),
+    email: z.string().min(1, 'Email is required').email('Invalid email'),
     countryCode: z.string().optional(),
     address: z.string().optional(),
     city: z.string().optional(),

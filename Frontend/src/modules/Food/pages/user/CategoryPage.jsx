@@ -25,8 +25,6 @@ import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailabil
 // Filter options
 const filterOptions = [
   { id: 'under-30-mins', label: 'Under 30 mins' },
-  { id: 'price-match', label: 'Price Match', hasIcon: true },
-  { id: 'flat-50-off', label: 'Flat 50% OFF', hasIcon: true },
   { id: 'under-250', label: 'Switch 99' },
   { id: 'rating-4-plus', label: 'Rating 4.0+' },
 ]
@@ -446,7 +444,7 @@ export default function CategoryPage() {
     }
 
     if (deferredSearchQuery.trim()) {
-      const query = deferredSearchQuery.toLowerCase()
+      const query = deferredSearchQuery.trim().toLowerCase()
       nextRows = nextRows.filter((row) =>
         row.name?.toLowerCase().includes(query) ||
         row.cuisine?.toLowerCase().includes(query) ||
@@ -1017,6 +1015,18 @@ export default function CategoryPage() {
                 <SlidersHorizontal className="h-3.5 w-3.5 md:h-4 md:w-4" />
                 <span className="text-xs md:text-sm font-bold text-black dark:text-white">Filters</span>
               </Button>
+              {/* All chip — clears all active filters */}
+              <Button
+                variant="outline"
+                onClick={() => setActiveFilters(new Set())}
+                className={`h-7 md:h-8 px-2.5 md:px-3 rounded-md flex items-center gap-1.5 whitespace-nowrap shrink-0 transition-all ${
+                  activeFilters.size === 0
+                    ? 'bg-[#EB590E] text-white border border-[#EB590E] hover:bg-[#D94F0C]'
+                    : 'bg-white dark:bg-[#1a1a1a] border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800'
+                }`}
+              >
+                <span className={`text-xs md:text-sm font-bold ${activeFilters.size === 0 ? 'text-white' : 'text-black dark:text-white'}`}>All</span>
+              </Button>
               {[
                 { id: 'under-30-mins', label: 'Under 30 mins' },
                 { id: 'delivery-under-45', label: 'Under 45 mins' },
@@ -1051,7 +1061,6 @@ export default function CategoryPage() {
               {[
                 { id: 'distance-under-1km', label: 'Under 1km', icon: MapPin },
                 { id: 'distance-under-2km', label: 'Under 2km', icon: MapPin },
-                { id: 'flat-50-off', label: 'Flat 50% OFF' },
                 { id: 'under-250', label: 'Switch 99' },
               ].map((filter) => {
                 const Icon = filter.icon
@@ -1615,28 +1624,7 @@ export default function CategoryPage() {
                         className="space-y-4 mb-8"
                       >
                         <h3 className="text-lg md:text-xl font-semibold text-gray-900 dark:text-white mb-4">Offers</h3>
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
-                          <button
-                            onClick={() => toggleFilter('flat-50-off')}
-                            className={`flex flex-col items-center gap-2 p-4 md:p-5 rounded-xl border transition-colors ${activeFilters.has('flat-50-off')
-                              ? 'border-green-600 bg-green-50 dark:bg-green-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-green-600'
-                              }`}
-                          >
-                            <BadgePercent className={`h-6 w-6 md:h-7 md:w-7 ${activeFilters.has('flat-50-off') ? 'text-[#EB590E]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
-                            <span className={`text-sm md:text-base font-medium ${activeFilters.has('flat-50-off') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Flat 50% OFF</span>
-                          </button>
-                          <button
-                            onClick={() => toggleFilter('price-match')}
-                            className={`flex flex-col items-center gap-2 p-4 md:p-5 rounded-xl border transition-colors ${activeFilters.has('price-match')
-                              ? 'border-green-600 bg-green-50 dark:bg-green-900/20'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-green-600'
-                              }`}
-                          >
-                            <BadgePercent className={`h-6 w-6 md:h-7 md:w-7 ${activeFilters.has('price-match') ? 'text-[#EB590E]' : 'text-gray-600 dark:text-gray-400'}`} strokeWidth={1.5} />
-                            <span className={`text-sm md:text-base font-medium ${activeFilters.has('price-match') ? 'text-[#EB590E]' : 'text-gray-700 dark:text-gray-300'}`}>Price Match</span>
-                          </button>
-                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No offer filters available.</p>
                       </div>
 
                       {/* Trust Markers Tab */}

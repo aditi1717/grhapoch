@@ -5,7 +5,7 @@ const phoneSchema = z
     .string()
     .regex(/^[6-9]\d{9}$/, 'Please enter a valid 10-digit Indian phone number');
 
-const emailSchema = z.string().email('Invalid email').optional().or(z.literal(''));
+const emailSchema = z.string().min(1, 'Email is required').email('Invalid email');
 const requiredBooleanSchema = z.preprocess((value) => {
     if (typeof value === 'boolean') return value;
     if (typeof value === 'string') {

@@ -10,7 +10,7 @@ export default function PromoRow({ handleVegModeChange, navigate, isVegMode, tog
     {
       id: 'offers',
       title: "Hot Deals",
-      value: "Offers",
+      value: "Coupons",
       icon: discountPromoIcon,
     },
     {

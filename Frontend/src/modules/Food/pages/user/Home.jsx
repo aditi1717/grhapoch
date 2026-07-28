@@ -1114,7 +1114,7 @@ export default function Home() {
     const fallback = [
       {
         id: "offers",
-        label: "Offers",
+        label: "Coupons",
         image: exploreOffers,
         href: "/food/user/offers",
       },
