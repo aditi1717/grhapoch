@@ -12,6 +12,39 @@ const debugLog = (...args) => {}
 const debugWarn = (...args) => {}
 const debugError = (...args) => {}
 
+// Format Restaurant ID to REST format (e.g., REST422829)
+const formatRestaurantId = (id) => {
+  if (!id) return "REST000000"
+
+  const idString = String(id)
+  const parts = idString.split(/[-.]/)
+  let lastDigits = ""
+
+  if (parts.length > 0) {
+    const lastPart = parts[parts.length - 1]
+    const digits = lastPart.match(/\d+/g)
+    if (digits && digits.length > 0) {
+      const allDigits = digits.join("")
+      lastDigits = allDigits.slice(-6).padStart(6, "0")
+    } else {
+      const allParts = parts.join("")
+      const allDigits = allParts.match(/\d+/g)
+      if (allDigits && allDigits.length > 0) {
+        const combinedDigits = allDigits.join("")
+        lastDigits = combinedDigits.slice(-6).padStart(6, "0")
+      }
+    }
+  }
+
+  if (!lastDigits) {
+    const hash = idString.split("").reduce((acc, char) => {
+      return ((acc << 5) - acc) + char.charCodeAt(0) | 0
+    }, 0)
+    lastDigits = Math.abs(hash).toString().slice(-6).padStart(6, "0")
+  }
+
+  return `REST${lastDigits}`
+}
 
 export default function LandingPageManagement() {
   const [activeTab, setActiveTab] = useState('top-banners')
@@ -2029,7 +2062,7 @@ export default function LandingPageManagement() {
                             >
                               <div className="min-w-0">
                                 <p className="text-sm font-medium text-slate-800 truncate">{restaurant.name}</p>
-                                 <p className="text-xs text-slate-500 truncate">{restaurant._id || "No ID"}</p>
+                                 <p className="text-xs text-slate-500 truncate">{formatRestaurantId(restaurant.restaurantId || restaurant._id)}</p>
                               </div>
                               <Checkbox
                                 checked={isChecked}
@@ -2211,8 +2244,8 @@ export default function LandingPageManagement() {
                                 </div>
                               </div>
                               <div className="p-2">
-                                <h3 className="font-semibold text-slate-900 mb-0.5 text-sm line-clamp-1">{item.restaurant?.name || 'N/A'}</h3>
-                                <p className="text-[10px] text-slate-500 mb-2">Rating: {item.restaurant?.rating || 0}?</p>
+                                 <h3 className="font-semibold text-slate-900 mb-0.5 text-sm line-clamp-1">{item.restaurant?.name || 'N/A'}</h3>
+                                 <p className="text-[10px] text-slate-500 mb-2">Rating: {item.restaurant?.rating || 0}</p>
                                 <div className="flex items-center justify-between gap-1">
                                   <div className="flex items-center gap-0.5">
                                     <button onClick={() => handleGourmetOrderChange(item._id, 'up')} disabled={index === 0} className="p-1 rounded hover:bg-slate-100 disabled:opacity-50">
@@ -2349,11 +2382,11 @@ export default function LandingPageManagement() {
                                 {restaurant.name || 'Unnamed Restaurant'}
                               </h3>
                               <p className="text-sm text-slate-500 truncate">
-                                ID: {restaurant.restaurantId || restaurant._id}
+                                ID: {formatRestaurantId(restaurant.restaurantId || restaurant._id)}
                               </p>
                               {restaurant.rating && (
                                 <div className="flex items-center gap-1 mt-1">
-                                  <span className="text-xs text-slate-400">?</span>
+                                  <span className="text-xs text-yellow-500">★</span>
                                   <span className="text-xs text-slate-600">{restaurant.rating}</span>
                                 </div>
                               )}

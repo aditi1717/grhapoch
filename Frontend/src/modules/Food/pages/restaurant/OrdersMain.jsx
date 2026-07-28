@@ -1042,7 +1042,18 @@ export default function OrdersMain() {
 
   const getOrderCountdownSeconds = (orderLike) => {
     const deadlineRaw = orderLike?.acceptanceDeadlineAt;
-    if (!deadlineRaw) return 240;
+    if (!deadlineRaw) {
+      const createdRaw = orderLike?.createdAt;
+      const windowSeconds = Number(orderLike?.acceptanceWindowSeconds) || 240;
+      if (createdRaw) {
+        const createdMs = new Date(createdRaw).getTime();
+        if (Number.isFinite(createdMs)) {
+          const deadlineMs = createdMs + (windowSeconds * 1000);
+          return Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
+        }
+      }
+      return 240;
+    }
     const deadlineMs = new Date(deadlineRaw).getTime();
     if (!Number.isFinite(deadlineMs)) return 240;
     return Math.max(0, Math.floor((deadlineMs - Date.now()) / 1000));
@@ -1279,7 +1290,11 @@ export default function OrdersMain() {
   // Handle order cancellation (user cancelled while popup is open)
   useEffect(() => {
     const handleOrderHandledExternally = (event) => {
-      const { orderId, orderMongoId, status } = event.detail;
+      const detail = event.detail || {};
+      const orderId = detail.orderId || detail.order_id;
+      const orderMongoId = detail.orderMongoId || detail._id;
+      const status = detail.orderStatus || detail.status;
+
       const currentPopupOrder = popupOrder || newOrder;
       
       if (currentPopupOrder) {
@@ -1317,9 +1332,11 @@ export default function OrdersMain() {
 
     window.addEventListener('restaurantOrderCancelled', handleOrderHandledExternally);
     window.addEventListener('restaurantOrderHandledExternally', handleOrderHandledExternally);
+    window.addEventListener('restaurantOrderStatusUpdate', handleOrderHandledExternally);
     return () => {
       window.removeEventListener('restaurantOrderCancelled', handleOrderHandledExternally);
       window.removeEventListener('restaurantOrderHandledExternally', handleOrderHandledExternally);
+      window.removeEventListener('restaurantOrderStatusUpdate', handleOrderHandledExternally);
     };
   }, [popupOrder, newOrder, clearNewOrder]);
 
@@ -1503,18 +1520,24 @@ export default function OrdersMain() {
     const activePopupOrder = popupOrder || newOrder;
     if (!activePopupOrder) return;
 
+    const initialRemaining = getOrderCountdownSeconds(activePopupOrder);
+    setCountdown(initialRemaining);
+
     const timer = setInterval(() => {
-      const remaining = getOrderCountdownSeconds(activePopupOrder);
-      setCountdown(remaining);
-      if (remaining <= 0) {
-        setShowNewOrderPopup(false);
-        setPopupOrder(null);
-        clearNewOrder();
-        requestOrdersRefresh();
-      }
+      setCountdown((prev) => {
+        const nextValue = prev - 1;
+        if (nextValue <= 0) {
+          clearInterval(timer);
+          setShowNewOrderPopup(false);
+          setPopupOrder(null);
+          clearNewOrder();
+          requestOrdersRefresh();
+          return 0;
+        }
+        return nextValue;
+      });
     }, 1000);
 
-    setCountdown(getOrderCountdownSeconds(activePopupOrder));
     return () => clearInterval(timer);
   }, [showNewOrderPopup, popupOrder, newOrder, clearNewOrder]);
 
@@ -2389,14 +2412,19 @@ export default function OrdersMain() {
                 {/* Header Section */}
                 <div className="px-6 py-5 bg-gray-50/50 border-b border-gray-100 flex items-center justify-between">
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
-                      </span>
-                      <h3 className="text-emerald-600 font-bold tracking-wider text-[11px] uppercase">New Order</h3>
+                    <div className="flex flex-col gap-0.5">
+                      <div className="flex items-center gap-2 mb-0.5">
+                        <span className="relative flex h-2.5 w-2.5">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                        </span>
+                        <h3 className="text-emerald-600 font-bold tracking-wider text-[11px] uppercase">
+                          {restaurantStatus.restaurantName || (popupOrder || newOrder)?.restaurantName || "Restaurant"}
+                        </h3>
+                      </div>
+                      <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">New Order</p>
+                      <p className="text-2xl font-black text-gray-900 tracking-tight">{(popupOrder || newOrder)?.orderId || "#Order"}</p>
                     </div>
-                    <p className="text-2xl font-black text-gray-900 tracking-tight">{(popupOrder || newOrder)?.orderId || "#Order"}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <button onClick={handlePrint} className="p-2.5 bg-white shadow-sm border border-gray-100 hover:bg-gray-50 rounded-full transition-colors text-gray-600">

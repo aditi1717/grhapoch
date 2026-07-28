@@ -72,6 +72,8 @@ export default function FoodsList() {
   const [categoryOptions, setCategoryOptions] = useState([])
   const [categorySearch, setCategorySearch] = useState("")
   const [categoryPopoverOpen, setCategoryPopoverOpen] = useState(false)
+  const [formRestaurantSearch, setFormRestaurantSearch] = useState("")
+  const [formRestaurantPopoverOpen, setFormRestaurantPopoverOpen] = useState(false)
   const [selectedImageFile, setSelectedImageFile] = useState(null)
   const [imagePreviewUrl, setImagePreviewUrl] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -123,6 +125,7 @@ export default function FoodsList() {
         restaurantsMap.set(restaurantId, {
           id: restaurantId,
           name: getRestaurantName(restaurant) || "Unknown Restaurant",
+          pureVegRestaurant: restaurant.pureVegRestaurant === true || restaurant.isPureVeg === true,
         })
       })
 
@@ -281,6 +284,36 @@ export default function FoodsList() {
     )
   }, [restaurantOptions, bulkUploadRestaurantSearch])
 
+  const filteredCategoryOptions = useMemo(() => {
+    if (!foodForm.restaurantId) return []
+
+    // Find the selected restaurant
+    const selectedRestro = restaurantsForFilter.find((r) => String(r.id) === String(foodForm.restaurantId))
+    const isPureVegRestro = selectedRestro?.pureVegRestaurant === true
+
+    return categoryOptions.filter((c) => {
+      // Must either be global (no restaurantId) OR match the selected restaurant
+      const isGlobal = !c.restaurantId
+      const isOwnedByRestro = String(c.restaurantId) === String(foodForm.restaurantId)
+
+      if (!isGlobal && !isOwnedByRestro) return false
+
+      if (isPureVegRestro) {
+        // Only show Veg categories if pure veg restaurant
+        return c.foodTypeScope === "Veg"
+      }
+
+      return true
+    })
+  }, [foodForm.restaurantId, categoryOptions, restaurantsForFilter])
+
+  const selectedRestaurantObj = useMemo(() => {
+    if (!foodForm.restaurantId) return null
+    return restaurantsForFilter.find((r) => String(r.id) === String(foodForm.restaurantId))
+  }, [foodForm.restaurantId, restaurantsForFilter])
+
+  const isPureVegRestro = selectedRestaurantObj?.pureVegRestaurant === true
+
   const isRestaurantSelected = selectedRestaurant !== "all"
   const pageFoodIds = useMemo(() => foods.map((food) => food.id), [foods])
   const allPageSelected =
@@ -354,7 +387,12 @@ export default function FoodsList() {
         const list = res?.data?.data?.categories || []
         const options = Array.isArray(list)
           ? list
-              .map((c) => ({ id: String(c.id || c._id || c.name), name: String(c.name || "").trim() }))
+              .map((c) => ({
+                id: String(c.id || c._id || c.name),
+                name: String(c.name || "").trim(),
+                foodTypeScope: c.foodTypeScope || "Both",
+                restaurantId: getEntityId(c.restaurantId || c.createdByRestaurantId || null),
+              }))
               .filter((c) => c.name)
           : []
         if (!cancelled) setCategoryOptions(options)
@@ -371,6 +409,22 @@ export default function FoodsList() {
       cancelled = true
     }
   }, [showFoodFormModal])
+
+  // Sync foodType with selected category's foodTypeScope
+  useEffect(() => {
+    if (!foodForm.categoryId) return
+    const cat = categoryOptions.find((c) => String(c.id) === String(foodForm.categoryId))
+    if (cat) {
+      if (cat.foodTypeScope === "Veg") {
+        setFoodForm((prev) => ({ ...prev, foodType: "Veg" }))
+      } else if (cat.foodTypeScope === "Non-Veg") {
+        setFoodForm((prev) => ({ ...prev, foodType: "Non-Veg" }))
+      } else if (cat.foodTypeScope === "Both") {
+        // Fallback for Both: default to Veg (can also check if restaurant is Veg)
+        setFoodForm((prev) => ({ ...prev, foodType: "Veg" }))
+      }
+    }
+  }, [foodForm.categoryId, categoryOptions])
 
   const handleVariantChange = (variantId, field, value) => {
     setFoodForm((prev) => ({
@@ -409,6 +463,10 @@ export default function FoodsList() {
     }
     if (!foodForm.name.trim()) {
       toast.error("Food name is required")
+      return
+    }
+    if (!foodForm.image.trim() && !selectedImageFile) {
+      toast.error("Food image is mandatory")
       return
     }
 
@@ -1025,6 +1083,8 @@ export default function FoodsList() {
             setCategoryOptions([])
             setCategorySearch("")
             setCategoryPopoverOpen(false)
+            setFormRestaurantSearch("")
+            setFormRestaurantPopoverOpen(false)
             setSelectedImageFile(null)
             setImagePreviewUrl("")
           }
@@ -1040,19 +1100,67 @@ export default function FoodsList() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Restaurant</label>
-                <select
-                  value={foodForm.restaurantId}
-                  onChange={(e) => setFoodForm((prev) => ({ ...prev, restaurantId: e.target.value, categoryId: "", categoryName: "" }))}
-                  disabled={foodFormMode === "edit"}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white disabled:bg-slate-100"
-                >
-                  <option value="">Select restaurant</option>
-                  {restaurantOptions.map((restaurant) => (
-                    <option key={restaurant.id} value={restaurant.id}>
-                      {restaurant.name}
-                    </option>
-                  ))}
-                </select>
+                <Popover open={formRestaurantPopoverOpen} onOpenChange={setFormRestaurantPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <button
+                      type="button"
+                      disabled={foodFormMode === "edit"}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-left flex items-center justify-between disabled:bg-slate-100 disabled:cursor-not-allowed"
+                    >
+                      <span className={foodForm.restaurantId ? "text-slate-900" : "text-slate-400"}>
+                        {restaurantOptions.find((r) => String(r.id) === String(foodForm.restaurantId))?.name || "Select restaurant"}
+                      </span>
+                      <ChevronDown className="w-4 h-4 text-slate-500" />
+                    </button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-2" align="start">
+                    <input
+                      type="text"
+                      value={formRestaurantSearch}
+                      onChange={(e) => setFormRestaurantSearch(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-md text-sm bg-white mb-2"
+                      placeholder="Search restaurant..."
+                      autoFocus
+                    />
+                    <div className="max-h-56 overflow-y-auto">
+                      {restaurantOptions
+                        .filter((r) => {
+                          const q = String(formRestaurantSearch || "").trim().toLowerCase()
+                          if (!q) return true
+                          return String(r.name || "").toLowerCase().includes(q)
+                        })
+                        .map((r) => (
+                          <button
+                            key={r.id}
+                            type="button"
+                            onClick={() => {
+                              const isPureVeg = r.pureVegRestaurant === true
+                              setFoodForm((prev) => ({ 
+                                ...prev, 
+                                restaurantId: r.id, 
+                                categoryId: "", 
+                                categoryName: "",
+                                foodType: isPureVeg ? "Veg" : prev.foodType
+                              }))
+                              setFormRestaurantPopoverOpen(false)
+                            }}
+                            className={`w-full text-left px-3 py-2 rounded-md text-sm hover:bg-slate-100 ${
+                              String(foodForm.restaurantId) === String(r.id) ? "bg-slate-100 font-medium" : ""
+                            }`}
+                          >
+                            {r.name}
+                          </button>
+                        ))}
+                      {restaurantOptions.filter((r) => {
+                        const q = String(formRestaurantSearch || "").trim().toLowerCase()
+                        if (!q) return true
+                        return String(r.name || "").toLowerCase().includes(q)
+                      }).length === 0 && (
+                        <div className="px-3 py-2 text-sm text-slate-500">No restaurants found</div>
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
@@ -1060,10 +1168,11 @@ export default function FoodsList() {
                   <PopoverTrigger asChild>
                     <button
                       type="button"
-                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-left flex items-center justify-between"
+                      disabled={!foodForm.restaurantId}
+                      className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white text-left flex items-center justify-between disabled:bg-slate-100 disabled:cursor-not-allowed"
                     >
                       <span className={foodForm.categoryName ? "text-slate-900" : "text-slate-400"}>
-                        {foodForm.categoryName || "Select category"}
+                        {!foodForm.restaurantId ? "Select a restaurant first" : (foodForm.categoryName || "Select category")}
                       </span>
                       <ChevronDown className="w-4 h-4 text-slate-500" />
                     </button>
@@ -1078,7 +1187,7 @@ export default function FoodsList() {
                       autoFocus
                     />
                     <div className="max-h-56 overflow-y-auto">
-                      {categoryOptions
+                      {filteredCategoryOptions
                         .filter((c) => {
                           const q = String(categorySearch || "").trim().toLowerCase()
                           if (!q) return true
@@ -1099,7 +1208,7 @@ export default function FoodsList() {
                             {c.name}
                           </button>
                         ))}
-                      {categoryOptions.length === 0 && (
+                      {filteredCategoryOptions.length === 0 && (
                         <div className="px-3 py-2 text-sm text-slate-500">No categories found</div>
                       )}
                     </div>
@@ -1132,17 +1241,17 @@ export default function FoodsList() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Food Type</label>
-                <select
-                  value={foodForm.foodType}
-                  onChange={(e) => setFoodForm((prev) => ({ ...prev, foodType: e.target.value }))}
-                  className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-white"
-                >
-                  <option value="Veg">Veg</option>
-                  <option value="Non-Veg">Non-Veg</option>
-                </select>
+                <div className="w-full px-3 py-2.5 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-700 font-semibold flex items-center justify-between">
+                  <span>{foodForm.foodType || "Veg"}</span>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                    (foodForm.foodType || "Veg") === "Veg" ? "bg-emerald-100 text-emerald-800" : "bg-red-100 text-red-800"
+                  }`}>
+                    {(foodForm.foodType || "Veg") === "Veg" ? "Pure Veg" : "Non-Veg"}
+                  </span>
+                </div>
               </div>
               <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">Upload Image</label>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Upload Image <span className="text-red-500">*</span></label>
                 <input
                   type="file"
                   accept="image/*"

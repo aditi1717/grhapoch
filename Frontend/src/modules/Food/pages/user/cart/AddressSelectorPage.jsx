@@ -1002,8 +1002,9 @@ export default function AddressSelectorPage() {
                   onChange={e => setAddressFormData({...addressFormData, city: e.target.value})} 
                   onFocus={() => scrollFieldIntoView("city")}
                   ref={(el) => { manualFieldRefs.current.city = el }}
-                  className="h-12 rounded-xl"
+                  className="h-12 rounded-xl bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                   required 
+                  readOnly
                 />
               </div>
               <div>
@@ -1013,8 +1014,9 @@ export default function AddressSelectorPage() {
                   onChange={e => setAddressFormData({...addressFormData, state: e.target.value})} 
                   onFocus={() => scrollFieldIntoView("state")}
                   ref={(el) => { manualFieldRefs.current.state = el }}
-                  className="h-12 rounded-xl"
+                  className="h-12 rounded-xl bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                   required 
+                  readOnly
                 />
               </div>
             </div>
@@ -1022,13 +1024,14 @@ export default function AddressSelectorPage() {
             <div>
               <Label className="text-xs mb-1 block">Pincode / ZIP <span className="text-red-500">*</span></Label>
               <Input 
-                placeholder="Pincode" 
+                placeholder="Pincode (Auto-filled by location)" 
                 value={addressFormData.zipCode || ""} 
                 onChange={e => setAddressFormData({...addressFormData, zipCode: e.target.value})} 
                 onFocus={() => scrollFieldIntoView("zipCode")}
                 ref={(el) => { manualFieldRefs.current.zipCode = el }}
-                className="h-12 rounded-xl"
+                className="h-12 rounded-xl bg-gray-100 dark:bg-gray-800 cursor-not-allowed"
                 required
+                readOnly
               />
             </div>
 

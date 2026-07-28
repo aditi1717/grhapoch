@@ -173,6 +173,16 @@ export default function UserLayout() {
     }
   }, [location.pathname, location.search, location.hash, navigationType, location.state])
 
+  useEffect(() => {
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const path = location.pathname
+      const isUserPage = path.startsWith("/food/user") || path.startsWith("/user")
+      if (isUserPage && !path.includes("/restaurants/")) {
+        window.sessionStorage.setItem("lastUserPage", path + location.search)
+      }
+    }
+  }, [location.pathname, location.search])
+
 
   // Note: Authentication checks and redirects are handled by ProtectedRoute components
   // UserLayout should not interfere with authentication redirects

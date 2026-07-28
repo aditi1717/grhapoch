@@ -250,19 +250,6 @@ export default function CouponListPage() {
           </AnimatePresence>
         )}
       </div>
-
-      {/* FAB */}
-      <motion.button
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        transition={{ type: "spring", stiffness: 200, damping: 15 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => navigate("/restaurant/coupon/new")}
-        className="fixed bottom-6 right-4 w-14 h-14 bg-gray-900 hover:bg-gray-800 text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-colors"
-      >
-        <Plus className="w-6 h-6" />
-      </motion.button>
     </div>
   )
 }

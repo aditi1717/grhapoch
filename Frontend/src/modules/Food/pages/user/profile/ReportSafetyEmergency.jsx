@@ -229,22 +229,6 @@ export default function ReportSafetyEmergency() {
                   <h3 className="text-base md:text-lg font-semibold text-gray-900 dark:text-white">
                     Your report history
                   </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={fetchHistory}
-                    disabled={historyLoading}
-                    className="h-8"
-                  >
-                    {historyLoading ? (
-                      <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        Loading
-                      </>
-                    ) : (
-                      "Refresh"
-                    )}
-                  </Button>
                 </div>
 
                 {historyLoading && historySorted.length === 0 ? (

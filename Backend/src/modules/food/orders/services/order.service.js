@@ -843,7 +843,7 @@ export async function tryAutoAssign(orderId, options = {}) {
 }
 
 /**
- * Triggered by worker after 60 seconds of zero response.
+ * Triggered by worker after 30 seconds of zero response.
  */
 export async function processDispatchTimeout(orderId, partnerId, options = {}) {
     return dispatchService.processDispatchTimeout(orderId, partnerId, options);

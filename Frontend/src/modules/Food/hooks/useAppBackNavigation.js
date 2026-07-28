@@ -62,6 +62,12 @@ const resolveBackPath = ({ pathname, search, state }) => {
     if (searchParams.get("under250") === "true") {
       return "/food/user/under-250"
     }
+    if (typeof window !== "undefined" && window.sessionStorage) {
+      const lastUserPage = window.sessionStorage.getItem("lastUserPage")
+      if (lastUserPage && lastUserPage !== pathname) {
+        return lastUserPage
+      }
+    }
     return explicitBackPath || "/food/user"
   }
 

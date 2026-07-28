@@ -177,11 +177,11 @@ export async function tryAutoAssign(orderId, options = {}) {
 
     // TIERED ALERT LOGIC
     // Phase 2: Broadcast to all (Attempt 3+)
-    // Phase 3: Admin Alert (Attempt 5+ or roughly 5 mins)
-    const isPhase3 = attempt >= 6; // ~6 minutes (60s * 6)
+    // Phase 3: Admin Alert (Attempt 10+ or roughly 5 mins)
+    const isPhase3 = attempt >= 10; // ~5 minutes (30s * 10)
 
     if (isPhase3) {
-      logger.error(`[CRITICAL] Order ${order._id} unassigned for ${attempt} mins. Triggering Admin Alert (Phase 3).`);
+      logger.error(`[CRITICAL] Order ${order._id} unassigned for ${attempt} attempts. Triggering Admin Alert (Phase 3).`);
       // Notify Admin via Push (Web/Mobile)
       try {
         await notifyOwnersSafely(
@@ -272,7 +272,7 @@ export async function tryAutoAssign(orderId, options = {}) {
           pushTargets,
           {
             title: 'New order available!',
-            body: `Order #${order.order_id || order._id} is available. You have 60 seconds to accept!`,
+            body: `Order #${order.order_id || order._id} is available. You have 30 seconds to accept!`,
             data: { type: 'new_order', orderId: order._id.toString() },
           }
         );
@@ -292,13 +292,13 @@ export async function tryAutoAssign(orderId, options = {}) {
     order.dispatch.offeredTo.push(...offeredToEntries);
     await order.save();
 
-    // Re-check in 60s
+    // Re-check in 30s
     await addOrderJob({
       action: 'DISPATCH_TIMEOUT_CHECK',
       orderMongoId: order._id.toString(),
       orderId: order._id.toString(),
       attempt: attempt + 1
-    }, { delay: 60000 });
+    }, { delay: 30000 });
 
     return order;
   } finally {

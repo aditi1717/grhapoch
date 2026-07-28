@@ -1652,22 +1652,6 @@ export default function LandingPageSettings({ type = "admin" }) {
             </div>
           </div>
         )}
-                className="px-4 py-2 bg-slate-200 text-slate-700 rounded-lg hover:bg-slate-300 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Reset
-              </button>
-              <button
-                type="button"
-                onClick={handleSave}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-xs sm:text-sm font-medium flex items-center gap-1.5"
-              >
-                <Save className="w-3 h-3" />
-                Save
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Registration section */}
         {reactActiveTab === "Registration section" && (

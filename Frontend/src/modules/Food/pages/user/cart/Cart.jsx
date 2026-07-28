@@ -1445,6 +1445,15 @@ export default function Cart() {
     }
   }
 
+  const handleAddMoreItems = () => {
+    const slugOrId = restaurantData?.slug || restaurantData?._id || restaurantId || cart[0]?.restaurantId
+    if (slugOrId) {
+      navigate(`/food/user/restaurants/${slugOrId}`)
+    } else {
+      navigate("/food/user")
+    }
+  }
+
   // Handler to select address by label (Home, Office, Other)
   const handleSelectAddressByLabel = async (label) => {
     try {
@@ -2388,7 +2397,7 @@ export default function Cart() {
 
                 {/* Add more items */}
                 <button
-                  onClick={handleBack}
+                  onClick={handleAddMoreItems}
                   className="flex items-center gap-2 mt-4 md:mt-6 text-[#EB590E] dark:text-[#EB590E]"
                 >
                   <Plus className="h-4 w-4 md:h-5 md:w-5" />

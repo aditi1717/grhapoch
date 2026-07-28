@@ -247,7 +247,7 @@ export default function LandingPage() {
               </div>
               <div className="overflow-hidden pb-4">
                 <motion.div custom={2} initial="hidden" animate="visible" variants={textReveal} className="flex items-center gap-4 lg:gap-8">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-br from-[#FA0272] to-pink-600">SWITCHEATS?</span>
+                  <span className="text-transparent bg-clip-text bg-gradient-to-br from-[#FA0272] to-pink-600">GRHAPOCH?</span>
                 </motion.div>
               </div>
             </h1>
