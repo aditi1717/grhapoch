@@ -243,6 +243,7 @@ function RestaurantDetailsContent() {
   const [restaurantError, setRestaurantError] = useState(null)
   const fetchedRestaurantRef = useRef(false) // Track if restaurant has been fetched for current slug
   const fetchedSlugRef = useRef(null)
+  const autoOpenedDishRef = useRef(null)
 
   useEffect(() => {
     const tickAvailability = () => {
@@ -1991,6 +1992,12 @@ function RestaurantDetailsContent() {
     })
 
     if (!matchedItem) return
+
+    if (autoOpenedDishRef.current !== targetDishId) {
+      autoOpenedDishRef.current = targetDishId
+      setSelectedItem(matchedItem)
+      setShowItemDetail(true)
+    }
 
     setExpandedSections((prev) => {
       const next = new Set(prev)

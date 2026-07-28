@@ -33,6 +33,7 @@ import { Textarea } from "@food/components/ui/textarea"
 import { useOrders } from "@food/context/OrdersContext"
 import { useProfile } from "@food/context/ProfileContext"
 import { useLocation as useUserLocation } from "@food/hooks/useLocation"
+import { resolveMediaUrl } from "@food/utils/common"
 import DeliveryTrackingMap from "@food/components/user/DeliveryTrackingMap"
 import { orderAPI, restaurantAPI } from "@food/api"
 import { useCompanyName } from "@food/hooks/useCompanyName"
@@ -290,6 +291,14 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
       previousOrder?.restaurantPhone ||
       '',
     restaurantAddress,
+    restaurantImage:
+      apiOrder?.restaurantImage ||
+      apiOrder?.restaurantId?.profileImage?.url ||
+      apiOrder?.restaurantId?.profileImage ||
+      apiOrder?.restaurant?.profileImage?.url ||
+      apiOrder?.restaurant?.profileImage ||
+      previousOrder?.restaurantImage ||
+      null,
     restaurantId: apiOrder?.restaurantId || previousOrder?.restaurantId || null,
     userId: apiOrder?.userId || previousOrder?.userId || null,
     userName: apiOrder?.userName || apiOrder?.userId?.name || apiOrder?.userId?.fullName || previousOrder?.userName || '',
@@ -1536,8 +1545,23 @@ export default function OrderTracking() {
         <div className="bg-white dark:bg-zinc-900 rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-zinc-800">
           <div className="flex items-center justify-between gap-4 mb-5">
             <div className="flex items-center gap-4 min-w-0">
-            <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center">
-              <Store className="w-6 h-6 text-gray-400" />
+            <div className="w-12 h-12 rounded-2xl bg-gray-100 dark:bg-zinc-800 overflow-hidden flex items-center justify-center shrink-0">
+              {order.restaurantImage ? (
+                <img
+                  src={resolveMediaUrl(order.restaurantImage)}
+                  alt={restaurantDisplayName}
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    e.currentTarget.style.display = 'none';
+                    const fallback = e.currentTarget.nextElementSibling;
+                    if (fallback) fallback.style.display = 'block';
+                  }}
+                />
+              ) : null}
+              <Store
+                className="w-6 h-6 text-gray-400"
+                style={{ display: order.restaurantImage ? 'none' : 'block' }}
+              />
             </div>
             <div className="min-w-0">
               <h3 className="font-bold text-gray-900 dark:text-white truncate">{restaurantDisplayName}</h3>
@@ -1569,9 +1593,9 @@ export default function OrderTracking() {
               <div key={i} className="flex items-start justify-between gap-3">
                 <div className="flex items-start gap-2 min-w-0">
                   <div
-                    className={`w-3.5 h-3.5 mt-0.5 border flex items-center justify-center p-[1px] shrink-0 ${resolvedIsVeg ? "border-[#16a34a] bg-green-50/40 dark:bg-green-900/25" : "border-[#dc2626] bg-red-50/40 dark:bg-red-900/25"}`}
+                    className={`w-3.5 h-3.5 mt-0.5 border flex items-center justify-center p-[1px] shrink-0 ${resolvedIsVeg ? "border-[#16a34a] bg-transparent" : "border-[#991b1b] bg-transparent"}`}
                   >
-                    <div className={`w-full h-full rounded-full ${resolvedIsVeg ? "bg-[#16a34a]" : "bg-[#dc2626]"}`} />
+                    <div className={`w-full h-full rounded-full ${resolvedIsVeg ? "bg-[#16a34a]" : "bg-[#991b1b]"}`} />
                   </div>
                   <div className="min-w-0">
                     <p className="text-sm text-gray-700 dark:text-gray-300 font-medium truncate">

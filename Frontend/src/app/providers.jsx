@@ -56,6 +56,46 @@ function RouteScopedNotificationProviders({ children }) {
   )
 }
 
+import { useState, useEffect } from 'react'
+import OfflineScreen from '../shared/components/OfflineScreen'
+
+function OfflineHandler({ children }) {
+  const [isOffline, setIsOffline] = useState(!navigator.onLine)
+
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false)
+    const handleOffline = () => setIsOffline(true)
+    const handleNetworkError = () => {
+      setIsOffline(true)
+    }
+
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    window.addEventListener('appNetworkError', handleNetworkError)
+
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('appNetworkError', handleNetworkError)
+    }
+  }, [])
+
+  if (isOffline) {
+    return (
+      <OfflineScreen
+        onRetry={() => {
+          setIsOffline(!navigator.onLine)
+          if (navigator.onLine) {
+            window.location.reload()
+          }
+        }}
+      />
+    )
+  }
+
+  return children
+}
+
 export function AppProviders({ children }) {
   const Router = shouldUseHashRouter() ? HashRouter : BrowserRouter
 
@@ -63,7 +103,9 @@ export function AppProviders({ children }) {
     <StrictMode>
       <ReduxProvider store={store}>
         <Router>
-          <RouteScopedNotificationProviders>{children}</RouteScopedNotificationProviders>
+          <OfflineHandler>
+            <RouteScopedNotificationProviders>{children}</RouteScopedNotificationProviders>
+          </OfflineHandler>
         </Router>
       </ReduxProvider>
     </StrictMode>

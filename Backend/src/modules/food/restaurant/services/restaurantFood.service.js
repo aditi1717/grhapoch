@@ -354,3 +354,21 @@ export async function updateRestaurantFood(restaurantId, foodId, body = {}) {
 
     return updated;
 }
+
+export async function deleteRestaurantFood(restaurantId, foodId) {
+    if (!foodId || !mongoose.Types.ObjectId.isValid(String(foodId))) {
+        throw new ValidationError('Invalid food id');
+    }
+
+    const deleted = await FoodItem.findOneAndDelete({ _id: foodId, restaurantId }).lean();
+    if (deleted) {
+        try {
+            const { invalidateCache } = await import('../../../../core/redis/cache.js');
+            await invalidateCache(`restaurant_menu:${restaurantId}`);
+            await invalidateCache('restaurant_menu:*');
+        } catch (cacheErr) {
+            console.error('Failed to invalidate cache after restaurant food delete:', cacheErr);
+        }
+    }
+    return deleted;
+}

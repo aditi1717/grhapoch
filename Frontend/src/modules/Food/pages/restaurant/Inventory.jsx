@@ -846,6 +846,52 @@ export default function Inventory() {
   const [addons, setAddons] = useState([])
   const [loadingAddons, setLoadingAddons] = useState(false)
   const [isAddAddonOpen, setIsAddAddonOpen] = useState(false)
+  const [isKeyboardOpen, setIsKeyboardOpen] = useState(false)
+
+  // Listen to visualViewport to detect keyboard opening/closing
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const handleResize = () => {
+      // If visual viewport is significantly smaller than layout height, keyboard is open
+      const isOpen = window.innerHeight - viewport.height > 150
+      setIsKeyboardOpen(isOpen)
+    }
+
+    viewport.addEventListener("resize", handleResize)
+    return () => viewport.removeEventListener("resize", handleResize)
+  }, [])
+
+  const [isInputFocused, setIsInputFocused] = useState(false)
+
+  // Track global input focus to hide buttons reliably during typing/search
+  useEffect(() => {
+    const handleFocusIn = (e) => {
+      const target = e.target
+      if (target?.matches('input[type="text"], input[type="number"], textarea')) {
+        setIsInputFocused(true)
+      }
+    }
+    const handleFocusOut = (e) => {
+      const target = e.target
+      if (target?.matches('input[type="text"], input[type="number"], textarea')) {
+        setTimeout(() => {
+          const current = document.activeElement
+          if (!current?.matches('input[type="text"], input[type="number"], textarea')) {
+            setIsInputFocused(false)
+          }
+        }, 50)
+      }
+    }
+
+    document.addEventListener("focusin", handleFocusIn)
+    document.addEventListener("focusout", handleFocusOut)
+    return () => {
+      document.removeEventListener("focusin", handleFocusIn)
+      document.removeEventListener("focusout", handleFocusOut)
+    }
+  }, [])
 
   // Scroll focused field into view above keyboard when add-on form is open
   useEffect(() => {
@@ -1219,8 +1265,8 @@ export default function Inventory() {
       return
     }
     const parsedPrice = parseFloat(addonPrice)
-    if (Number.isNaN(parsedPrice) || parsedPrice < 0) {
-      toast.error("Please enter a valid price")
+    if (Number.isNaN(parsedPrice) || parsedPrice <= 0) {
+      toast.error("Price must be greater than zero")
       return
     }
     setSavingAddon(true)
@@ -2147,129 +2193,7 @@ export default function Inventory() {
         <div className="space-y-4 mb-6">
           {activeTab === "add-ons" && (
             <>
-              {isAddAddonOpen && (
-                <div className="bg-white border border-gray-200 rounded-lg p-4 mb-4 shadow-sm">
-                  <div className="grid grid-cols-1 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Add-on Name *</label>
-                      <input
-                        type="text"
-                        value={addonName}
-                        onChange={(e) => setAddonName(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
-                        placeholder="e.g., Coke, Chips"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                      <textarea
-                        value={addonDescription}
-                        onChange={(e) => setAddonDescription(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none resize-none"
-                        rows={3}
-                        placeholder="Describe the add-on..."
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹) *</label>
-                      <input
-                        type="number"
-                        value={addonPrice}
-                        onChange={(e) => setAddonPrice(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
-                        min="0"
-                        step="0.01"
-                        placeholder="0.00"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
-                      <div className="grid grid-cols-2 gap-2">
-                        {(isPureVegRestaurant
-                          ? ADDON_TYPE_OPTIONS.filter((option) => option.value === "veg")
-                          : ADDON_TYPE_OPTIONS
-                        ).map((option) => {
-                          const active = addonFoodType === option.value
-                          const isVegOption = option.value === "veg"
-                          const activeStyle = active
-                            ? isVegOption
-                              ? { borderColor: "#16A34A", backgroundColor: "#F0FDF4", color: "#15803D" }
-                              : { borderColor: "#EF4444", backgroundColor: "#FEF2F2", color: "#B91C1C" }
-                            : {}
-                          return (
-                            <button
-                              key={option.value}
-                              type="button"
-                              onClick={() => setAddonFoodType(option.value)}
-                              className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
-                                active ? "" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
-                              }`}
-                              style={activeStyle}
-                            >
-                              {option.label}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1">Image (1 only)</label>
-                      {addonImagePreview && (
-                        <div className="mb-2">
-                          <img
-                            src={addonImagePreview}
-                            alt="Preview"
-                            className="w-24 h-24 object-cover rounded border"
-                            onError={(e) => (e.target.style.display = "none")}
-                          />
-                        </div>
-                      )}
-                      <input
-                        ref={addonImageInputRef}
-                        type="file"
-                        accept="image/*"
-                        onChange={handleAddonImageSelect}
-                        className="hidden"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddonGalleryPick}
-                        className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-left transition-colors hover:bg-gray-100"
-                      >
-                        <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
-                          <Upload className="h-4 w-4 text-gray-500" />
-                          {addonImageFile?.name || "Upload image"}
-                        </span>
-                        <span className="mt-1 block text-xs text-gray-500">
-                          {addonImageFile ? "Image selected successfully" : "Tap to choose 1 image from your device"}
-                        </span>
-                      </button>
-                      <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP, HEIC up to 5MB.</p>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          resetAddonForm()
-                          setIsAddAddonOpen(false)
-                        }}
-                        className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
-                      >
-                        Cancel
-                      </button>
-                      <button
-                        type="button"
-                        onClick={handleSaveAddon}
-                        disabled={savingAddon}
-                        className="px-4 py-2 bg-black text-white rounded-md text-sm font-medium hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-                      >
-                        {savingAddon && <Loader2 className="h-4 w-4 animate-spin" />}
-                        <span>{savingAddon ? "Saving..." : "Submit for approval"}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* Addon form popup modal is rendered at root level */}
               {loadingAddons ? (
                 <div className="flex items-center justify-center py-20">
                   <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
@@ -2989,8 +2913,176 @@ export default function Inventory() {
         )}
       </AnimatePresence>
 
+      {/* Add Addon Modal */}
+      <AnimatePresence>
+        {isAddAddonOpen && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                resetAddonForm()
+                setIsAddAddonOpen(false)
+              }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[70]"
+            />
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-2xl rounded-t-[32px] shadow-[0_-12px_40px_rgba(0,0,0,0.1)] z-[71] max-h-[85vh] flex flex-col pb-safe"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mt-3 mb-1" />
+              <div className="px-6 py-4 flex items-center justify-between border-b border-gray-100">
+                <h2 className="text-xl font-bold text-gray-900">Add Add-on</h2>
+                <button
+                  onClick={() => {
+                    resetAddonForm()
+                    setIsAddAddonOpen(false)
+                  }}
+                  className="p-2 bg-gray-100 rounded-full text-gray-500 hover:bg-gray-200 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Add-on Name *</label>
+                  <input
+                    type="text"
+                    value={addonName}
+                    onChange={(e) => setAddonName(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
+                    placeholder="e.g., Coke, Chips"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
+                  <textarea
+                    value={addonDescription}
+                    onChange={(e) => setAddonDescription(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none resize-none"
+                    rows={3}
+                    placeholder="Describe the add-on..."
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Price (₹) *</label>
+                  <input
+                    type="number"
+                    value={addonPrice}
+                    onChange={(e) => setAddonPrice(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-black focus:outline-none"
+                    min="0"
+                    step="0.01"
+                    placeholder="0.00"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Type *</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {(isPureVegRestaurant
+                      ? ADDON_TYPE_OPTIONS.filter((option) => option.value === "veg")
+                      : ADDON_TYPE_OPTIONS
+                    ).map((option) => {
+                      const active = addonFoodType === option.value
+                      const isVegOption = option.value === "veg"
+                      const activeStyle = active
+                        ? isVegOption
+                          ? { borderColor: "#16A34A", backgroundColor: "#F0FDF4", color: "#15803D" }
+                          : { borderColor: "#EF4444", backgroundColor: "#FEF2F2", color: "#B91C1C" }
+                        : {}
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          onClick={() => setAddonFoodType(option.value)}
+                          className={`rounded-md border px-3 py-2 text-sm font-medium transition-colors ${
+                            active ? "" : "border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                          }`}
+                          style={activeStyle}
+                        >
+                          {option.label}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Image (1 only)</label>
+                  {addonImagePreview && (
+                    <div className="mb-2">
+                      <img
+                        src={addonImagePreview}
+                        alt="Preview"
+                        className="w-24 h-24 object-cover rounded border"
+                        onError={(e) => (e.target.style.display = "none")}
+                      />
+                    </div>
+                  )}
+                  <input
+                    ref={addonImageInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleAddonImageSelect}
+                    className="hidden"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddonGalleryPick}
+                    className="w-full rounded-md border border-gray-300 bg-gray-50 px-3 py-3 text-left transition-colors hover:bg-gray-100"
+                  >
+                    <span className="flex items-center gap-2 text-sm font-medium text-gray-900">
+                      <Upload className="h-4 w-4 text-gray-500" />
+                      {addonImageFile?.name || "Upload image"}
+                    </span>
+                    <span className="mt-1 block text-xs text-gray-500">
+                      {addonImageFile ? "Image selected successfully" : "Tap to choose 1 image from your device"}
+                    </span>
+                  </button>
+                  <p className="text-xs text-gray-500 mt-1">PNG, JPG, WEBP, HEIC up to 5MB.</p>
+                </div>
+              </div>
+
+              <div className="border-t border-gray-100 p-6 flex items-center gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    resetAddonForm()
+                    setIsAddAddonOpen(false)
+                  }}
+                  className="flex-1 py-3 border border-gray-300 rounded-xl text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveAddon}
+                  disabled={savingAddon}
+                  className="flex-1 py-3 bg-black text-white rounded-xl text-sm font-semibold hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 transition-colors"
+                >
+                  {savingAddon && <Loader2 className="h-4 w-4 animate-spin" />}
+                  <span>{savingAddon ? "Saving..." : "Submit for approval"}</span>
+                </button>
+              </div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+
       {/* Floating Menu Button & Popup */}
-      <div className="fixed right-4 bottom-24 z-30 flex flex-col items-end gap-2">
+      <div 
+        className="fixed right-4 z-30 flex flex-col items-end gap-2 transition-all duration-200"
+        style={{
+          bottom: (isKeyboardOpen || isInputFocused) ? "-100px" : "96px",
+          opacity: (isKeyboardOpen || isInputFocused) ? 0 : 1,
+          pointerEvents: (isKeyboardOpen || isInputFocused) ? "none" : "auto"
+        }}
+      >
         <motion.button
           whileTap={{ scale: 0.96 }}
           onClick={() => {

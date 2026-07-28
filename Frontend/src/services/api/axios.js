@@ -113,6 +113,12 @@ function createModuleClient(moduleName) {
     async (err) => {
       const original = err?.config;
       
+      if (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error') {
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("appNetworkError"));
+        }
+      }
+      
       if (err?.response?.status === 429) return Promise.reject(err);
       
       // 403 handling (Forbidden vs Unauthorized)
@@ -224,6 +230,18 @@ apiClient.interceptors.request.use(
     return config;
   },
   (err) => Promise.reject(err)
+);
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  (err) => {
+    if (err?.code === 'ERR_NETWORK' || err?.message === 'Network Error') {
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new Event("appNetworkError"));
+      }
+    }
+    return Promise.reject(err);
+  }
 );
 
 export default apiClient;

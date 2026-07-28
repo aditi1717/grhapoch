@@ -289,7 +289,18 @@ export default function Coupons() {
     const f = draft || formData
     const pct = f.discountType === "percentage"
     const value = Number(f.discountValue)
-    if (!String(f.couponCode || "").trim()) e.couponCode = "Coupon code is required"
+    const codeUpper = String(f.couponCode || "").trim().toUpperCase()
+    if (!codeUpper) {
+      e.couponCode = "Coupon code is required"
+    } else {
+      const isDuplicate = offers.some(o => 
+        String(o.couponCode || "").trim().toUpperCase() === codeUpper && 
+        o.offerId !== editOfferId
+      )
+      if (isDuplicate) {
+        e.couponCode = "Coupon code already exists"
+      }
+    }
     if (!Number.isFinite(value) || value <= 0) e.discountValue = "Discount must be greater than 0"
     if (pct && (f.maxDiscount === "" || f.maxDiscount === null || f.maxDiscount === undefined)) {
       e.maxDiscount = "Max discount is required for percentage coupons"
@@ -297,6 +308,12 @@ export default function Coupons() {
     if (f.minOrderValue !== "" && Number(f.minOrderValue) < 0) e.minOrderValue = "Min order cannot be negative"
     if (f.usageLimit !== "" && Number(f.usageLimit) < 1) e.usageLimit = "Usage limit must be at least 1"
     if (f.perUserLimit !== "" && Number(f.perUserLimit) < 1) e.perUserLimit = "Per user limit must be at least 1"
+    if (f.isFirstOrderOnly && f.perUserLimit !== "" && Number(f.perUserLimit) > 1) {
+      e.perUserLimit = "Per user limit cannot exceed 1 for first order coupons"
+    }
+    if (f.usageLimit !== "" && f.perUserLimit !== "" && Number(f.perUserLimit) > Number(f.usageLimit)) {
+      e.perUserLimit = "Per user limit cannot exceed global usage limit"
+    }
     const adminBear = Number(f.adminBearPercentage)
     const restaurantBear = Number(f.restaurantBearPercentage)
     if (!Number.isFinite(adminBear) || adminBear < 0 || adminBear > 100) e.adminBearPercentage = "Enter 0 to 100"
@@ -326,6 +343,16 @@ export default function Coupons() {
     let value = rawValue
     if (field === "couponCode") {
       value = String(value || "").toUpperCase()
+    }
+    if (field === "isFirstOrderOnly") {
+      setFormData((prev) => {
+        const next = { ...prev, isFirstOrderOnly: value, perUserLimit: value ? "1" : prev.perUserLimit }
+        validateForm(next)
+        return next
+      })
+      if (submitError) setSubmitError("")
+      if (submitSuccess) setSubmitSuccess("")
+      return
     }
     if (field === "discountType") {
       // When switching to flat-price, clear and disable maxDiscount
@@ -428,12 +455,12 @@ export default function Coupons() {
       restaurantScope: offer.restaurantScope || "all",
       restaurantIds: [],
       endDate: toDateStr(offer.endDate),
-      startDate: "",
+      startDate: toDateStr(offer.startDate),
       minOrderValue: offer.minOrderValue !== undefined && offer.minOrderValue !== null ? String(offer.minOrderValue) : "",
       maxDiscount: offer.maxDiscount !== undefined && offer.maxDiscount !== null ? String(offer.maxDiscount) : "",
       usageLimit: offer.usageLimit !== undefined && offer.usageLimit !== null ? String(offer.usageLimit) : "",
-      perUserLimit: "",
-      isFirstOrderOnly: Boolean(offer.customerGroup === "new"),
+      perUserLimit: offer.perUserLimit !== undefined && offer.perUserLimit !== null ? String(offer.perUserLimit) : "",
+      isFirstOrderOnly: Boolean(offer.customerGroup === "new" || offer.isFirstOrderOnly),
       adminBearPercentage: String(offer.adminBearPercentage ?? 100),
       restaurantBearPercentage: String(offer.restaurantBearPercentage ?? 0),
     })
@@ -583,6 +610,7 @@ export default function Coupons() {
                   setIsAddOpen(false)
                   resetForm()
                 } else {
+                  resetForm()
                   setIsAddOpen(true)
                 }
                 setSubmitError("")
@@ -609,8 +637,9 @@ export default function Coupons() {
                     value={formData.couponCode}
                     onChange={(e) => handleFormChange("couponCode", e.target.value)}
                     placeholder="e.g. NEWUSER50"
-                    className="w-full px-3 py-2.5 text-sm rounded-lg border border-slate-300 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className={`w-full px-3 py-2.5 text-sm rounded-lg border ${errors.couponCode ? "border-red-500" : "border-slate-300"} bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500`}
                   />
+                  {errors.couponCode && <p className="mt-1 text-xs text-red-600">{errors.couponCode}</p>}
                 </div>
 
                 <div>
@@ -813,7 +842,7 @@ export default function Coupons() {
               <div className="mt-4 flex gap-3">
                 <button
                   type="submit"
-                  disabled={isSubmitting || Object.keys(errors).length > 0}
+                  disabled={isSubmitting}
                   className="px-4 py-2 rounded-lg bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
                 >
                   {isSubmitting ? (editOfferId ? "Updating..." : "Creating...") : (editOfferId ? "Update Coupon" : "Create Coupon")}
@@ -955,9 +984,10 @@ export default function Coupons() {
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="text-sm text-slate-700">
-                          {`${Number(offer.usedCount || 0)} / ${Number(offer.usageLimit || 0) > 0 ? Number(offer.usageLimit) : "∞"}`}
-                        </span>
+                        <div className="text-xs text-slate-700 leading-relaxed">
+                          <p><span className="font-semibold text-slate-500">Global:</span> {Number(offer.usedCount || 0)} / {Number(offer.usageLimit || 0) > 0 ? Number(offer.usageLimit) : "∞"}</p>
+                          <p><span className="font-semibold text-slate-500">Per User:</span> {Number(offer.perUserLimit || 0) > 0 ? Number(offer.perUserLimit) : "∞"}</p>
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         {(() => {

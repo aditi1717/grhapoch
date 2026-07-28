@@ -2785,9 +2785,14 @@ export default function OrdersMain() {
               exit={{ y: 80 }}
               transition={{ duration: 0.25 }}
               onClick={(e) => e.stopPropagation()}>
-              {/* Drag handle */}
-              <div className="flex justify-center mb-3">
-                <div className="h-1 w-10 rounded-full bg-gray-300" />
+              {/* Close arrow */}
+              <div className="flex justify-center mb-1">
+                <button
+                  onClick={() => setIsSheetOpen(false)}
+                  className="p-1.5 rounded-full hover:bg-gray-100 transition-colors text-gray-600"
+                  aria-label="Close order details">
+                  <ChevronDown className="w-5 h-5" strokeWidth={2.5} />
+                </button>
               </div>
 
               <div className="flex items-start justify-between gap-2 mb-2">
@@ -2872,12 +2877,6 @@ export default function OrdersMain() {
                   );
                 })()}
               </div>
-
-              <button
-                className="w-full bg-black text-white py-2.5 rounded-xl text-sm font-medium"
-                onClick={() => setIsSheetOpen(false)}>
-                Close
-              </button>
             </motion.div>
           </motion.div>
         )}

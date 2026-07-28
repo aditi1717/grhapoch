@@ -82,7 +82,18 @@ export const useUserNotifications = () => {
     socketRef.current.on('order_status_update', (data) => {
       debugLog('🔔 Order status update received:', data);
       
-      const title = data.title || `Order #${data.orderId || 'Update'}`;
+      let orderLabel = 'Update';
+      if (data.readableOrderId) {
+        orderLabel = data.readableOrderId;
+      } else if (data.orderId && data.orderId.length !== 24) {
+        orderLabel = data.orderId;
+      } else if (data.message && data.message.includes('Order #')) {
+        const match = data.message.match(/Order #([A-Za-z0-9-]+)/);
+        if (match && match[1] && match[1].length !== 24) {
+          orderLabel = match[1];
+        }
+      }
+      const title = data.title || `Order #${orderLabel}`;
       const message = data.message || `Your order status is now ${String(data.orderStatus || '').replace(/_/g, ' ')}`;
 
       // Optional: Show toast for important updates (Cancel, Ready, etc.)

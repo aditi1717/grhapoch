@@ -326,7 +326,7 @@ export default function Orders() {
                 price: item.price || 0,
                 image: item.image || null,
                 description: item.description || null,
-                isVeg: item.isVeg !== undefined ? item.isVeg : (item.category === 'veg' || item.type === 'veg'),
+                isVeg: item.isVeg === true || String(item.isVeg).toLowerCase().trim() === 'true' || ['veg', 'vegetarian'].includes(String(item.foodType || item.category || item.type || '').toLowerCase().trim()),
                 _id: item._id || item.id,
                 id: item.id || item._id
               })),
@@ -874,8 +874,9 @@ Order again from this restaurant in the ${companyName} app.`
                 <div className="px-4 py-2 space-y-2">
                   {order.items && order.items.length > 0 ? (
                     order.items.map((item, idx) => {
-                      const isVeg = item.isVeg !== undefined ? item.isVeg : (item.category === 'veg' || item.type === 'veg')
+                      const isVeg = item.isVeg === true || String(item.isVeg).toLowerCase().trim() === 'true' || ['veg', 'vegetarian'].includes(String(item.foodType || item.category || item.type || '').toLowerCase().trim())
                       const itemName = item.name || item.foodName || 'Item'
+                      console.log('[DEBUG] Full item object:', JSON.stringify(item));
                       const itemQuantity = item.quantity || 1
                       const itemPrice = item.price || 0
                       const itemTotal = itemQuantity * itemPrice
@@ -900,8 +901,14 @@ Order again from this restaurant in the ${companyName} app.`
                           <div className="flex-1 min-w-0">
                             <div className="flex items-start gap-2">
                               {/* Veg/Non-Veg Icon */}
-                              <div className={`w-4 h-4 border ${isVeg ? 'border-green-600' : 'border-red-600'} flex items-center justify-center p-[2px] flex-shrink-0 mt-0.5`}>
-                                <div className={`w-full h-full rounded-full ${isVeg ? 'bg-green-600' : 'bg-red-600'}`}></div>
+                              <div 
+                                style={{ borderColor: isVeg ? '#16a34a' : '#dc2626' }}
+                                className="w-4 h-4 border flex items-center justify-center p-[2px] flex-shrink-0 mt-0.5 bg-transparent"
+                              >
+                                <div 
+                                  style={{ backgroundColor: isVeg ? '#16a34a' : '#dc2626' }}
+                                  className="w-full h-full rounded-full"
+                                ></div>
                               </div>
                               <div className="flex-1 min-w-0">
                                 <span className="text-sm text-gray-800 dark:text-gray-200 font-medium block">

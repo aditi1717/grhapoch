@@ -651,7 +651,7 @@ export default function CategoryPage() {
                 image: image,
                 images: allImages,
                 cuisine: Array.isArray(restaurant.cuisines) && restaurant.cuisines.length > 0 ? restaurant.cuisines[0] : "Multi-cuisine",
-                rating: Number(restaurant.rating || restaurant.avgRating || 0) || 4.5,
+                rating: Number(restaurant.rating || restaurant.avgRating || 0),
                 deliveryTime: deliveryTime || (restaurant.estimatedDeliveryTimeMinutes ? `${restaurant.estimatedDeliveryTimeMinutes} mins` : "25-30 mins"),
                 distance: distance || (restaurant.distance ? (typeof restaurant.distance === 'number' ? `${restaurant.distance.toFixed(1)} km` : restaurant.distance) : "1.2 km"),
                 priceRange: restaurant.priceRange || "$$",
@@ -1104,7 +1104,7 @@ export default function CategoryPage() {
                   return (
                     <Link
                       key={restaurant.id}
-                      to={`/user/restaurants/${restaurant.name.toLowerCase().replace(/\s+/g, '-')}`}
+                      to={`/user/restaurants/${restaurant.name.toLowerCase().replace(/\s+/g, '-')}${restaurant.dishId ? `?dish=${restaurant.dishId}` : ''}`}
                       className="block"
                     >
                       <div className={`group ${shouldShowGrayscale ? 'grayscale opacity-75' : ''}`}>
@@ -1156,18 +1156,19 @@ export default function CategoryPage() {
                               {restaurant.offer}
                             </div>
                           )}
-
                           {/* Rating Badge (NOW ON IMAGE, bottom-left with white border) */}
-                          <div
-                            className="absolute bottom-0 left-0 border-[4px] rounded-md border-white text-white text-[11px] md:text-xs font-bold px-1.5 py-0.5 flex items-center gap-0.5"
-                            style={{
-                              backgroundColor: "var(--module-theme-color, #FA0272)",
-                              boxShadow: "0 6px 14px rgba(var(--module-theme-rgb,250,2,114),0.35)",
-                            }}
-                          >
-                            {restaurant.rating}
-                            <Star className="h-2.5 w-2.5 md:h-3 md:w-3 fill-white" />
-                          </div>
+                          {restaurant.rating && Number(restaurant.rating) > 0 ? (
+                            <div
+                              className="absolute bottom-0 left-0 border-[4px] rounded-md border-white text-white text-[11px] md:text-xs font-bold px-1.5 py-0.5 flex items-center gap-0.5"
+                              style={{
+                                backgroundColor: "var(--module-theme-color, #FA0272)",
+                                boxShadow: "0 6px 14px rgba(var(--module-theme-rgb,250,2,114),0.35)",
+                              }}
+                            >
+                              {restaurant.rating}
+                              <Star className="h-2.5 w-2.5 md:h-3 md:w-3 fill-white" />
+                            </div>
+                          ) : null}
                         </div>
 
                         <h3 className="font-semibold text-gray-900 dark:text-white text-xs md:text-sm line-clamp-1">
@@ -1214,7 +1215,7 @@ export default function CategoryPage() {
                 const isFavorite = favorites.has(restaurant.id)
 
                 return (
-                  <Link key={restaurant.id} to={`/user/restaurants/${restaurantSlug}`} className="h-full flex">
+                  <Link key={restaurant.id} to={`/user/restaurants/${restaurantSlug}${restaurant.dishId ? `?dish=${restaurant.dishId}` : ''}`} className="h-full flex">
                     <Card className={`overflow-hidden cursor-pointer gap-0 border-0 dark:border-gray-800 group bg-white dark:bg-[#1a1a1a] shadow-md hover:shadow-xl transition-all duration-300 py-0 rounded-md h-full flex flex-col w-full ${shouldShowGrayscale ? 'grayscale opacity-75' : ''
                       }`}>
                       {/* Image Section */}
@@ -1306,16 +1307,18 @@ export default function CategoryPage() {
                               </p>
                             )}
                           </div>
-                          <div
-                            className="flex-shrink-0 text-white px-2 md:px-3 lg:px-4 py-1 lg:py-1.5 rounded-lg flex items-center gap-1"
-                            style={{
-                              backgroundColor: "var(--module-theme-color, #FA0272)",
-                              boxShadow: "0 8px 16px rgba(var(--module-theme-rgb,250,2,114),0.28)",
-                            }}
-                          >
-                            <span className="text-sm md:text-base lg:text-lg font-bold">{restaurant.rating}</span>
-                            <Star className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 fill-white text-white" />
-                          </div>
+                          {restaurant.rating && Number(restaurant.rating) > 0 ? (
+                            <div
+                              className="flex-shrink-0 text-white px-2 md:px-3 lg:px-4 py-1 lg:py-1.5 rounded-lg flex items-center gap-1"
+                              style={{
+                                backgroundColor: "var(--module-theme-color, #FA0272)",
+                                boxShadow: "0 8px 16px rgba(var(--module-theme-rgb,250,2,114),0.28)",
+                              }}
+                            >
+                              <span className="text-sm md:text-base lg:text-lg font-bold">{restaurant.rating}</span>
+                              <Star className="h-3 w-3 md:h-4 md:w-4 lg:h-5 lg:w-5 fill-white text-white" />
+                            </div>
+                          ) : null}
                         </div>
 
                         {/* Delivery Time & Distance */}

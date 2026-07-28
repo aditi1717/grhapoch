@@ -88,7 +88,7 @@ export default function OrdersTable({
 
   const canShowCancelAction = (order) => {
     // Do NOT allow cancel when a delivery partner is already assigned
-    if (order?.dispatch?.deliveryPartnerId) return false
+    if (order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerName) return false
     const currentStatus = String(order?.orderStatus || "").trim().toLowerCase()
     return [
       "pending",
@@ -101,10 +101,11 @@ export default function OrdersTable({
   const canDeassignAndResend = (order) => {
     const backendStatus = String(order?.status || "").trim().toLowerCase()
     const phase = String(order?.deliveryState?.currentPhase || "").trim().toLowerCase()
+    const hasRider = Boolean(order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerName)
     return (
       ["confirmed", "preparing", "ready_for_pickup", "reached_pickup"].includes(backendStatus) &&
       order?.dispatch?.status === "accepted" &&
-      Boolean(order?.dispatch?.deliveryPartnerId) &&
+      hasRider &&
       !order?.deliveryState?.pickedUpAt &&
       !["en_route_to_delivery", "at_drop", "delivered", "completed"].includes(phase)
     )
@@ -113,10 +114,11 @@ export default function OrdersTable({
   const canResendNotification = (order) => {
     const backendStatus = String(order?.status || "").trim().toLowerCase()
     const phase = String(order?.deliveryState?.currentPhase || "").trim().toLowerCase()
+    const hasRider = Boolean(order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerName)
     return (
       ["confirmed", "preparing", "ready_for_pickup", "ready"].includes(backendStatus) &&
       (!order?.dispatch?.status || order?.dispatch?.status === "unassigned") &&
-      !order?.dispatch?.deliveryPartnerId &&
+      !hasRider &&
       !order?.deliveryState?.pickedUpAt &&
       !["en_route_to_delivery", "at_drop", "delivered", "completed"].includes(phase)
     )
@@ -463,7 +465,7 @@ export default function OrdersTable({
                   <td className="px-6 py-4 whitespace-nowrap text-center">
                     <div className="flex items-center justify-center gap-2">
                       {/* Cancel — hidden once a delivery partner is assigned */}
-                      {onCancelOrder && !order?.dispatch?.deliveryPartnerId ? (
+                      {onCancelOrder && !(order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerName) ? (
                         <button
                           onClick={() => canShowCancelAction(order) && onCancelOrder(order)}
                           disabled={
@@ -485,7 +487,7 @@ export default function OrdersTable({
                         </button>
                       ) : null}
                       {/* Resend — hidden once a delivery partner is assigned */}
-                      {onResendNotification && !order?.dispatch?.deliveryPartnerId ? (
+                      {onResendNotification && !(order?.dispatch?.deliveryPartnerId || order?.deliveryPartnerName) ? (
                         <button
                           onClick={() =>
                             canResendNotification(order) && onResendNotification(order)
@@ -510,34 +512,6 @@ export default function OrdersTable({
                             <Volume2 className="h-3.5 w-3.5" />
                           )}
                           <span>Resend</span>
-                        </button>
-                      ) : null}
-                      {/* Deassign & Resend — hidden once a delivery partner is assigned */}
-                      {onDeassignAndResend && !order?.dispatch?.deliveryPartnerId ? (
-                        <button
-                          onClick={() =>
-                            canDeassignAndResend(order) && onDeassignAndResend(order)
-                          }
-                          disabled={
-                            actionLoadingOrderId === (order.id || order.orderId) ||
-                            !canDeassignAndResend(order)
-                          }
-                          className={`inline-flex items-center justify-center gap-1 rounded px-3 py-1.5 text-xs font-medium transition-colors ${canDeassignAndResend(order)
-                              ? "bg-red-600 text-white hover:bg-red-700"
-                              : "bg-slate-100 text-slate-400 cursor-not-allowed"
-                            } disabled:cursor-not-allowed disabled:opacity-60`}
-                          title={
-                            canDeassignAndResend(order)
-                              ? "Remove the current delivery partner and resend this order"
-                              : "Available only for an accepted delivery before pickup"
-                          }
-                        >
-                          {actionLoadingOrderId === (order.id || order.orderId) ? (
-                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                          ) : (
-                            <RefreshCw className="h-3.5 w-3.5" />
-                          )}
-                          <span>Deassign &amp; Resend</span>
                         </button>
                       ) : null}
                     </div>

@@ -456,12 +456,12 @@ export default function UserOrderDetails() {
             <div key={idx} className="flex justify-between items-start mt-2">
               <div className="flex items-center gap-2">
                 <div
-                  className={`w-3 h-3 border ${item.isVeg ? "border-green-600" : "border-red-600"
-                    } flex items-center justify-center p-[1px]`}
+                  style={{ borderColor: item.isVeg ? "#16a34a" : "#dc2626" }}
+                  className="w-3 h-3 border flex items-center justify-center p-[1px] bg-transparent"
                 >
                   <div
-                    className={`w-full h-full rounded-full ${item.isVeg ? "bg-green-600" : "bg-red-600"
-                      }`}
+                    style={{ backgroundColor: item.isVeg ? "#16a34a" : "#dc2626" }}
+                    className="w-full h-full rounded-full"
                   />
                 </div>
                 <span className="text-sm text-gray-700 dark:text-gray-300 font-medium">

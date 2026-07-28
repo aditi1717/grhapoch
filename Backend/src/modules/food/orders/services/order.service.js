@@ -1225,7 +1225,9 @@ export async function cancelOrder(orderId, userId, reason) {
       const payload = {
         orderMongoId: order._id?.toString?.(),
         orderId: order._id.toString(),
+        readableOrderId: order.order_id,
         orderStatus: order.orderStatus,
+        title: "Order Cancelled ❌",
         message: `Order #${order.order_id || order._id} has been cancelled successfully.${refundDetail}`
       };
       io.to(rooms.user(userId)).emit("order_status_update", payload);

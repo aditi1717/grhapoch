@@ -197,7 +197,7 @@ export default function ProfessionalSearch() {
       {/* Header */}
       <div className="sticky top-0 z-50 bg-white dark:bg-zinc-900 border-b border-slate-200 dark:border-zinc-800 px-4 py-3">
         <div className="max-w-3xl mx-auto flex items-center gap-3">
-          <button onClick={() => navigate(-1)} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
+          <button onClick={() => navigate("/food/user")} className="p-2 hover:bg-slate-100 dark:hover:bg-zinc-800 rounded-full transition-colors">
             <ArrowLeft className="w-5 h-5" />
           </button>
           

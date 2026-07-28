@@ -408,7 +408,7 @@ export async function getRestaurants(query) {
         .sort(sort)
         .skip(skip)
         .limit(limit)
-        .select('restaurantName slug location area city status ownerName ownerPhone primaryContactNumber profileImage coverImages menuImages rating totalRatings isActive')
+        .select('restaurantName slug location area city status ownerName ownerPhone primaryContactNumber profileImage coverImages menuImages rating totalRatings isActive pureVegRestaurant')
         .lean();
     const countPromise = FoodRestaurant.countDocuments(filter);
 

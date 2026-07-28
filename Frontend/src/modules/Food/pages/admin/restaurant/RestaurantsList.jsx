@@ -20,19 +20,24 @@ const PLACEHOLDER_128 = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000
 const DAY_ORDER = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 const PAGE_SIZE = 20
 
-const mapRawRestaurant = (restaurant, index) => ({
-  id: restaurant._id || restaurant.id || index + 1,
-  _id: restaurant._id,
-  name: restaurant.name || restaurant.restaurantName || "N/A",
-  ownerName: restaurant.ownerName || "N/A",
-  ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
-  zone: restaurant?.location?.area || restaurant?.location?.city || restaurant?.area || restaurant?.city || "N/A",
-  approvalStatus: normalizeApprovalStatus(restaurant),
-  isActive: restaurant.isActive !== false && restaurant.status === "approved",
-  rating: restaurant.rating || restaurant.ratings?.average || 0,
-  logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
-  originalData: restaurant,
-})
+const mapRawRestaurant = (restaurant, index) => {
+  const isVeg = restaurant.pureVegRestaurant === true || restaurant.originalData?.pureVegRestaurant === true || restaurant.isPureVeg === true
+  return {
+    id: restaurant._id || restaurant.id || index + 1,
+    _id: restaurant._id,
+    name: restaurant.name || restaurant.restaurantName || "N/A",
+    ownerName: restaurant.ownerName || "N/A",
+    ownerPhone: restaurant.ownerPhone || restaurant.phone || "N/A",
+    zone: restaurant?.location?.area || restaurant?.location?.city || restaurant?.area || restaurant?.city || "N/A",
+    approvalStatus: normalizeApprovalStatus(restaurant),
+    isActive: restaurant.isActive !== false && restaurant.status === "approved",
+    rating: restaurant.rating || restaurant.ratings?.average || 0,
+    logo: getPrimaryRestaurantImage(restaurant, PLACEHOLDER_40),
+    pureVegRestaurant: isVeg,
+    typeLabel: isVeg ? "Veg" : "Mixed",
+    originalData: restaurant,
+  }
+}
 
 const getSortByParam = (sortConfig) => {
   if (!sortConfig.key || sortConfig.key === "zone") return "created-desc"
@@ -1355,6 +1360,9 @@ export default function RestaurantsList() {
                         <ArrowUpDown className={`w-3 h-3 ${sortConfig.key === 'zone' ? 'text-blue-600' : 'text-slate-400'}`} />
                       </div>
                     </th>
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider">
+                      Type
+                    </th>
                     <th
                       className="px-6 py-4 text-left text-[10px] font-bold text-slate-700 uppercase tracking-wider cursor-pointer hover:bg-slate-100 transition-colors"
                       onClick={() => handleSort('rating')}
@@ -1379,7 +1387,7 @@ export default function RestaurantsList() {
                 <tbody className="bg-white divide-y divide-slate-100">
                   {filteredRestaurants.length === 0 ? (
                     <tr>
-                      <td colSpan={7} className="px-6 py-20 text-center">
+                      <td colSpan={8} className="px-6 py-20 text-center">
                         <div className="flex flex-col items-center justify-center">
                           <p className="text-lg font-semibold text-slate-700 mb-1">No Data Found</p>
                           <p className="text-sm text-slate-500">No restaurants match your search</p>
@@ -1430,6 +1438,15 @@ export default function RestaurantsList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className="text-sm text-slate-700">{restaurant.zone}</span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            restaurant.pureVegRestaurant
+                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                              : "bg-slate-100 text-slate-700 border border-slate-200"
+                          }`}>
+                            {restaurant.typeLabel || (restaurant.pureVegRestaurant ? "Veg" : "Mixed")}
+                          </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-1.5">
