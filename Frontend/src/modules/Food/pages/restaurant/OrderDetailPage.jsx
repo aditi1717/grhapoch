@@ -143,113 +143,113 @@ export default function OrderDetailPage() {
   return (
     <div className="min-h-screen bg-[#F8F9FB] pb-[calc(5rem+env(safe-area-inset-bottom))]">
       {/* Premium Header */}
-      <header className="bg-white/80 backdrop-blur-xl px-5 py-4 border-b border-gray-100 sticky top-0 z-50 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <button onClick={goBack} className="p-2 hover:bg-gray-50 rounded-xl transition-colors">
-            <ArrowLeft className="w-6 h-6 text-gray-900" />
+      <header className="bg-white/80 backdrop-blur-xl px-4 py-3 border-b border-gray-100 sticky top-0 z-50 flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <button onClick={goBack} className="p-1.5 hover:bg-gray-50 rounded-lg transition-colors">
+            <ArrowLeft className="w-5 h-5 text-gray-900" />
           </button>
           <div className="flex flex-col">
-            <h1 className="text-lg font-black text-gray-900 leading-none">Order Details</h1>
-            <p className="text-[10px] font-bold text-gray-400 mt-1 tracking-wider uppercase">{createdAt}</p>
+            <h1 className="text-base font-black text-gray-900 leading-none">Order Details</h1>
+            <p className="text-[9px] font-bold text-gray-400 mt-0.5 tracking-wider uppercase">{createdAt}</p>
           </div>
         </div>
       </header>
 
-      <div className="p-4 space-y-4 max-w-2xl mx-auto">
+      <div className="p-3 space-y-3 max-w-xl mx-auto">
         {/* Status Card - Mobile Friendly & Polished */}
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm shadow-gray-100/50">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className={`px-3 py-1.5 rounded-xl text-[10px] font-black tracking-[0.05em] border ${getStatusColor(status)}`}>
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm shadow-gray-100/50">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className={`px-2.5 py-1 rounded-lg text-[9px] font-black tracking-[0.05em] border ${getStatusColor(status)}`}>
                 {status.replace(/_/g, ' ').toUpperCase()}
               </span>
               {(order.payment?.method || order.paymentMethod) && (
-                <span className="px-3 py-1.5 rounded-xl text-[10px] font-black tracking-[0.05em] bg-gray-50 text-gray-600 border border-gray-100">
+                <span className="px-2.5 py-1 rounded-lg text-[9px] font-black tracking-[0.05em] bg-gray-50 text-gray-600 border border-gray-100">
                   {String(order.payment?.method || order.paymentMethod).replace(/_/g, ' ').toUpperCase()}
                 </span>
               )}
             </div>
             <button 
               onClick={handleCopyId}
-              className="flex items-center gap-2 bg-gray-50 px-3 py-2 rounded-xl border border-gray-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 active:scale-95 transition-all"
+              className="flex items-center gap-1.5 bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-100 text-gray-400 hover:text-blue-600 hover:bg-blue-50 hover:border-blue-100 active:scale-95 transition-all"
             >
-              <span className="text-[11px] font-black font-mono text-gray-600">#{order.orderId || order.order_id || id}</span>
-              <Copy className="w-3.5 h-3.5" />
+              <span className="text-[10px] font-black font-mono text-gray-600">#{order.orderId || order.order_id || id}</span>
+              <Copy className="w-3 h-3" />
             </button>
           </div>
         </div>
 
         {/* Customer & Delivery Section */}
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-6">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-blue-50 rounded-2xl flex items-center justify-center">
-                <User className="w-5 h-5 text-blue-600" />
+              <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center">
+                <User className="w-4 h-4 text-blue-600" />
               </div>
               <div>
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Customer</h3>
-                <p className="text-base font-black text-gray-900">{customerName}</p>
+                <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Customer</h3>
+                <p className="text-sm font-black text-gray-900">{customerName}</p>
               </div>
             </div>
             {customerPhone && customerPhone !== "No phone provided" && (
               <a 
                 href={`tel:${customerPhone}`}
-                className="w-12 h-12 bg-emerald-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-emerald-200 active:scale-90 transition-transform"
+                className="w-9 h-9 bg-red-600 text-white rounded-xl flex items-center justify-center shadow-md shadow-red-200 active:scale-90 transition-transform"
               >
-                <Phone className="w-5 h-5" />
+                <Phone className="w-4 h-4" />
               </a>
             )}
           </div>
 
-          <div className="pt-5 border-t border-gray-50 space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-rose-50 rounded-2xl flex items-center justify-center">
-                <MapPin className="w-5 h-5 text-rose-500" />
+          <div className="pt-3 border-t border-gray-50 space-y-2">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-rose-50 rounded-xl flex items-center justify-center">
+                <MapPin className="w-4 h-4 text-rose-500" />
               </div>
               <div>
-                <h3 className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Delivery Address</h3>
-                <p className="text-sm font-bold text-gray-700 leading-relaxed mt-0.5">{deliveryAddress}</p>
+                <h3 className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Delivery Address</h3>
+                <p className="text-xs font-bold text-gray-700 leading-relaxed mt-0.5">{deliveryAddress}</p>
               </div>
             </div>
           </div>
         </div>
 
         {/* Order Items */}
-        <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-5">
+        <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-amber-50 rounded-2xl flex items-center justify-center">
-                <Package className="w-5 h-5 text-amber-500" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center">
+                <Package className="w-4 h-4 text-amber-500" />
               </div>
-              <h3 className="text-sm font-black text-gray-900">Order Items</h3>
+              <h3 className="text-xs font-black text-gray-900">Order Items</h3>
             </div>
-            <span className="px-3 py-1 bg-gray-100 rounded-full text-[10px] font-black text-gray-500">{items.length} Items</span>
+            <span className="px-2 py-0.5 bg-gray-100 rounded-full text-[9px] font-black text-gray-500">{items.length} Items</span>
           </div>
 
-          <div className="space-y-5">
+          <div className="space-y-3">
             {items.map((item, idx) => (
-              <div key={idx} className="flex gap-4">
-                <div className="w-16 h-16 bg-gray-50 rounded-2xl overflow-hidden shrink-0 border border-gray-100">
+              <div key={idx} className="flex gap-3">
+                <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden shrink-0 border border-gray-100">
                   {item.image ? (
                     <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-300">
-                      <Package className="w-8 h-8" />
+                      <Package className="w-6 h-6" />
                     </div>
                   )}
                 </div>
                 <div className="flex-1 min-w-0 pt-0.5">
                   <div className="flex justify-between items-start gap-2">
-                    <p className="text-sm font-black text-gray-900 leading-tight pr-2">{item.name}</p>
-                    <p className="text-sm font-black text-gray-900 whitespace-nowrap">{formatMoney(item.price * item.quantity)}</p>
+                    <p className="text-xs font-black text-gray-900 leading-tight pr-2">{item.name}</p>
+                    <p className="text-xs font-black text-gray-900 whitespace-nowrap">{formatMoney(item.price * item.quantity)}</p>
                   </div>
-                  <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-tighter">
+                  <p className="text-[10px] font-bold text-gray-400 mt-0.5 uppercase tracking-tighter">
                     {item.quantity} × {formatMoney(item.price)}
                   </p>
                   {item.addons && item.addons.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1.5">
+                    <div className="mt-1 flex flex-wrap gap-1">
                       {item.addons.map((addon, aIdx) => (
-                        <span key={aIdx} className="text-[9px] font-black bg-gray-50 text-gray-500 px-2 py-1 rounded-lg border border-gray-100 uppercase tracking-tighter">
+                        <span key={aIdx} className="text-[8px] font-black bg-gray-50 text-gray-500 px-1.5 py-0.5 rounded border border-gray-100 uppercase tracking-tighter">
                           + {addon.name}
                         </span>
                       ))}
@@ -263,44 +263,44 @@ export default function OrderDetailPage() {
 
         {/* Earnings & Deductions */}
         {order.finance && (
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                <Wallet className="w-5 h-5 text-emerald-600" />
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center">
+                <Wallet className="w-4 h-4 text-emerald-600" />
               </div>
-              <h3 className="text-sm font-black text-gray-900">Your Earnings</h3>
+              <h3 className="text-xs font-black text-gray-900">Your Earnings</h3>
             </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
+            <div className="space-y-2">
+              <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                 <span>Item Total</span>
                 <span className="text-gray-900">{formatMoney(order.finance.itemTotal)}</span>
               </div>
               {toNumber(order.finance.packagingFee) > 0 && (
-                <div className="flex justify-between text-xs font-bold text-gray-500 uppercase tracking-wider">
+                <div className="flex justify-between text-[10px] font-bold text-gray-500 uppercase tracking-wider">
                   <span>Packaging Fee</span>
                   <span className="text-gray-900">{formatMoney(order.finance.packagingFee)}</span>
                 </div>
               )}
               {toNumber(order.finance.commission) > 0 && (
-                <div className="flex justify-between text-xs font-black text-rose-600 uppercase tracking-wider">
+                <div className="flex justify-between text-[10px] font-black text-rose-600 uppercase tracking-wider">
                   <span>Platform Commission</span>
                   <span>-{formatMoney(order.finance.commission)}</span>
                 </div>
               )}
               {toNumber(order.finance.restaurantDiscountShare) > 0 && (
-                <div className="flex justify-between text-xs font-black text-rose-600 uppercase tracking-wider">
+                <div className="flex justify-between text-[10px] font-black text-rose-600 uppercase tracking-wider">
                   <span>Your Discount Share</span>
                   <span>-{formatMoney(order.finance.restaurantDiscountShare)}</span>
                 </div>
               )}
-              <div className="pt-4 border-t border-gray-50 flex justify-between items-center">
-                <span className="text-sm font-black text-gray-900 tracking-tight">Net Payout</span>
-                <span className="text-xl font-black text-emerald-600 tabular-nums tracking-tighter">{formatMoney(order.finance.netPayout)}</span>
+              <div className="pt-2.5 border-t border-gray-50 flex justify-between items-center">
+                <span className="text-xs font-black text-gray-900 tracking-tight">Net Payout</span>
+                <span className="text-base font-black text-emerald-600 tabular-nums tracking-tighter">{formatMoney(order.finance.netPayout)}</span>
               </div>
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${order.finance.isSettled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
-                <span className="text-[10px] font-black uppercase tracking-[0.05em] text-gray-500">
+              <div className="flex items-center gap-1.5 pt-0.5">
+                <div className={`w-1.5 h-1.5 rounded-full ${order.finance.isSettled ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                <span className="text-[9px] font-black uppercase tracking-[0.05em] text-gray-500">
                   {order.finance.isSettled
                     ? `Settled${order.finance.settledAt ? ` on ${new Date(order.finance.settledAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}`
                     : 'Settlement Pending'}
@@ -312,12 +312,12 @@ export default function OrderDetailPage() {
 
         {/* Order Timeline */}
         {Array.isArray(order.statusHistory) && order.statusHistory.length > 0 && (
-          <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-4">
-            <div className="flex items-center gap-3 mb-2">
-              <div className="w-10 h-10 bg-violet-50 rounded-2xl flex items-center justify-center">
-                <History className="w-5 h-5 text-violet-600" />
+          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm shadow-gray-100/50 space-y-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className="w-8 h-8 bg-violet-50 rounded-xl flex items-center justify-center">
+                <History className="w-4 h-4 text-violet-600" />
               </div>
-              <h3 className="text-sm font-black text-gray-900">Order Timeline</h3>
+              <h3 className="text-xs font-black text-gray-900">Order Timeline</h3>
             </div>
 
             <div className="space-y-0">
@@ -327,29 +327,29 @@ export default function OrderDetailPage() {
                   const isLast = idx === arr.length - 1
                   const isCancelled = String(entry.to || '').includes('cancel')
                   return (
-                    <div key={idx} className="flex gap-3">
+                    <div key={idx} className="flex gap-2.5">
                       <div className="flex flex-col items-center">
-                        <div className={`w-3 h-3 rounded-full border-2 mt-1 shrink-0 ${isCancelled ? 'bg-rose-500 border-rose-200' : isLast ? 'bg-blue-600 border-blue-200' : 'bg-emerald-500 border-emerald-200'}`} />
+                        <div className={`w-2.5 h-2.5 rounded-full border mt-1 shrink-0 ${isCancelled ? 'bg-rose-500 border-rose-200' : isLast ? 'bg-blue-600 border-blue-200' : 'bg-emerald-500 border-emerald-200'}`} />
                         {!isLast && <div className="w-0.5 flex-1 bg-gray-100 my-1" />}
                       </div>
-                      <div className={`flex-1 min-w-0 ${isLast ? '' : 'pb-4'}`}>
+                      <div className={`flex-1 min-w-0 ${isLast ? '' : 'pb-3'}`}>
                         <div className="flex justify-between items-start gap-2">
-                          <p className={`text-xs font-black leading-tight ${isCancelled ? 'text-rose-600' : 'text-gray-900'}`}>
+                          <p className={`text-[11px] font-black leading-tight ${isCancelled ? 'text-rose-600' : 'text-gray-900'}`}>
                             {getTimelineStatusLabel(entry.to)}
                           </p>
-                          <p className="text-[10px] font-bold text-gray-400 whitespace-nowrap">
+                          <p className="text-[9px] font-bold text-gray-400 whitespace-nowrap">
                             {entry.at
                               ? new Date(entry.at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit', hour12: true })
                               : ''}
                           </p>
                         </div>
                         {getTimelineRoleLabel(entry.byRole) && (
-                          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
+                          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wider mt-0.5">
                             by {getTimelineRoleLabel(entry.byRole)}
                           </p>
                         )}
                         {entry.note && (
-                          <p className="text-[11px] font-medium text-gray-500 mt-1 leading-snug">{entry.note}</p>
+                          <p className="text-[10px] font-medium text-gray-500 mt-0.5 leading-snug">{entry.note}</p>
                         )}
                       </div>
                     </div>
@@ -361,30 +361,30 @@ export default function OrderDetailPage() {
 
         {/* Notes/Instructions if any */}
         {order.note && (
-          <div className="bg-blue-50/50 border border-blue-100 rounded-3xl p-5 space-y-2">
-            <h3 className="text-[10px] font-black text-blue-400 uppercase tracking-widest">Order Note</h3>
-            <p className="text-sm font-bold text-blue-700 italic">"{order.note}"</p>
+          <div className="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 space-y-1.5">
+            <h3 className="text-[9px] font-black text-blue-400 uppercase tracking-widest">Order Note</h3>
+            <p className="text-xs font-bold text-blue-700 italic">"{order.note}"</p>
           </div>
         )}
 
         {/* Rejection/Cancellation Reason */}
         {(order.rejectionReason || order.cancellationReason) && (
-          <div className="bg-rose-50 border border-rose-100 rounded-3xl p-5 space-y-2">
-            <p className="text-[10px] font-black text-rose-400 uppercase tracking-widest">
+          <div className="bg-rose-50 border border-rose-100 rounded-2xl p-4 space-y-1.5">
+            <p className="text-[9px] font-black text-rose-400 uppercase tracking-widest">
               Reason for {status.includes('REJECTED') ? 'Rejection' : 'Cancellation'}
             </p>
-            <p className="text-sm font-bold text-rose-700">{order.rejectionReason || order.cancellationReason}</p>
+            <p className="text-xs font-bold text-rose-700">{order.rejectionReason || order.cancellationReason}</p>
           </div>
         )}
       </div>
       
       {/* Fixed Bottom Action */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 flex gap-3">
+      <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/80 backdrop-blur-xl border-t border-gray-100 z-50 flex gap-2">
         <button 
           onClick={goBack}
-          className="flex-1 bg-gray-900 text-white py-4 rounded-2xl font-black shadow-xl shadow-gray-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+          className="flex-1 bg-red-600 hover:bg-red-700 text-black py-3 rounded-2xl font-black shadow-lg shadow-red-200 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ArrowLeft className="w-5 h-5 text-black" />
           Back to List
         </button>
       </div>

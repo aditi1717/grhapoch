@@ -1,7 +1,6 @@
 import { useState, useMemo, useEffect } from "react"
-import { BarChart3, ChevronDown, Info, Settings, FileText, FileSpreadsheet, Code, Loader2 } from "lucide-react"
+import { BarChart3, ChevronDown, Info, FileText, FileSpreadsheet, Code, Loader2 } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
 import { exportTransactionReportToCSV, exportTransactionReportToExcel, exportTransactionReportToPDF, exportTransactionReportToJSON } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
@@ -37,8 +36,9 @@ export default function TransactionReport() {
     restaurant: "All restaurants",
     time: "All Time",
   })
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [restaurants, setRestaurants] = useState([])
+  const [currentPage, setCurrentPage] = useState(1)
+  const PAGE_SIZE = 10
 
   // Fetch zones and restaurants for filters
   useEffect(() => {
@@ -62,6 +62,7 @@ export default function TransactionReport() {
     const fetchTransactionReport = async () => {
       try {
         setIsRefreshing(true)
+        setCurrentPage(1)
 
         // Build date range based on time filter
         let fromDate = null
@@ -145,20 +146,23 @@ export default function TransactionReport() {
       restaurant: "All restaurants",
       time: "All Time",
     })
+    setCurrentPage(1)
   }
 
   const activeFiltersCount = (filters.restaurant !== "All restaurants" ? 1 : 0) + (filters.time !== "All Time" ? 1 : 0)
 
   const formatCurrency = (amount) => {
-    if (amount >= 1000) {
-      return `\u20B9 ${(amount / 1000).toFixed(2)}K`
-    }
-    return `\u20B9 ${amount.toFixed(2)}`
+    return `\u20B9 ${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
 
   const formatFullCurrency = (amount) => {
     return `\u20B9 ${amount.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
   }
+
+  const totalPages = Math.max(1, Math.ceil(filteredTransactions.length / PAGE_SIZE))
+  const safePage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIdx = (safePage - 1) * PAGE_SIZE
+  const paginatedTransactions = filteredTransactions.slice(startIdx, startIdx + PAGE_SIZE)
 
   const getStatusBadgeClasses = (status) => {
     const normalized = String(status || '').toLowerCase()
@@ -398,12 +402,6 @@ export default function TransactionReport() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-1.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
-                <Settings className="w-3 h-3" />
-              </button>
             </div>
           </div>
 
@@ -436,13 +434,13 @@ export default function TransactionReport() {
                     </td>
                   </tr>
                 ) : (
-                  filteredTransactions.map((transaction, index) => (
+                  paginatedTransactions.map((transaction, localIdx) => (
                     <tr
                       key={transaction.id}
                       className="hover:bg-slate-50 transition-colors"
                     >
                       <td className="px-1.5 py-1">
-                        <span className="text-[10px] font-medium text-slate-700">{index + 1}</span>
+                        <span className="text-[10px] font-medium text-slate-700">{startIdx + localIdx + 1}</span>
                       </td>
                       <td className="px-1.5 py-1">
                         <span className="text-[10px] text-slate-700">{transaction.orderId}</span>
@@ -488,33 +486,47 @@ export default function TransactionReport() {
               </tbody>
             </table>
           </div>
+
+          {/* Pagination Footer */}
+          {filteredTransactions.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 pt-4 mt-4 border-t border-slate-200">
+              <div className="text-[11px] text-slate-600">
+                Showing{" "}
+                <span className="font-semibold text-slate-900">
+                  {filteredTransactions.length === 0 ? 0 : startIdx + 1}
+                </span>{" "}
+                to{" "}
+                <span className="font-semibold text-slate-900">
+                  {Math.min(startIdx + PAGE_SIZE, filteredTransactions.length)}
+                </span>{" "}
+                of{" "}
+                <span className="font-semibold text-slate-900">{filteredTransactions.length}</span>{" "}
+                entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="px-3 py-1 text-[11px] font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="text-[11px] text-slate-600 min-w-[64px] text-center">
+                  Page <span className="font-semibold text-slate-900">{safePage}</span> /{" "}
+                  <span className="font-semibold text-slate-900">{totalPages}</span>
+                </div>
+                <button
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="px-3 py-1 text-[11px] font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
-
-      {/* Settings Dialog */}
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Report Settings
-            </DialogTitle>
-          </DialogHeader>
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-700">
-              Transaction report settings and preferences will be available here.
-            </p>
-          </div>
-          <div className="px-6 pb-6 flex items-center justify-end">
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
-              Close
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   )
 }

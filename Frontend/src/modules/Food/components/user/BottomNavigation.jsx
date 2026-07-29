@@ -11,7 +11,7 @@ export default function BottomNavigation() {
 
   // Check active routes - support both /user/* and /* paths
   const isCart = pathname === "/food/cart" || pathname.startsWith("/food/user/cart")
-  const isUnder250 = pathname === "/food/under-250" || pathname.startsWith("/food/user/under-250")
+  const isUnder250 = pathname === "/food/under-250" || pathname.startsWith("/food/user/under-250") || pathname === "/food/switch-99" || pathname.startsWith("/food/user/switch-99")
   const isProfile = pathname.startsWith("/food/profile") || pathname.startsWith("/food/user/profile")
   const isDining = pathname === "/food/dining" || pathname.startsWith("/food/user/dining")
   const isDelivery =
@@ -25,6 +25,7 @@ export default function BottomNavigation() {
       (pathname.startsWith("/food/user") &&
         !pathname.includes("/cart") &&
         !pathname.includes("/under-250") &&
+        !pathname.includes("/switch-99") &&
         !pathname.includes("/profile") &&
         !pathname.includes("/dining")))
 
@@ -74,7 +75,7 @@ export default function BottomNavigation() {
 
         {/* Under 250 Tab */}
         <Link
-          to="/food/user/under-250"
+          to="/food/user/switch-99"
           className={`flex flex-1 flex-col items-center justify-center gap-1 px-1 py-1.5 transition-all duration-300 relative rounded-full ${isUnder250
               ? ""
               : "text-gray-500 dark:text-gray-400 hover:bg-gray-100/50 dark:hover:bg-gray-800/50"

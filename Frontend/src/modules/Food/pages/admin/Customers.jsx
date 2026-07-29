@@ -305,13 +305,6 @@ export default function Customers() {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                onClick={handleSearch}
-                className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition-all"
-              >
-                Apply Filters
-              </button>
-              <button
-                type="button"
                 onClick={() => {
                   setPage(1)
                   setSearchInput("")

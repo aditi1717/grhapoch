@@ -1,4 +1,13 @@
 // Export utility functions for reports
+
+/**
+ * jsPDF's built-in Helvetica font does not include the ₹ (U+20B9) character
+ * and renders it as an apostrophe. Replace ₹ with Rs. for PDF output.
+ */
+const sanitizeForPDF = (value) => {
+  return String(value == null ? "" : value).replace(/₹/g, "Rs.")
+}
+
 export const exportReportsToCSV = (data, headers, filename = "report") => {
   const rows = data.map((item, index) => {
     return headers.map(header => {
@@ -102,7 +111,7 @@ export const exportReportsToPDF = (data, headers, filename = "report", title = "
           ${data.map(item => {
             const cells = headers.map(header => {
               const value = item[header.key] || item[header] || ""
-              return `<td>${String(value)}</td>`
+              return `<td>${sanitizeForPDF(value)}</td>`
             })
             return `<tr>${cells.join("")}</tr>`
           }).join("")}
@@ -248,12 +257,12 @@ export const exportTransactionReportToPDF = (transactions, filename = "transacti
               <td>${transaction.orderId}</td>
               <td>${transaction.restaurant}</td>
               <td>${transaction.customerName}</td>
-              <td>₹${transaction.totalItemAmount.toFixed(2)}</td>
-              <td>₹${transaction.couponDiscount.toFixed(2)}</td>
-              <td>₹${transaction.vatTax.toFixed(2)}</td>
-              <td>₹${transaction.deliveryCharge.toFixed(2)}</td>
-              <td>₹${Number(transaction.platformFee || 0).toFixed(2)}</td>
-              <td>₹${transaction.orderAmount.toFixed(2)}</td>
+              <td>Rs.${transaction.totalItemAmount.toFixed(2)}</td>
+              <td>Rs.${transaction.couponDiscount.toFixed(2)}</td>
+              <td>Rs.${transaction.vatTax.toFixed(2)}</td>
+              <td>Rs.${transaction.deliveryCharge.toFixed(2)}</td>
+              <td>Rs.${Number(transaction.platformFee || 0).toFixed(2)}</td>
+              <td>Rs.${transaction.orderAmount.toFixed(2)}</td>
             </tr>
           `).join("")}
         </tbody>

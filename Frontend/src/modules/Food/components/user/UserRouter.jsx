@@ -122,6 +122,7 @@ export default function UserRouter() {
               </ProtectedRoute>
             }
           />
+          <Route path="switch-99" element={<Under250 />} />
           <Route path="under-250" element={<Under250 />} />
           <Route path="categories" element={<Categories />} />
           <Route path="category/:category" element={<CategoryPage />} />

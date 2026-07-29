@@ -7,6 +7,7 @@ import {
 import { deliveryAPI } from '@food/api';
 import { toast } from 'sonner';
 import { ActionSlider } from '@/modules/DeliveryV2/components/ui/ActionSlider';
+import { useDeliveryStore } from '@/modules/DeliveryV2/store/useDeliveryStore';
 
 const Backdrop = ({ onClose }) => (
   <motion.div 
@@ -87,6 +88,16 @@ const OtpModal = ({ order, onVerified, onClose }) => {
       const res = await deliveryAPI.verifyDropOtp(orderId, otpString);
       if (res?.data?.success) {
         setIsOtpVerified(true);
+        const updatedOrder = res?.data?.data?.order || res?.data?.order || res?.data?.data;
+        if (updatedOrder && (updatedOrder.orderId || updatedOrder._id)) {
+          const currentOrder = useDeliveryStore.getState().activeOrder;
+          useDeliveryStore.setState({
+            activeOrder: {
+              ...(currentOrder || {}),
+              ...updatedOrder
+            }
+          });
+        }
         // toast.success("OTP Verified Successfully");
         setTimeout(() => onVerified(otpString), 600);
       }
@@ -185,7 +196,15 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
   const isInitialPaid = ['paid', 'captured', 'authorized'].includes(String(order.payment?.status || "").toLowerCase());
   const [paymentStatus, setPaymentStatus] = useState(isInitialPaid ? 'paid' : 'idle');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isCashAccepted, setIsCashAccepted] = useState(false);
+  const paymentMethod = (
+    order?.paymentMethod ||
+    order?.payment?.method ||
+    order?.transaction?.payment?.method ||
+    order?.transaction?.paymentMethod ||
+    'cod'
+  ).toLowerCase();
+  const isInitialCash = ['cash', 'cod', 'cash_on_delivery'].includes(paymentMethod);
+  const [isCashAccepted, setIsCashAccepted] = useState(isInitialCash);
   const [isSwitchingToCash, setIsSwitchingToCash] = useState(false);
   const pollingRef = useRef(null);
 
@@ -285,6 +304,23 @@ const PaymentModal = ({ order, otpString, onComplete, onClose }) => {
       setIsCashAccepted(true);
       setPaymentStatus('idle');
       setShowQrModal(false);
+      
+      // Update store state with merged cash properties to prevent reset on reload/close
+      const currentOrder = useDeliveryStore.getState().activeOrder;
+      if (currentOrder) {
+        useDeliveryStore.setState({
+          activeOrder: {
+            ...currentOrder,
+            paymentMethod: 'cash',
+            payment: {
+              ...(currentOrder.payment || {}),
+              method: 'cash',
+              status: 'cod_pending',
+            }
+          }
+        });
+      }
+      
       toast.success("Switched to Cash Collection");
     } catch (err) {
       toast.error("Failed to switch to cash");

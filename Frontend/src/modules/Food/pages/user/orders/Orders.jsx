@@ -876,7 +876,7 @@ Order again from this restaurant in the ${companyName} app.`
                     order.items.map((item, idx) => {
                       const isVeg = item.isVeg === true || String(item.isVeg).toLowerCase().trim() === 'true' || ['veg', 'vegetarian'].includes(String(item.foodType || item.category || item.type || '').toLowerCase().trim())
                       const itemName = item.name || item.foodName || 'Item'
-                      console.log('[DEBUG] Full item object:', JSON.stringify(item));
+
                       const itemQuantity = item.quantity || 1
                       const itemPrice = item.price || 0
                       const itemTotal = itemQuantity * itemPrice
@@ -1125,24 +1125,25 @@ Order again from this restaurant in the ${companyName} app.`
 
       {/* Rating & Feedback Modal */}
       {ratingModal.open && ratingModal.order && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/60 backdrop-blur-sm px-4 py-8 overflow-y-auto animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-zinc-900 shadow-2xl overflow-hidden animate-in zoom-in-95 duration-300 my-auto">
             {/* Header with gradient */}
             <div className="bg-gradient-to-r from-[#EB590E] to-[#D94F0C] px-6 py-5">
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-xl font-bold text-white flex items-center gap-2">
-                  <Star className="w-5 h-5 fill-white" />
+                <h2 className="text-xl font-bold text-black flex items-center gap-2">
+                  <Star className="w-5 h-5 fill-black" />
                   Rate Your Delivery
                 </h2>
                 <button
                   type="button"
                   onClick={handleCloseRating}
-                  className="text-white/80 hover:text-white transition-colors p-1 rounded-full hover:bg-white/20"
+                  className="text-black/70 hover:text-black transition-colors p-1.5 rounded-full hover:bg-black/10"
+                  aria-label="Close rating"
                 >
-                  <span className="text-xl">x</span>
+                  <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-white/90">{ratingModal.order.restaurant}</p>
+              <p className="text-sm text-black/80">{ratingModal.order.restaurant}</p>
             </div>
 
             <div className="px-6 py-6">

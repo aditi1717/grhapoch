@@ -204,10 +204,12 @@ export default function UserLayout() {
     normalizedPath === "/user/dining" ||
     normalizedPath === "/under-250" ||
     normalizedPath === "/user/under-250" ||
+    normalizedPath === "/switch-99" ||
+    normalizedPath === "/user/switch-99" ||
     isProfileRoot ||
     normalizedPath === "" // Handle empty string case for root relative to /food
 
-  const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250"
+  const isUnder250 = normalizedPath === "/under-250" || normalizedPath === "/user/under-250" || normalizedPath === "/switch-99" || normalizedPath === "/user/switch-99"
 
   return (
     <div className="min-h-screen bg-[#f5f5f5] dark:bg-[#0a0a0a] transition-colors duration-200">

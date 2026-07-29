@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Wallet, IndianRupee, ArrowRight, ArrowLeft,
   ShieldCheck, AlertTriangle, HelpCircle,
-  Receipt, FileText, LayoutGrid, X, ChevronRight,
+  Receipt, FileText, LayoutGrid, X, ChevronRight, ChevronDown,
   Sparkles, Loader2
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -533,48 +533,55 @@ export const PocketV2 = () => {
                 />
                 <motion.div 
                    initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }} transition={{ type: "spring", damping: 25, stiffness: 200 }} 
-                   className="relative w-full bg-white border-t border-gray-100 rounded-t-[40px] p-8 pb-12 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]"
+                   className="relative w-full bg-white border-t border-gray-100 rounded-t-[32px] p-5 pb-8 shadow-[0_-20px_50px_rgba(0,0,0,0.1)]"
                 >
-                   <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
-                   
-                   <div className="text-center mb-8">
-                      <div className="w-20 h-20 bg-orange-50 rounded-[28px] flex items-center justify-center mx-auto mb-5 border border-orange-100 text-orange-500 relative shadow-inner">
-                         <IndianRupee className="w-10 h-10 relative z-10" />
-                      </div>
-                      <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-1">Deposit Cash</h3>
-                      <p className="text-xs text-gray-400 font-black uppercase tracking-[0.2em]">Settle Hand Dues</p>
+                   {/* Centered back arrow + title */}
+                   <div className="flex flex-col items-center mb-4">
+                      <button
+                        type="button"
+                        onClick={() => { setDepositAmount(""); setShowDepositPopup(false); }}
+                        className="w-9 h-9 flex items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 transition-colors mb-2"
+                      >
+                         <ChevronDown className="w-5 h-5 text-gray-700" />
+                      </button>
+                      <h3 className="text-base font-black text-gray-900 tracking-tight leading-tight">Deposit Cash</h3>
+                      <p className="text-[10px] text-gray-400 font-bold uppercase tracking-[0.15em]">Settle Hand Dues</p>
                    </div>
                    
-                   <div className="bg-gray-50 rounded-[28px] p-6 mb-8 border border-gray-100 relative overflow-hidden">
-                      <div className="flex justify-between items-center mb-4 relative z-10">
+                   <div className="bg-gray-50 rounded-[20px] p-4 mb-4 border border-gray-100">
+                      <div className="flex justify-between items-center mb-3">
                          <span className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Cash in Hand</span>
                          <span className="text-sm font-black text-gray-900">₹{walletState.cashInHand}</span>
                       </div>
-                      <div className="relative z-10">
-                         <IndianRupee className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <div className="relative">
+                         <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                          <input 
                             type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)}
                             placeholder="Amount to deposit"
-                            className="w-full bg-white border border-gray-200 rounded-[20px] py-5 pl-14 pr-5 text-xl font-black text-gray-900 placeholder-gray-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-500/10 outline-none transition-all shadow-sm"
+                            className="w-full bg-white border border-gray-200 rounded-[14px] py-3 pl-10 pr-4 text-base font-black text-gray-900 placeholder-gray-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all shadow-sm"
                          />
                       </div>
-                      <p className="text-[9px] font-black text-gray-400 mt-4 text-center uppercase tracking-widest relative z-10">
+                      <p className="text-[9px] font-black text-gray-400 mt-2 text-center uppercase tracking-widest">
                          Min Deposit ₹1 • Instant Limit Update
                       </p>
                    </div>
                    
-                   <div className="space-y-4">
+                   <div className="space-y-2">
                       <button 
                          onClick={handleDeposit}
                          disabled={depositing}
-                         className="w-full py-5 bg-gradient-to-br from-orange-400 to-orange-500 text-white rounded-[24px] font-black text-sm tracking-widest uppercase shadow-[0_8px_20px_rgba(249,115,22,0.3)] active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:from-gray-200 disabled:to-gray-300 disabled:text-gray-400 disabled:shadow-none"
+                         className="w-full py-3.5 text-white rounded-[18px] font-black text-sm tracking-widest uppercase active:scale-[0.98] transition-all flex items-center justify-center gap-3 disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
+                         style={depositing ? undefined : {
+                           background: "linear-gradient(135deg, rgba(var(--module-theme-rgb, 0,183,97), 0.9), var(--module-theme-color, #00B761))",
+                           boxShadow: "0 8px 20px rgba(var(--module-theme-rgb, 0,183,97), 0.3)",
+                         }}
                       >
-                         {depositing ? <Loader2 className="w-5 h-5 animate-spin" /> : <ShieldCheck className="w-5 h-5" />}
+                         {depositing ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                          {depositing ? 'Processing...' : 'Proceed to Pay'}
                       </button>
                       <button 
                         onClick={() => { setDepositAmount(""); setShowDepositPopup(false); }} 
-                        className="w-full py-4 text-gray-400 font-black text-[11px] uppercase tracking-[0.2em] hover:text-gray-600 transition-colors"
+                        className="w-full py-2.5 text-gray-400 font-black text-[10px] uppercase tracking-[0.2em] hover:text-gray-600 transition-colors"
                       >
                         Maybe Later
                       </button>

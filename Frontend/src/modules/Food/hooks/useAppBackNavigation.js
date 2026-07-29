@@ -60,7 +60,7 @@ const resolveBackPath = ({ pathname, search, state }) => {
 
   if (/^\/user\/restaurants\/[^/]+$/.test(normalizedPath)) {
     if (searchParams.get("under250") === "true") {
-      return "/food/user/under-250"
+      return "/food/user/switch-99"
     }
     if (typeof window !== "undefined" && window.sessionStorage) {
       const lastUserPage = window.sessionStorage.getItem("lastUserPage")
@@ -83,7 +83,7 @@ const resolveBackPath = ({ pathname, search, state }) => {
     return explicitBackPath || "/food/user/dining"
   }
 
-  if (normalizedPath === "/user/under-250") {
+  if (normalizedPath === "/user/under-250" || normalizedPath === "/user/switch-99") {
     return "/food/user"
   }
 

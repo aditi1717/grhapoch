@@ -2992,7 +2992,7 @@ export default function Cart() {
                   : loadingRestaurant
                     ? "Loading..."
                   : !canPlaceOrder
-                    ? "Restaurant Offline"
+                    ? "Restaurant Closed"
                   : !hasSavedAddress
                     ? "Select Address"
                     : "Place Order"}

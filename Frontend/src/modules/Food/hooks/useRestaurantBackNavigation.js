@@ -128,6 +128,13 @@ export default function useRestaurantBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
+    const normalizedPath = getNormalizedRestaurantPath(location.pathname)
+    if (normalizedPath === "/help-centre/support") {
+      if (window.history.state && window.history.state.idx > 0) {
+        navigate(-1)
+        return
+      }
+    }
     navigate(resolveRestaurantBackPath(location))
   }, [location, navigate])
 }

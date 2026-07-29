@@ -26,7 +26,7 @@ export default function SettingsDialog({ isOpen, onOpenChange, visibleColumns, t
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
+      <DialogContent className="max-w-xl bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
         <DialogHeader className="px-6 pt-6 pb-4">
           <DialogTitle className="flex items-center gap-2">
             <Settings className="w-5 h-5" />
@@ -39,7 +39,7 @@ export default function SettingsDialog({ isOpen, onOpenChange, visibleColumns, t
               <Columns className="w-4 h-4" />
               Visible Columns
             </h3>
-            <div className="space-y-2">
+            <div className="max-h-[50vh] overflow-y-auto pr-2 grid grid-cols-2 gap-x-6 gap-y-2">
               {Object.entries(columnLabels).map(([key, label]) => (
                 <label
                   key={key}
@@ -49,11 +49,11 @@ export default function SettingsDialog({ isOpen, onOpenChange, visibleColumns, t
                     type="checkbox"
                     checked={visibleColumns[key]}
                     onChange={() => toggleColumn(key)}
-                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                    className="w-4 h-4 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500 shrink-0"
                   />
                   <span className="text-sm text-slate-700">{label}</span>
                   {visibleColumns[key] && (
-                    <Check className="w-4 h-4 text-emerald-600 ml-auto" />
+                    <Check className="w-4 h-4 text-emerald-600 ml-auto shrink-0" />
                   )}
                 </label>
               ))}

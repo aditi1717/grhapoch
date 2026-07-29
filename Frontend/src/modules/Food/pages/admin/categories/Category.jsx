@@ -3,6 +3,8 @@ import { createPortal } from "react-dom"
 import { AnimatePresence, motion } from "framer-motion"
 import {
   BadgeCheck,
+  ChevronLeft,
+  ChevronRight,
   Download,
   Globe,
   Loader2,
@@ -51,6 +53,9 @@ export default function Category() {
   const [showPendingOnly, setShowPendingOnly] = useState(false)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingCategory, setEditingCategory] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [pageSize, setPageSize] = useState(10)
+  const [totalCategories, setTotalCategories] = useState(0)
 
   const [formData, setFormData] = useState(defaultFormData)
   const [selectedImageFile, setSelectedImageFile] = useState(null)
@@ -77,30 +82,29 @@ export default function Category() {
       return
     }
     fetchCategories()
-  }, [])
+  }, [currentPage, pageSize])
 
 
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      setCurrentPage(1)
       fetchCategories()
     }, 300)
     return () => window.clearTimeout(timer)
   }, [searchQuery, showPendingOnly])
 
-  const filteredCategories = useMemo(() => {
-    const query = String(searchQuery || "").trim().toLowerCase()
-    if (!query) return categories
-    return categories.filter((category) => {
-      const creator = category?.createdByRestaurant?.name || category?.restaurant?.name || ""
-      return (
-        String(category?.name || "").toLowerCase().includes(query) ||
-        String(category?.foodTypeScope || "").toLowerCase().includes(query) ||
-        String(creator || "").toLowerCase().includes(query) ||
-        String(category?.id || "").toLowerCase().includes(query)
-      )
-    })
-  }, [categories, searchQuery])
+  const totalPages = useMemo(
+    () => Math.max(1, Math.ceil(Math.max(0, totalCategories) / Math.max(1, pageSize))),
+    [totalCategories, pageSize],
+  )
+  const safePage = Math.min(Math.max(1, currentPage), totalPages)
+  const startIdx = totalCategories === 0 ? 0 : (safePage - 1) * pageSize
+  const endIdx = Math.min(startIdx + pageSize, totalCategories)
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages)
+  }, [totalPages, currentPage])
 
   const fetchCategories = async () => {
     try {
@@ -108,10 +112,15 @@ export default function Category() {
       const params = {}
       if (searchQuery) params.search = searchQuery
       if (showPendingOnly) params.approvalStatus = "pending"
+      params.page = safePage
+      params.limit = pageSize
 
       const response = await adminAPI.getCategories(params)
-      const list = response?.data?.data?.categories || response?.data?.categories || []
+      const raw = response?.data?.data || response?.data || {}
+      const list = raw?.categories || raw?.data || []
+      const total = Number(raw?.total)
       setCategories(Array.isArray(list) ? list : [])
+      setTotalCategories(Number.isFinite(total) ? total : (Array.isArray(list) ? list.length : 0))
     } catch (error) {
       if (error?.response?.status === 401) {
         toast.error("Authentication required. Please login again.")
@@ -281,6 +290,23 @@ export default function Category() {
         import("jspdf"),
         import("jspdf-autotable"),
       ])
+
+      const exportParams = {}
+      if (searchQuery) exportParams.search = searchQuery
+      if (showPendingOnly) exportParams.approvalStatus = "pending"
+      exportParams.limit = 10000
+      exportParams.page = 1
+
+      let exportList = categories
+      try {
+        const res = await adminAPI.getCategories(exportParams)
+        const raw = res?.data?.data || res?.data || {}
+        const list = raw?.categories || raw?.data || []
+        if (Array.isArray(list) && list.length > 0) exportList = list
+      } catch {
+        // fall back to current page data if unpaginated fetch fails
+      }
+
       const doc = new jsPDF()
       doc.setFontSize(18)
       doc.setTextColor(30, 30, 30)
@@ -289,7 +315,7 @@ export default function Category() {
       doc.setTextColor(100, 100, 100)
       doc.text(`Generated on: ${new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" })}`, 14, 28)
 
-      const tableData = filteredCategories.map((category, index) => [
+      const tableData = exportList.map((category, index) => [
         index + 1,
         category?.name || "N/A",
         category?.foodTypeScope || "Both",
@@ -408,7 +434,7 @@ export default function Category() {
 
             <button
               onClick={handleExportPDF}
-              disabled={filteredCategories.length === 0}
+              disabled={totalCategories === 0}
               className="inline-flex items-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Download className="h-4 w-4" />
@@ -447,7 +473,7 @@ export default function Category() {
                     <p className="mt-2 text-sm text-slate-500">Loading categories...</p>
                   </td>
                 </tr>
-              ) : filteredCategories.length === 0 ? (
+              ) : categories.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-20 text-center">
                     <p className="text-lg font-semibold text-slate-700">No categories found</p>
@@ -455,7 +481,7 @@ export default function Category() {
                   </td>
                 </tr>
               ) : (
-                filteredCategories.map((category) => {
+                categories.map((category) => {
                   const categoryId = resolveCategoryId(category)
                   const creatorName = category?.createdByRestaurant?.name || category?.restaurant?.name || "Admin"
                   const approvalStatus = category?.approvalStatus || "pending"
@@ -576,6 +602,69 @@ export default function Category() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination Footer */}
+        {!loading && totalCategories > 0 && (
+          <div className="flex flex-col gap-3 border-t border-slate-200 bg-slate-50/60 px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-sm text-slate-600">
+              Showing{" "}
+              <span className="font-semibold text-slate-900">{startIdx + 1}</span>{" "}
+              to{" "}
+              <span className="font-semibold text-slate-900">{endIdx}</span>{" "}
+              of{" "}
+              <span className="font-semibold text-slate-900">{totalCategories}</span>{" "}
+              categories
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 sm:justify-end">
+              <div className="flex items-center gap-2">
+                <label htmlFor="categories-page-size" className="text-xs font-medium text-slate-600">
+                  Rows
+                </label>
+                <select
+                  id="categories-page-size"
+                  value={pageSize}
+                  onChange={(e) => {
+                    const next = parseInt(e.target.value, 10) || 10
+                    setPageSize(next)
+                    setCurrentPage(1)
+                  }}
+                  className="rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+              <div className="flex items-center gap-1">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={safePage <= 1}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </button>
+                <div className="px-2 text-sm text-slate-700 min-w-[64px] text-center">
+                  Page{" "}
+                  <span className="font-semibold text-slate-900">{safePage}</span>
+                  <span className="text-slate-400 mx-0.5">/</span>
+                  <span className="font-semibold text-slate-900">{totalPages}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={safePage >= totalPages}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                  aria-label="Next page"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {typeof window !== "undefined" &&

@@ -156,30 +156,33 @@ export const useOrderManager = () => {
   const completeDelivery = async (otp) => {
     const orderId = activeOrder?.orderId;
     try {
-      // 1. Verify OTP first
-      const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otp);
-      
-      if (verifyRes?.data?.success) {
-        let finalOrder = verifyRes.data?.data?.order || activeOrder;
-        
-        // 2. Mark as complete
-        const completeRes = await deliveryAPI.completeDelivery(orderId, { otp, rating: 5 });
-        if (completeRes.data?.success && completeRes.data?.data?.order) {
-          finalOrder = completeRes.data.data.order;
+      let finalOrder = activeOrder;
+
+      // 1. Verify OTP first, unless already verified
+      if (!activeOrder?.deliveryVerification?.dropOtp?.verified) {
+        const verifyRes = await deliveryAPI.verifyDropOtp(orderId, otp);
+        if (verifyRes?.data?.success) {
+          finalOrder = verifyRes.data?.data?.order || activeOrder;
         } else {
-          toast.error(completeRes.data?.message || 'Failed to complete delivery on server');
-          throw new Error('Complete call failed');
+          toast.error('Invalid OTP. Please check with customer.');
+          throw new Error('Invalid OTP');
         }
-        
-        // Update local order state so Summary Modal shows 'delivered' status
-        if (finalOrder) setActiveOrder(finalOrder);
-        
-        updateTripStatus('COMPLETED');
-        // toast.success('Delivery Success!');
-      } else {
-        toast.error('Invalid OTP. Please check with customer.');
-        throw new Error('Invalid OTP');
       }
+      
+      // 2. Mark as complete
+      const completeRes = await deliveryAPI.completeDelivery(orderId, { otp, rating: 5 });
+      if (completeRes.data?.success && completeRes.data?.data?.order) {
+        finalOrder = completeRes.data.data.order;
+      } else {
+        toast.error(completeRes.data?.message || 'Failed to complete delivery on server');
+        throw new Error('Complete call failed');
+      }
+      
+      // Update local order state so Summary Modal shows 'delivered' status
+      if (finalOrder) setActiveOrder(finalOrder);
+      
+      updateTripStatus('COMPLETED');
+      // toast.success('Delivery Success!');
     } catch (error) {
       console.error('Completion Error:', error);
       toast.error(error?.response?.data?.message || 'Verification failed');

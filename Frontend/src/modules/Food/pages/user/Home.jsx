@@ -617,7 +617,7 @@ const RestaurantCard = React.memo(({
                       >
                         {availability.isOpen
                           ? "Open now"
-                          : "Offline"}
+                          : "Closed"}
                       </span>
                       {availability.isOpen &&
                         availability.closingCountdownLabel &&

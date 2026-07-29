@@ -2521,7 +2521,7 @@ function RestaurantDetailsContent() {
                 boxShadow: "0 4px 10px rgba(var(--module-theme-rgb, 250,2,114), 0.25)",
               } : undefined}
             >
-              {isRestaurantOffline ? "Offline" : "Open now"}
+              {isRestaurantOffline ? "Closed" : "Open now"}
             </Badge>
           </div>
 

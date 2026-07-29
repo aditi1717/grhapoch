@@ -1133,7 +1133,7 @@ export default function OutletInfo() {
         <div className="px-4 pt-4 pb-4 bg-white">
           <div className="flex items-start gap-4">
             <div className="flex flex-col gap-2">
-              <button onClick={() => navigate("/restaurant/ratings-reviews")} className="flex items-center gap-2 text-left w-full">
+              <div className="flex items-center gap-2 text-left w-full">
                 <div
                   className="px-2.5 py-1.5 rounded flex items-center gap-1 shrink-0"
                   style={{
@@ -1144,11 +1144,7 @@ export default function OutletInfo() {
                   <span className="text-white text-sm font-bold">{Number(displayRating || 0).toFixed(1)}</span>
                   <Star className="w-3.5 h-3.5 text-white fill-white" />
                 </div>
-                <span className="text-sm font-semibold" style={{ color: "var(--module-theme-color, #2563EB)" }}>
-                  {displayTotalRatings || 0} DELIVERY REVIEWS
-                </span>
-                <ChevronRight className="w-4 h-4 text-gray-400 shrink-0 ml-auto" />
-              </button>
+              </div>
             </div>
           </div>
         </div>

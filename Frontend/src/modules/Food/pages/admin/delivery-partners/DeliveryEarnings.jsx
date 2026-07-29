@@ -34,6 +34,7 @@ const formatDate = (dateString) => {
 
 export default function DeliveryEarnings() {
   const [searchQuery, setSearchQuery] = useState("")
+  const [searchInput, setSearchInput] = useState("")
   const [earnings, setEarnings] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -53,6 +54,15 @@ export default function DeliveryEarnings() {
 
   // Get today's date for max date validation
   const today = new Date().toISOString().split('T')[0]
+
+  // Debounce search query updates to avoid rapid API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setSearchQuery(searchInput)
+      setPagination(prev => ({ ...prev, page: 1 }))
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchInput])
 
   // Fetch delivery partners for filter dropdown
   const fetchDeliveryPartners = useCallback(async () => {
@@ -384,11 +394,8 @@ export default function DeliveryEarnings() {
               <input
                 type="text"
                 placeholder="Search by name, phone, order ID..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value)
-                  setPagination(prev => ({ ...prev, page: 1 }))
-                }}
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
@@ -502,19 +509,34 @@ export default function DeliveryEarnings() {
                 )}
               </tbody>
             </table>
-          </div>
-
-          {/* Pagination */}
-          {pagination.pages > 1 && (
-            <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-200">
+          </div>          {/* Pagination */}
+          {earnings.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">Show</span>
+                <select
+                  value={pagination.limit}
+                  onChange={(e) => {
+                    const newLimit = parseInt(e.target.value, 10)
+                    setPagination(prev => ({ ...prev, page: 1, limit: newLimit }))
+                  }}
+                  className="px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-slate-600">entries</span>
+              </div>
               <p className="text-sm text-slate-600">
-                Showing {(pagination.page - 1) * pagination.limit + 1} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} earnings
+                Showing {Math.min(pagination.total, (pagination.page - 1) * pagination.limit + 1)} to {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total} earnings
               </p>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => handlePageChange(pagination.page - 1)}
                   disabled={pagination.page === 1}
-                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
                 >
                   Previous
                 </button>
@@ -529,7 +551,7 @@ export default function DeliveryEarnings() {
                     <button
                       key={idx}
                       onClick={() => handlePageChange(pageNum)}
-                      className={`px-3 py-1 text-sm rounded border ${
+                      className={`px-3 py-1 text-sm rounded border transition-colors ${
                         pagination.page === pageNum
                           ? "bg-blue-600 border-blue-600 text-white"
                           : "border-slate-300 text-slate-700 hover:bg-slate-50"
@@ -542,7 +564,7 @@ export default function DeliveryEarnings() {
                 <button
                   onClick={() => handlePageChange(pagination.page + 1)}
                   disabled={pagination.page === pagination.pages}
-                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50"
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
                 >
                   Next
                 </button>

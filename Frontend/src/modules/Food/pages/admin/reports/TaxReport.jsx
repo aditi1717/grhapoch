@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react"
-import { Download, ChevronDown, FileText, DollarSign, Settings, FileSpreadsheet, Code, Loader2, Calendar } from "lucide-react"
+import { Download, ChevronDown, FileText, DollarSign, FileSpreadsheet, Loader2, Calendar } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@food/components/ui/dropdown-menu"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@food/components/ui/dialog"
-import { exportReportsToCSV, exportReportsToExcel, exportReportsToPDF, exportReportsToJSON } from "@food/components/admin/reports/reportsExportUtils"
+import { exportReportsToExcel, exportReportsToPDF } from "@food/components/admin/reports/reportsExportUtils"
 import { adminAPI } from "@food/api"
 import { toast } from "sonner"
 
@@ -34,19 +34,19 @@ function buildTaxReportDateRange(filters) {
   }
 
   if (filters.dateRangeType === "Today") {
-    fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)
+    fromDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
+    toDate = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
   } else if (filters.dateRangeType === "This Week") {
     const dayOfWeek = now.getDay()
     const diff = now.getDate() - dayOfWeek
-    fromDate = new Date(now.getFullYear(), now.getMonth(), diff)
-    toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59)
+    fromDate = new Date(now.getFullYear(), now.getMonth(), diff, 0, 0, 0, 0)
+    toDate = new Date(now.getFullYear(), now.getMonth(), diff + 6, 23, 59, 59, 999)
   } else if (filters.dateRangeType === "This Month") {
-    fromDate = new Date(now.getFullYear(), now.getMonth(), 1)
-    toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59)
+    fromDate = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
+    toDate = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
   } else if (filters.dateRangeType === "This Year") {
-    fromDate = new Date(now.getFullYear(), 0, 1)
-    toDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59)
+    fromDate = new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0)
+    toDate = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999)
   }
 
   return { fromDate, toDate }
@@ -55,18 +55,25 @@ function buildTaxReportDateRange(filters) {
 function buildTaxReportParams(filters) {
   const { fromDate, toDate } = buildTaxReportDateRange(filters)
 
+  // Normalize calculateTax to lowercase with underscores — matches backend normalizeTaxReportCalculateTax
+  const calculateTaxNormalized = String(filters.calculateTax || "Percentage")
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+
   const params = {
     fromDate: fromDate ? fromDate.toISOString() : undefined,
     toDate: toDate ? toDate.toISOString() : undefined,
     limit: 1000,
+    calculateTax: calculateTaxNormalized,
   }
 
-  if (filters.taxRate && filters.taxRate !== "Select Tax Rate") {
+  // Only send taxRate when Percentage mode and a rate is selected
+  if (
+    filters.calculateTax === "Percentage" &&
+    filters.taxRate &&
+    filters.taxRate !== "Select Tax Rate"
+  ) {
     params.taxRate = parseInt(filters.taxRate.replace("%", ""), 10)
-  }
-
-  if (filters.calculateTax) {
-    params.calculateTax = filters.calculateTax
   }
 
   return params
@@ -81,12 +88,13 @@ export default function TaxReport() {
     totalTax: "₹0.00"
   })
   const [loading, setLoading] = useState(true)
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [appliedFilters, setAppliedFilters] = useState(null)
   const [selectedReport, setSelectedReport] = useState(null)
   const [detailLoading, setDetailLoading] = useState(false)
   const [reportDetail, setReportDetail] = useState(null)
 
-  const fetchTaxReport = async (activeFilters = filters) => {
+  const fetchTaxReport = async (activeFilters = filters, isSubmit = false) => {
     try {
       if (activeFilters.dateRangeType === "Custom Range") {
         if (!activeFilters.fromDate || !activeFilters.toDate) {
@@ -99,7 +107,8 @@ export default function TaxReport() {
         }
       }
 
-      setLoading(true)
+      if (isSubmit) setSubmitting(true)
+      else setLoading(true)
 
       const params = buildTaxReportParams(activeFilters)
       const response = await adminAPI.getTaxReport(params)
@@ -110,6 +119,10 @@ export default function TaxReport() {
           totalIncome: "₹0.00",
           totalTax: "₹0.00"
         })
+        if (isSubmit) {
+          setAppliedFilters({ ...activeFilters })
+          toast.success("Tax report updated successfully")
+        }
       } else {
         setReports([])
         if (response?.data?.message) {
@@ -122,6 +135,7 @@ export default function TaxReport() {
       setReports([])
     } finally {
       setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -131,11 +145,12 @@ export default function TaxReport() {
 
   const handleReset = () => {
     setFilters(DEFAULT_FILTERS)
+    setAppliedFilters(null)
     fetchTaxReport(DEFAULT_FILTERS)
   }
 
   const handleSubmit = () => {
-    fetchTaxReport(filters)
+    fetchTaxReport(filters, true)
   }
 
   const handleViewDetails = async (report) => {
@@ -172,14 +187,12 @@ export default function TaxReport() {
       { key: "totalTax", label: "Total Tax" },
     ]
     switch (format) {
-      case "csv": exportReportsToCSV(reports, headers, "tax_report"); break
       case "excel": exportReportsToExcel(reports, headers, "tax_report"); break
       case "pdf": exportReportsToPDF(reports, headers, "tax_report", "Tax Report"); break
-      case "json": exportReportsToJSON(reports, "tax_report"); break
     }
   }
 
-  if (loading) {
+  if (loading && !submitting) {
     return (
       <div className="p-4 lg:p-6 bg-slate-50 min-h-screen flex items-center justify-center">
         <div className="flex flex-col items-center gap-4">
@@ -235,34 +248,49 @@ export default function TaxReport() {
               </label>
               <select
                 value={filters.calculateTax}
-                onChange={(e) => setFilters(prev => ({ ...prev, calculateTax: e.target.value }))}
+                onChange={(e) => setFilters(prev => ({
+                  ...prev,
+                  calculateTax: e.target.value,
+                  taxRate: "Select Tax Rate",
+                }))}
                 className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
-                <option value="Percentage">Percentage</option>
-                <option value="Fixed Amount">Fixed Amount</option>
-                <option value="Tiered">Tiered</option>
+                <option value="Percentage">Percentage (%)</option>
+                <option value="Fixed Amount">Fixed Amount (stored tax)</option>
+                <option value="Tiered">Tiered (stored tax)</option>
               </select>
               <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
             </div>
 
-            <div className="relative">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Select Tax Rates
-              </label>
-              <select
-                value={filters.taxRate}
-                onChange={(e) => setFilters(prev => ({ ...prev, taxRate: e.target.value }))}
-                className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="Select Tax Rate">Select Tax Rate</option>
-                <option value="5%">5%</option>
-                <option value="10%">10%</option>
-                <option value="15%">15%</option>
-                <option value="18%">18%</option>
-                <option value="20%">20%</option>
-              </select>
-              <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
-            </div>
+            {filters.calculateTax === "Percentage" ? (
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Select Tax Rates
+                </label>
+                <select
+                  value={filters.taxRate}
+                  onChange={(e) => setFilters(prev => ({ ...prev, taxRate: e.target.value }))}
+                  className="w-full px-4 py-2.5 pr-8 text-sm rounded-lg border border-slate-300 bg-white text-slate-700 appearance-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Select Tax Rate">Select Tax Rate</option>
+                  <option value="5%">5%</option>
+                  <option value="10%">10%</option>
+                  <option value="15%">15%</option>
+                  <option value="18%">18%</option>
+                  <option value="20%">20%</option>
+                </select>
+                <ChevronDown className="absolute right-2 bottom-2.5 w-4 h-4 text-slate-500 pointer-events-none" />
+              </div>
+            ) : (
+              <div className="relative">
+                <label className="block text-sm font-semibold text-slate-700 mb-2">
+                  Select Tax Rates
+                </label>
+                <div className="w-full px-4 py-2.5 text-sm rounded-lg border border-slate-200 bg-slate-50 text-slate-500 italic">
+                  Uses stored tax from orders
+                </div>
+              </div>
+            )}
           </div>
 
           {filters.dateRangeType === "Custom Range" && (
@@ -299,18 +327,40 @@ export default function TaxReport() {
             </div>
           )}
 
+          {/* Applied filter indicator */}
+          {appliedFilters && (
+            <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+              <span className="text-xs font-semibold text-blue-700">Active filters:</span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                📅 {appliedFilters.dateRangeType}
+                {appliedFilters.dateRangeType === "Custom Range" && appliedFilters.fromDate && appliedFilters.toDate && (
+                  <span className="ml-1">({appliedFilters.fromDate} → {appliedFilters.toDate})</span>
+                )}
+              </span>
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                {appliedFilters.calculateTax}
+                {appliedFilters.calculateTax === "Percentage" && appliedFilters.taxRate !== "Select Tax Rate" && (
+                  <span className="ml-1">@ {appliedFilters.taxRate}</span>
+                )}
+              </span>
+            </div>
+          )}
+
           <div className="flex items-center justify-end gap-3">
             <button
               onClick={handleReset}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all"
+              disabled={submitting}
+              className="px-6 py-2.5 text-sm font-medium rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-50 transition-all disabled:opacity-60"
             >
               Reset
             </button>
             <button
               onClick={handleSubmit}
-              className="px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all"
+              disabled={submitting}
+              className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium rounded-lg bg-blue-500 text-white hover:bg-blue-600 transition-all disabled:opacity-70"
             >
-              Submit
+              {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+              {submitting ? "Generating..." : "Submit"}
             </button>
           </div>
         </div>
@@ -361,10 +411,6 @@ export default function TaxReport() {
                 <DropdownMenuContent align="end" className="w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
                   <DropdownMenuLabel>Export Format</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleExport("csv")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExport("excel")} className="cursor-pointer">
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
                     Export as Excel
@@ -373,18 +419,8 @@ export default function TaxReport() {
                     <FileText className="w-4 h-4 mr-2" />
                     Export as PDF
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("json")} className="cursor-pointer">
-                    <Code className="w-4 h-4 mr-2" />
-                    Export as JSON
-                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 rounded-lg border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 transition-all"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
             </div>
           </div>
 
@@ -455,32 +491,7 @@ export default function TaxReport() {
         </div>
       </div>
 
-      {/* Settings Dialog */}
-      <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
-        <DialogContent className="max-w-md bg-white p-0 opacity-0 data-[state=open]:opacity-100 data-[state=closed]:opacity-0 transition-opacity duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=open]:fade-in-0 data-[state=closed]:fade-out-0 data-[state=open]:scale-100 data-[state=closed]:scale-100">
-          <DialogHeader className="px-6 pt-6 pb-4">
-            <DialogTitle className="flex items-center gap-2">
-              <Settings className="w-5 h-5" />
-              Report Settings
-            </DialogTitle>
-          </DialogHeader>
-          <div className="px-6 pb-6">
-            <p className="text-sm text-slate-700">
-              Tax report settings and preferences will be available here.
-            </p>
-          </div>
-          <div className="px-6 pb-6 flex items-center justify-end">
-            <button
-              onClick={() => setIsSettingsOpen(false)}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-emerald-500 text-white hover:bg-emerald-600 transition-all shadow-md"
-            >
-              Close
-            </button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
-      {/* View Details Dialog */}
       <Dialog open={!!selectedReport} onOpenChange={(open) => { if (!open) setSelectedReport(null); }}>
         <DialogContent className="max-w-2xl bg-white p-0 overflow-hidden">
           <DialogHeader className="px-6 pt-6 pb-4 border-b border-slate-100">

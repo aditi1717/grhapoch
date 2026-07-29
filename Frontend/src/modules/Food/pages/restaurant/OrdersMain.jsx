@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import Lenis from "lenis";
 import {
@@ -946,7 +946,20 @@ function AllOrders({ onSelectOrder, onCancel }) {
 
 export default function OrdersMain() {
   const navigate = useNavigate();
-  const [activeFilter, setActiveFilter] = useState("all");
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeFilter = searchParams.get("tab") || "all";
+
+  const setActiveFilter = (val) => {
+    setSearchParams((prev) => {
+      const next = new URLSearchParams(prev);
+      if (val === "all") {
+        next.delete("tab");
+      } else {
+        next.set("tab", val);
+      }
+      return next;
+    }, { replace: true });
+  };
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [isSheetOpen, setIsSheetOpen] = useState(false);
@@ -963,7 +976,9 @@ export default function OrdersMain() {
   // New order popup states
   const [showNewOrderPopup, setShowNewOrderPopup] = useState(false);
   const [popupOrder, setPopupOrder] = useState(null); // Store order for popup (from Socket.IO or API)
-  const [isMuted, setIsMuted] = useState(false);
+  const [isMuted, setIsMuted] = useState(() => {
+    try { return localStorage.getItem("restaurant-muted") === "true"; } catch { return false; }
+  });
   const [prepTime, setPrepTime] = useState(11);
   const [countdown, setCountdown] = useState(240); // 4 minutes in seconds
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(true);
@@ -1098,6 +1113,20 @@ export default function OrdersMain() {
     "Technical issue",
     "Other reason",
   ];
+
+  // Persist mute preference so it survives refresh
+  useEffect(() => {
+    try { localStorage.setItem("restaurant-muted", String(isMuted)); } catch { /* ignore */ }
+  }, [isMuted]);
+
+  // Lock body scroll when order-request popup is open
+  useEffect(() => {
+    if (showNewOrderPopup) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = "hidden";
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [showNewOrderPopup]);
 
   // Fetch restaurant verification status
   useEffect(() => {
@@ -2397,15 +2426,15 @@ export default function OrdersMain() {
         {showNewOrderPopup && (
           <>
             <motion.div
-              className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-[2px] flex items-start justify-center pt-12 p-4 sm:items-center sm:pt-4"
+              className="fixed inset-0 z-[9999] bg-black/40 backdrop-blur-[2px] flex items-center justify-center p-4"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}>
               <motion.div
                 className="w-full max-w-sm bg-white rounded-[32px] shadow-[0_20px_50px_rgba(0,0,0,0.2)] overflow-hidden border border-white flex flex-col"
-                initial={{ scale: 0.95, y: -20, opacity: 0 }}
+                initial={{ scale: 0.92, y: 20, opacity: 0 }}
                 animate={{ scale: 1, y: 0, opacity: 1 }}
-                exit={{ scale: 0.95, y: -20, opacity: 0 }}
+                exit={{ scale: 0.92, y: 20, opacity: 0 }}
                 transition={{ type: "spring", damping: 25, stiffness: 300 }}
                 onClick={(e) => e.stopPropagation()}>
                 
