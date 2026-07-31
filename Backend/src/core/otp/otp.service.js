@@ -4,6 +4,7 @@ import { FoodOtp } from './otp.model.js';
 import { config } from '../../config/env.js';
 import { logger } from '../../utils/logger.js';
 import { ValidationError } from '../auth/errors.js';
+import prpSmsService from './prpSms.service.js';
 
 const generateOtpCode = () => {
     const code = crypto.randomInt(1000, 9999);
@@ -127,7 +128,7 @@ export const createOrUpdateOtp = async (phone) => {
 
     // Only send SMS if not in default OTP mode
     if (!config.useDefaultOtp) {
-        await sendSmsViaIndiaHub(phone, otp);
+        await prpSmsService.sendOTP(phone, otp);
     }
 
     return otp;

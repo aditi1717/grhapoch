@@ -40,6 +40,11 @@ export const config = {
     smsSenderId: process.env.SMS_INDIA_HUB_SENDER_ID,
     smsDltTemplateId: process.env.SMS_INDIA_HUB_DLT_TEMPLATE_ID,
 
+    // PRPSMS
+    prpSmsApiKey: process.env.PRPSMS_API_KEY,
+    prpSmsSenderId: process.env.PRPSMS_SENDER_ID,
+    prpSmsOtpTemplate: process.env.PRPSMS_OTP_TEMPLATE,
+
     // Rate limiting
     rateLimitEnabled: process.env.RATE_LIMIT_ENABLED !== 'false',
     rateLimitWindowMinutes: Number(process.env.RATE_LIMIT_WINDOW || 15),
