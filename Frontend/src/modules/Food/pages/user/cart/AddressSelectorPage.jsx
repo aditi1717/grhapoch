@@ -1071,6 +1071,16 @@ export default function AddressSelectorPage() {
     )
   }
 
+  const isLocationValid = location && 
+    location.latitude !== null && 
+    location.formattedAddress && 
+    location.formattedAddress !== "Select location" && 
+    location.formattedAddress !== "Current Location";
+
+  const displayGPSAddress = isLocationValid 
+    ? (location.formattedAddress || location.address) 
+    : (loading ? "Getting location..." : "Enable GPS for accuracy");
+
   return (
     <AnimatedPage className="min-h-screen bg-white dark:bg-[#0a0a0a] flex flex-col">
       <div className="flex-shrink-0 bg-white dark:bg-[#1a1a1a] border-b border-gray-100 dark:border-gray-800 px-4 py-4 flex items-center gap-4">
@@ -1091,7 +1101,7 @@ export default function AddressSelectorPage() {
             </div>
             <div className="text-left flex-1">
               <p className="font-bold text-[#EB590E]">Use Current Location</p>
-              <p className="text-xs text-gray-500 line-clamp-1">{currentAddress || "Enable GPS for accuracy"}</p>
+              <p className="text-xs text-gray-500 break-words whitespace-normal leading-relaxed mt-0.5">{displayGPSAddress}</p>
             </div>
             <ChevronRight className="h-5 w-5 text-gray-400" />
           </button>

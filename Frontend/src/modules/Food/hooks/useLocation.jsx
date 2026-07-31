@@ -1326,6 +1326,13 @@ export function useLocation() {
 
     const init = async () => {
       try {
+        const isNewSession = !sessionStorage.getItem("session_initialized")
+        if (isNewSession) {
+          sessionStorage.setItem("session_initialized", "true")
+          localStorage.removeItem("userLocation")
+          localStorage.removeItem("user_location")
+        }
+
         const stored = localStorage.getItem("userLocation")
         if (stored) {
           try {
@@ -1363,7 +1370,7 @@ export function useLocation() {
         const currentKnownLocation = initialResolvedLocation || lastDbLocationRef.current || location
         const hasUsableInitialLocation = hasUsableSavedLocation(currentKnownLocation)
         const shouldPreserveSavedForLoggedIn =
-          isAuthenticatedUser() && hasUsableInitialLocation
+          !isNewSession && isAuthenticatedUser() && hasUsableInitialLocation
 
         const tryAutoResolveLocation = async () => {
           // Requirement:

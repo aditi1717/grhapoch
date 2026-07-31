@@ -797,10 +797,54 @@ export async function rejectDiningRequest(requestId, reason = '') {
 
 // ==================== DINING BOOKINGS ====================
 
+function parseTimeSlot(timeStr) {
+    if (!timeStr) return { hours: 0, minutes: 0 };
+    
+    // Check for AM/PM format
+    const ampmMatch = timeStr.match(/^(\d+):(\d+)\s*(AM|PM)$/i);
+    if (ampmMatch) {
+        let hours = parseInt(ampmMatch[1], 10);
+        const minutes = parseInt(ampmMatch[2], 10);
+        const ampm = ampmMatch[3].toUpperCase();
+        if (ampm === 'PM' && hours < 12) hours += 12;
+        if (ampm === 'AM' && hours === 12) hours = 0;
+        return { hours, minutes };
+    }
+    
+    // Check for 24-hour format "HH:mm"
+    const match24 = timeStr.match(/^(\d+):(\d+)$/);
+    if (match24) {
+        const hours = parseInt(match24[1], 10);
+        const minutes = parseInt(match24[2], 10);
+        return { hours, minutes };
+    }
+    
+    // Fallback: just try to extract first digits
+    const simpleMatch = timeStr.match(/(\d+)\s*:\s*(\d+)/);
+    if (simpleMatch) {
+        const hours = parseInt(simpleMatch[1], 10);
+        const minutes = parseInt(simpleMatch[2], 10);
+        return { hours, minutes };
+    }
+    
+    return { hours: 0, minutes: 0 };
+}
+
 export async function createDiningBooking(userId, payload = {}) {
     const restaurantId = payload.restaurantId || (payload.restaurant?._id || payload.restaurant);
     if (!mongoose.Types.ObjectId.isValid(restaurantId)) {
         throw new ValidationError('Invalid restaurant ID');
+    }
+
+    // Validate that the slot is not in the past
+    const bookingDate = new Date(payload.date || Date.now());
+    const { hours, minutes } = parseTimeSlot(String(payload.timeSlot || '').trim());
+    const startTime = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate(), hours, minutes, 0);
+    
+    // Add 2 hours for dining duration
+    const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+    if (new Date() > endTime) {
+        throw new ValidationError('Cannot book a table for a past date or time slot');
     }
 
     // Check if restaurant exists and has dining enabled
@@ -908,8 +952,59 @@ export async function createDiningBooking(userId, payload = {}) {
     return bookingObj;
 }
 
+export async function autoRejectExpiredBookings(query = {}) {
+    const now = new Date();
+    // We only care about pending, accepted, or confirmed bookings
+    const bookings = await FoodDiningBooking.find({
+        ...query,
+        status: { $in: ['pending', 'accepted', 'confirmed'] }
+    }).populate('restaurantId', 'restaurantName');
+
+    const updatedBookings = [];
+
+    for (const booking of bookings) {
+        const bookingDate = new Date(booking.date);
+        const { hours, minutes } = parseTimeSlot(booking.timeSlot);
+        const startTime = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate(), hours, minutes, 0);
+        
+        // Add 2 hours for dining duration
+        const endTime = new Date(startTime.getTime() + 2 * 60 * 60 * 1000);
+
+        if (now > endTime) {
+            booking.status = 'cancelled';
+            await booking.save();
+            updatedBookings.push(booking);
+
+            // Emit socket update
+            try {
+                const io = getIO();
+                if (io) {
+                    const payload = {
+                        bookingId: String(booking._id),
+                        bookingRef: booking.bookingId,
+                        status: 'cancelled',
+                        restaurantName: booking.restaurantId?.restaurantName || 'Restaurant'
+                    };
+                    io.to(rooms.user(booking.userId)).emit('dining_booking_status_update', payload);
+                    io.to(rooms.restaurant(booking.restaurantId)).emit('dining_booking_status_update', payload);
+                }
+            } catch (socketErr) {
+                console.error('[DiningBooking] Auto-reject socket emit failed:', socketErr);
+            }
+        }
+    }
+
+    return updatedBookings;
+}
+
 export async function getUserDiningBookings(userId) {
     if (!mongoose.Types.ObjectId.isValid(userId)) return [];
+    
+    try {
+        await autoRejectExpiredBookings({ userId });
+    } catch (err) {
+        console.error('[DiningBooking] autoRejectExpiredBookings error:', err);
+    }
     
     const docs = await FoodDiningBooking.find({ userId })
         .populate({
@@ -931,6 +1026,12 @@ export async function getUserDiningBookings(userId) {
 
 export async function getRestaurantDiningBookings(restaurantId) {
     if (!mongoose.Types.ObjectId.isValid(restaurantId)) return [];
+
+    try {
+        await autoRejectExpiredBookings({ restaurantId });
+    } catch (err) {
+        console.error('[DiningBooking] autoRejectExpiredBookings error:', err);
+    }
 
     return await FoodDiningBooking.find({ restaurantId })
         .populate({

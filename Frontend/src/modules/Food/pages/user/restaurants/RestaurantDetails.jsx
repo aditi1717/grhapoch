@@ -1439,8 +1439,6 @@ function RestaurantDetailsContent() {
           : 0
         const totalCount = itemCount + subsectionCount
 
-        if (totalCount <= 0) return null
-
         return {
           id: normalizeMenuCategoryId(section?.categoryId || sectionTitle || index) || `section-${index}`,
           name: sectionTitle,
@@ -1907,9 +1905,14 @@ function RestaurantDetailsContent() {
           }
         }
 
-        const hasVisibleItems = toRenderableArray(section?.items).length > 0
-        const hasVisibleSubsections = toRenderableArray(section?.subsections).length > 0
-        return hasVisibleItems || hasVisibleSubsections
+        // Always show standard categories (even if empty) to let users see empty states.
+        // Hide recommended if it has no items.
+        if (isRecommendedSection(section)) {
+          const hasVisibleItems = toRenderableArray(section?.items).length > 0
+          const hasVisibleSubsections = toRenderableArray(section?.subsections).length > 0
+          return hasVisibleItems || hasVisibleSubsections
+        }
+        return true
       })
 
     if (!filters.sortBy) {
@@ -2776,6 +2779,13 @@ function RestaurantDetailsContent() {
                         <div className="text-center py-8">
                           <p className="text-gray-500 dark:text-gray-400 text-sm md:text-base">
                             No dish recommended
+                          </p>
+                        </div>
+                      )}
+                      {isExpanded && !isRecommended && sectionItems.length === 0 && sectionSubsections.length === 0 && (
+                        <div className="text-center py-6 border border-dashed border-gray-200 dark:border-zinc-800 rounded-2xl mx-4 my-2">
+                          <p className="text-gray-500 dark:text-gray-400 text-sm">
+                            No items available in this category
                           </p>
                         </div>
                       )}

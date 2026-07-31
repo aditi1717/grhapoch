@@ -715,6 +715,31 @@ async function showForegroundNotification(payload = {}) {
         toast.success(title);
       }
       pushDebugLog(PUSH_DEBUG_PREFIX, "Foreground notification shown as toast", { title, body });
+      
+      // Also show native notification in the foreground
+      if (typeof Notification !== "undefined" && Notification.permission === "granted") {
+        try {
+          if ("serviceWorker" in navigator) {
+            navigator.serviceWorker.ready.then((reg) => {
+              reg.showNotification(title, {
+                body,
+                icon: "/favicon.ico",
+                tag: notificationKey,
+                data: payload?.data || {},
+              });
+            });
+          } else {
+            new Notification(title, {
+              body,
+              icon: "/favicon.ico",
+              tag: notificationKey,
+            });
+          }
+          pushDebugLog(PUSH_DEBUG_PREFIX, "Foreground tab notification shown via OS banner too");
+        } catch (err) {
+          console.warn("Failed to show native notification in foreground:", err);
+        }
+      }
     } else {
       if (typeof Notification !== "undefined" && Notification.permission === "granted") {
         try {

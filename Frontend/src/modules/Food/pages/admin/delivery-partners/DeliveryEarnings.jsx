@@ -268,16 +268,7 @@ export default function DeliveryEarnings() {
     }
   }
 
-  if (loading && earnings.length === 0) {
-    return (
-      <div className="p-4 lg:p-6 bg-slate-50 min-h-screen w-full max-w-full overflow-x-hidden flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-          <p className="text-gray-600">Loading delivery earnings...</p>
-        </div>
-      </div>
-    )
-  }
+
 
   return (
     <div className="p-4 lg:p-6 bg-slate-50 min-h-screen w-full max-w-full overflow-x-hidden">
@@ -407,26 +398,18 @@ export default function DeliveryEarnings() {
                   <ChevronDown className="w-4 h-4" />
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Export Format</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleExport("csv")}>
-                  <FileText className="w-4 h-4 mr-2" />
-                  Export as CSV
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("excel")}>
-                  <FileSpreadsheet className="w-4 h-4 mr-2" />
-                  Export as Excel
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("pdf")}>
-                  <FileDown className="w-4 h-4 mr-2" />
-                  Export as PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleExport("json")}>
-                  <Code className="w-4 h-4 mr-2" />
-                  Export as JSON
-                </DropdownMenuItem>
-              </DropdownMenuContent>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => handleExport("excel")}>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Export as Excel
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => handleExport("pdf")}>
+                    <FileDown className="w-4 h-4 mr-2" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
             </DropdownMenu>
           </div>
         </div>
@@ -456,7 +439,16 @@ export default function DeliveryEarnings() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {earnings.length === 0 ? (
+                {loading ? (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-12 text-center">
+                      <div className="flex flex-col items-center justify-center gap-2">
+                        <Loader2 className="w-6 h-6 animate-spin text-blue-500" />
+                        <p className="text-sm text-slate-500">Loading earnings...</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : earnings.length === 0 ? (
                   <tr>
                     <td colSpan={10} className="px-4 py-12 text-center">
                       <div className="flex flex-col items-center justify-center">

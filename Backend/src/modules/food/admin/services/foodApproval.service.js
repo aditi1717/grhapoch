@@ -138,6 +138,23 @@ export async function approveFoodItem(id) {
         } catch (e) {
             console.error('Failed to send food approval notification:', e);
         }
+
+        try {
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io) {
+                io.to(rooms.restaurant(updated.restaurantId)).emit('food_approval_status', {
+                    success: true,
+                    type: 'food_approved',
+                    title: 'Dish Approved! 🍲',
+                    message: `Your dish "${updated.name}" has been approved and is now visible to customers.`,
+                    foodId: String(updated._id),
+                    restaurantId: String(updated.restaurantId)
+                });
+            }
+        } catch (socketErr) {
+            console.error('Failed to emit food approval socket event:', socketErr);
+        }
     }
     return updated;
 }
@@ -183,6 +200,24 @@ export async function rejectFoodItem(id, reason) {
             );
         } catch (e) {
             console.error('Failed to send food rejection notification:', e);
+        }
+
+        try {
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io) {
+                io.to(rooms.restaurant(updated.restaurantId)).emit('food_approval_status', {
+                    success: false,
+                    type: 'food_rejected',
+                    title: 'Dish Rejected ❌',
+                    message: `Your dish "${updated.name}" was rejected. Reason: ${r}`,
+                    foodId: String(updated._id),
+                    restaurantId: String(updated.restaurantId),
+                    reason: r
+                });
+            }
+        } catch (socketErr) {
+            console.error('Failed to emit food rejection socket event:', socketErr);
         }
     }
     return updated;

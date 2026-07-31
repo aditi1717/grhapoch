@@ -26,6 +26,18 @@ export default function DeliverySignIn() {
       return
     }
 
+    const signupDetails = sessionStorage.getItem("deliverySignupDetails")
+    if (signupDetails) {
+      try {
+        const data = JSON.parse(signupDetails)
+        if (data.phone) {
+          const phoneDigits = String(data.phone).replace("+91", "").trim()
+          setFormData(prev => ({ ...prev, phone: phoneDigits }))
+          return
+        }
+      } catch (err) {}
+    }
+
     const stored = sessionStorage.getItem("deliveryAuthData")
     if (stored) {
       try {

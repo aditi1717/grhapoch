@@ -1,5 +1,6 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { buildCartLineId } from "@food/utils/foodVariants"
+import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
 import { userAPI, restaurantAPI } from "@/services/api"
 import { toast } from "sonner"
 import CartReplaceDialog from "@food/components/user/CartReplaceDialog"
@@ -211,27 +212,42 @@ export function CartProvider({ children }) {
     let restLat = Number(firstItem?.restaurantLocation?.latitude ?? firstItem?.restaurantLocation?.coordinates?.[1] ?? firstItem?.restaurantLat)
     let restLng = Number(firstItem?.restaurantLocation?.longitude ?? firstItem?.restaurantLocation?.coordinates?.[0] ?? firstItem?.restaurantLng)
     let serviceRadius = Number(firstItem?.serviceRadius || firstItem?.restaurantServiceRadius || 0)
+    let restData = null
 
-    if (!Number.isFinite(restLat) || !Number.isFinite(restLng) || serviceRadius <= 0) {
-      if (!restaurantId) return
-      const cached = restaurantLocationCacheRef.current.get(String(restaurantId))
-      if (cached) {
-        restLat = cached.lat
-        restLng = cached.lng
-        serviceRadius = cached.serviceRadius
-      } else {
-        try {
-          const res = await restaurantAPI.getRestaurantById(restaurantId)
-          const restData = res?.data?.data?.restaurant || res?.data?.restaurant || res?.data?.data
-          if (restData) {
-            restLat = Number(restData.location?.latitude ?? restData.location?.coordinates?.[1])
-            restLng = Number(restData.location?.longitude ?? restData.location?.coordinates?.[0])
-            serviceRadius = Number(restData.serviceRadius) || 10
-            restaurantLocationCacheRef.current.set(String(restaurantId), { lat: restLat, lng: restLng, serviceRadius })
-          }
-        } catch {
-          return
+    if (restaurantId) {
+      try {
+        const res = await restaurantAPI.getRestaurantById(restaurantId)
+        restData = res?.data?.data?.restaurant || res?.data?.restaurant || res?.data?.data
+        if (restData) {
+          restLat = Number(restData.location?.latitude ?? restData.location?.coordinates?.[1])
+          restLng = Number(restData.location?.longitude ?? restData.location?.coordinates?.[0])
+          serviceRadius = Number(restData.serviceRadius) || 10
+          restaurantLocationCacheRef.current.set(String(restaurantId), { lat: restLat, lng: restLng, serviceRadius })
         }
+      } catch (err) {
+        debugWarn("Failed to fetch latest restaurant details for validation", err)
+      }
+    }
+
+    if (!restData && (!Number.isFinite(restLat) || !Number.isFinite(restLng) || serviceRadius <= 0)) {
+      if (restaurantId) {
+        const cached = restaurantLocationCacheRef.current.get(String(restaurantId))
+        if (cached) {
+          restLat = cached.lat
+          restLng = cached.lng
+          serviceRadius = cached.serviceRadius
+        }
+      }
+    }
+
+    // Check if the restaurant is closed / online status is offline
+    if (restData) {
+      const availability = getRestaurantAvailabilityStatus(restData)
+      if (!availability.isOpen || !availability.isActive || !availability.isAcceptingOrders) {
+        debugWarn(`⚠️ Cart restaurant "${restaurantName}" is offline or closed. Clearing cart.`)
+        setCart([])
+        toast.error(`Your cart was cleared because ${restaurantName} is closed or offline at this time.`)
+        return
       }
     }
 

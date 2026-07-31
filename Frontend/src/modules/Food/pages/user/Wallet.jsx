@@ -276,7 +276,7 @@ export default function Wallet() {
                             </div>
 
                             <div className="flex-1 min-w-0">
-                              <p className="text-gray-900 dark:text-white font-semibold text-sm md:text-base lg:text-lg truncate mb-1">
+                              <p className="text-gray-900 dark:text-white font-semibold text-sm md:text-base lg:text-lg break-words mb-1">
                                 {transaction.description}
                               </p>
                               {(transaction?.metadata?.source === "referral_signup" ||

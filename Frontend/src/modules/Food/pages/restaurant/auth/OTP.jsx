@@ -181,7 +181,6 @@ export default function RestaurantOTP() {
       if (needsRegistration) {
         setRestaurantPendingPhone(normalizedPhone)
         sessionStorage.removeItem("restaurantAuthData")
-        sessionStorage.removeItem("restaurantLoginPhone")
         navigate("/food/restaurant/onboarding", { replace: true })
         return
       }
@@ -207,7 +206,6 @@ export default function RestaurantOTP() {
         const pendingPhone = authData?.phone || authData?.email || contactInfo
         if (pendingPhone) setRestaurantPendingPhone(pendingPhone)
         sessionStorage.removeItem("restaurantAuthData")
-        sessionStorage.removeItem("restaurantLoginPhone")
         navigate("/food/restaurant/pending-verification", {
           replace: true,
           state: { phone: pendingPhone || "" },

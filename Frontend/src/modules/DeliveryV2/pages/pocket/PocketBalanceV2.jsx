@@ -60,6 +60,17 @@ export const PocketBalanceV2 = () => {
   const [withdrawAmount, setWithdrawAmount] = useState("");
 
   useEffect(() => {
+    if (showWithdrawModal) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showWithdrawModal]);
+
+  useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);

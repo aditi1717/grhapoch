@@ -57,6 +57,9 @@ export default function ProfessionalSearch() {
   const [selectedCategoryId, setSelectedCategoryId] = useState(searchParams.get("cat") || null)
   const [history, setHistory] = useState([])
 
+  const [wasVoiceTriggered] = useState(() => searchParams.get('voice') === 'true')
+  const recognitionRef = useRef(null)
+
   // Load search history
   useEffect(() => {
     const savedHistory = localStorage.getItem(SEARCH_HISTORY_KEY)
@@ -161,10 +164,21 @@ export default function ProfessionalSearch() {
       return
     }
 
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.stop()
+      } catch (e) {}
+    }
+
     const recognition = new SpeechRecognition()
     recognition.lang = 'en-IN'
+    recognitionRef.current = recognition
+
     recognition.onstart = () => setIsListening(true)
-    recognition.onend = () => setIsListening(false)
+    recognition.onend = () => {
+      setIsListening(false)
+      recognitionRef.current = null
+    }
     recognition.onresult = (event) => {
       const transcript = event.results[0][0].transcript
       setQuery(transcript.trim())
@@ -461,7 +475,17 @@ export default function ProfessionalSearch() {
 
           <Button
             variant="ghost"
-            onClick={() => setIsListening(false)}
+            onClick={() => {
+              setIsListening(false)
+              if (recognitionRef.current) {
+                try {
+                  recognitionRef.current.stop()
+                } catch (e) {}
+              }
+              if (wasVoiceTriggered) {
+                navigate("/food/user")
+              }
+            }}
             className="mt-16 text-gray-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/10 rounded-full px-8"
           >
             Cancel

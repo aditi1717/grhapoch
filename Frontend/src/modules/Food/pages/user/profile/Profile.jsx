@@ -882,7 +882,7 @@ export default function Profile() {
               </motion.div>
             </Link>
 
-            <Link to="/food/user/bookings" className="block">
+            <Link to="/food/user/bookings" state={{ from: "profile" }} className="block">
               <motion.div
                 whileHover={{ x: 4, scale: 1.01 }}
                 transition={{ duration: 0.2, type: "spring", stiffness: 300 }}>

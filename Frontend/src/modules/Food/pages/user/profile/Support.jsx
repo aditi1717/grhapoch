@@ -10,20 +10,93 @@ import { toast } from "sonner"
 import { ArrowLeft, Building2, HelpCircle, ShoppingBag, ChevronRight } from "lucide-react"
 
 export default function Support() {
-  const [step, setStep] = useState("pick")
-  const [type, setType] = useState("")
+  const [step, setStep] = useState(() => sessionStorage.getItem("support_step") || "pick")
+  const [type, setType] = useState(() => sessionStorage.getItem("support_type") || "")
   const [orders, setOrders] = useState([])
   const [restaurants, setRestaurants] = useState([])
-  const [selectedOrder, setSelectedOrder] = useState(null)
-  const [selectedRestaurant, setSelectedRestaurant] = useState(null)
-  const [issueType, setIssueType] = useState("")
-  const [subject, setSubject] = useState("")
-  const [description, setDescription] = useState("")
+  const [selectedOrder, setSelectedOrder] = useState(() => {
+    const val = sessionStorage.getItem("support_selectedOrder")
+    return val ? JSON.parse(val) : null
+  })
+  const [selectedRestaurant, setSelectedRestaurant] = useState(() => {
+    const val = sessionStorage.getItem("support_selectedRestaurant")
+    return val ? JSON.parse(val) : null
+  })
+  const [issueType, setIssueType] = useState(() => sessionStorage.getItem("support_issueType") || "")
+  const [subject, setSubject] = useState(() => sessionStorage.getItem("support_subject") || "")
+  const [description, setDescription] = useState(() => sessionStorage.getItem("support_description") || "")
   const [submitting, setSubmitting] = useState(false)
   const [tickets, setTickets] = useState([])
   const [loadingTickets, setLoadingTickets] = useState(false)
-  const [orderSearch, setOrderSearch] = useState("")
-  const [restaurantSearch, setRestaurantSearch] = useState("")
+  const [orderSearch, setOrderSearch] = useState(() => sessionStorage.getItem("support_orderSearch") || "")
+  const [restaurantSearch, setRestaurantSearch] = useState(() => sessionStorage.getItem("support_restaurantSearch") || "")
+
+  // Save states to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem("support_step", step)
+  }, [step])
+
+  useEffect(() => {
+    sessionStorage.setItem("support_type", type)
+  }, [type])
+
+  useEffect(() => {
+    if (selectedOrder) {
+      sessionStorage.setItem("support_selectedOrder", JSON.stringify(selectedOrder))
+    } else {
+      sessionStorage.removeItem("support_selectedOrder")
+    }
+  }, [selectedOrder])
+
+  useEffect(() => {
+    if (selectedRestaurant) {
+      sessionStorage.setItem("support_selectedRestaurant", JSON.stringify(selectedRestaurant))
+    } else {
+      sessionStorage.removeItem("support_selectedRestaurant")
+    }
+  }, [selectedRestaurant])
+
+  useEffect(() => {
+    sessionStorage.setItem("support_issueType", issueType)
+  }, [issueType])
+
+  useEffect(() => {
+    sessionStorage.setItem("support_subject", subject)
+  }, [subject])
+
+  useEffect(() => {
+    sessionStorage.setItem("support_description", description)
+  }, [description])
+
+  useEffect(() => {
+    sessionStorage.setItem("support_orderSearch", orderSearch)
+  }, [orderSearch])
+
+  useEffect(() => {
+    sessionStorage.setItem("support_restaurantSearch", restaurantSearch)
+  }, [restaurantSearch])
+
+  // Clear form helper
+  const clearFormState = () => {
+    setStep("pick")
+    setType("")
+    setSelectedOrder(null)
+    setSelectedRestaurant(null)
+    setIssueType("")
+    setSubject("")
+    setDescription("")
+    setOrderSearch("")
+    setRestaurantSearch("")
+    sessionStorage.removeItem("support_step")
+    sessionStorage.removeItem("support_type")
+    sessionStorage.removeItem("support_selectedOrder")
+    sessionStorage.removeItem("support_selectedRestaurant")
+    sessionStorage.removeItem("support_issueType")
+    sessionStorage.removeItem("support_subject")
+    sessionStorage.removeItem("support_description")
+    sessionStorage.removeItem("support_orderSearch")
+    sessionStorage.removeItem("support_restaurantSearch")
+  }
 
   useEffect(() => {
     setLoadingTickets(true)
@@ -63,6 +136,15 @@ export default function Support() {
     }
   }
 
+  // Load lists on mount if step is already chosen due to refresh
+  useEffect(() => {
+    if (type === "order") {
+      fetchOrders()
+    } else if (type === "restaurant") {
+      fetchRestaurants()
+    }
+  }, [type])
+
   const handlePick = (t) => {
     setType(t)
     setOrderSearch("")
@@ -86,13 +168,7 @@ export default function Support() {
       if (!data?.success) throw new Error(data?.message || "Failed")
       toast.success("Ticket created")
       setTickets((prev) => [data?.data?.ticket, ...prev])
-      setStep("pick")
-      setType("")
-      setSelectedOrder(null)
-      setSelectedRestaurant(null)
-      setIssueType("")
-      setSubject("")
-      setDescription("")
+      clearFormState()
     } catch (e) {
       const message =
         e?.response?.data?.message ||
@@ -291,7 +367,7 @@ export default function Support() {
                 ) : (
                   <p className="text-sm text-slate-500">No recent orders found</p>
                 )}
-                <Button variant="outline" onClick={() => setStep("pick")}>Back</Button>
+                <Button variant="outline" onClick={clearFormState}>Back</Button>
               </div>
             )}
 
@@ -308,7 +384,7 @@ export default function Support() {
                   <Button onClick={() => submitTicket({ type: "order", orderId: selectedOrder._id || selectedOrder.id, issueType, description })} disabled={!issueType || submitting}>
                     {submitting ? "Submitting..." : "Submit Ticket"}
                   </Button>
-                  <Button variant="outline" onClick={() => setStep("pick")}>Cancel</Button>
+                  <Button variant="outline" onClick={clearFormState}>Cancel</Button>
                 </div>
               </div>
             )}
@@ -336,7 +412,7 @@ export default function Support() {
                 ) : (
                   <p className="text-sm text-slate-500">No restaurants found</p>
                 )}
-                <Button variant="outline" onClick={() => setStep("pick")}>Back</Button>
+                <Button variant="outline" onClick={clearFormState}>Back</Button>
               </div>
             )}
 
@@ -353,7 +429,7 @@ export default function Support() {
                   <Button onClick={() => submitTicket({ type: "restaurant", restaurantId: selectedRestaurant._id || selectedRestaurant.id, issueType, description })} disabled={!issueType || submitting}>
                     {submitting ? "Submitting..." : "Submit Ticket"}
                   </Button>
-                  <Button variant="outline" onClick={() => setStep("pick")}>Cancel</Button>
+                  <Button variant="outline" onClick={clearFormState}>Cancel</Button>
                 </div>
               </div>
             )}
@@ -366,7 +442,7 @@ export default function Support() {
                   <Button onClick={() => submitTicket({ type: "other", issueType: subject || "Other", description })} disabled={!subject || submitting}>
                     {submitting ? "Submitting..." : "Submit Ticket"}
                   </Button>
-                  <Button variant="outline" onClick={() => setStep("pick")}>Cancel</Button>
+                  <Button variant="outline" onClick={clearFormState}>Cancel</Button>
                 </div>
               </div>
             )}

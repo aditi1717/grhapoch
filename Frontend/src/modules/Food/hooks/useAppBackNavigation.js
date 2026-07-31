@@ -88,7 +88,12 @@ const resolveBackPath = ({ pathname, search, state }) => {
   }
 
   if (normalizedPath === "/user/orders") {
-    return "/food/user/profile"
+    if (explicitBackPath) return explicitBackPath;
+    if (searchParams.has("rateOrderId")) return -1;
+    if (typeof window !== "undefined" && window.history && window.history.length > 1) {
+      return -1;
+    }
+    return "/food/user";
   }
 
   if (/^\/user\/orders\/[^/]+(\/invoice|\/details)?$/.test(normalizedPath)) {
@@ -149,6 +154,11 @@ export default function useAppBackNavigation() {
   const location = useLocation()
 
   return useCallback(() => {
-    navigate(resolveBackPath(location), { state: { isBack: true } })
+    const target = resolveBackPath(location)
+    if (target === -1) {
+      navigate(-1)
+    } else {
+      navigate(target, { state: { isBack: true } })
+    }
   }, [location, navigate])
 }

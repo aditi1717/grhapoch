@@ -166,16 +166,15 @@ export default function Notifications() {
       <div className="max-w-md md:max-w-2xl lg:max-w-4xl xl:max-w-5xl mx-auto px-3 sm:px-4 md:px-6 lg:px-8 py-4 sm:py-6 md:py-8">
         {/* Header */}
         <div className="flex items-center gap-3 sm:gap-4 mb-4 md:mb-6 lg:mb-8">
-          <Link to="/user">
+          <Link to="/user" className="shrink-0">
             <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-10 sm:w-10">
               <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
           </Link>
-          <div className="flex items-center gap-2 sm:gap-3 flex-1">
-            <Bell className="h-5 w-5 sm:h-6 sm:w-6 text-[#EB590E] fill-[#EB590E]" />
-            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white">Notifications</h1>
+          <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+            <h1 className="text-lg sm:text-xl md:text-2xl lg:text-3xl font-bold text-gray-800 dark:text-white truncate">Notifications</h1>
             {unreadCount > 0 && (
-              <Badge className="bg-[#EB590E] text-white text-xs md:text-sm">
+              <Badge className="bg-[#EB590E] text-white text-xs md:text-sm shrink-0">
                 {unreadCount}
               </Badge>
             )}
@@ -185,7 +184,7 @@ export default function Notifications() {
               variant="ghost" 
               size="sm" 
               onClick={handleClearAll}
-              className="text-gray-500 hover:text-red-500 transition-colors flex items-center gap-1.5 px-2 md:px-3"
+              className="text-gray-500 hover:text-red-500 transition-colors flex items-center gap-1.5 px-2 md:px-3 shrink-0"
             >
               <Trash2 className="h-4 w-4" />
               <span className="text-xs md:text-sm font-medium">Clear All</span>
@@ -204,10 +203,6 @@ export default function Notifications() {
                 className={`relative cursor-pointer transition-all duration-200 py-1 hover:shadow-md ${!notification.read ? "bg-red-50/50 dark:bg-red-900/20 border-red-200 dark:border-red-800" : "bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700"
                   }`}
               >
-                {/* Unread Dot - Top Right */}
-                {!notification.read && (
-                  <div className="absolute top-2 right-2 w-2.5 h-2.5 md:w-3 md:h-3 bg-[#EB590E] rounded-full" />
-                )}
 
                 <CardContent className="p-3 md:p-4 lg:p-5">
                   <div className="flex items-start gap-3 sm:gap-4 md:gap-5">

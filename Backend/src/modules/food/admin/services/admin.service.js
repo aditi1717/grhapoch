@@ -3542,15 +3542,13 @@ export async function approveRestaurantAddon(addonId) {
             }
         ],
         { new: true }
-    ).lean();
-
-    if (updated?.restaurantId) {
+    ).lean();    if (updated?.restaurantId) {
         try {
             const { notifyOwnersSafely } = await import('../../../../core/notifications/firebase.service.js');
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated.restaurantId }],
                 {
-                    title: 'Addon Approved! âœ…',
+                    title: 'Addon Approved! ✅',
                     body: `Your addon "${updated.published?.name || 'New Addon'}" has been approved and is now live.`,
                     image: updated.published?.image || undefined,
                     data: {
@@ -3562,6 +3560,23 @@ export async function approveRestaurantAddon(addonId) {
             );
         } catch (e) {
             console.error('Failed to send addon approval notification:', e);
+        }
+
+        try {
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io) {
+                io.to(rooms.restaurant(updated.restaurantId)).emit('food_approval_status', {
+                    success: true,
+                    type: 'addon_approved',
+                    title: 'Addon Approved! ✅',
+                    message: `Your addon "${updated.published?.name || 'New Addon'}" has been approved and is now live.`,
+                    addonId: String(updated._id),
+                    restaurantId: String(updated.restaurantId)
+                });
+            }
+        } catch (socketErr) {
+            console.error('Failed to emit addon approval socket event:', socketErr);
         }
     }
 
@@ -3593,7 +3608,7 @@ export async function rejectRestaurantAddon(addonId, reason) {
             await notifyOwnersSafely(
                 [{ ownerType: 'RESTAURANT', ownerId: updated.restaurantId }],
                 {
-                    title: 'Addon Rejected âŒ',
+                    title: 'Addon Rejected ❌',
                     body: `Your addon request for "${updated.draft?.name || 'New Addon'}" was rejected. Reason: ${rejectionReason}`,
                     image: updated.draft?.image || undefined,
                     data: {
@@ -3606,6 +3621,24 @@ export async function rejectRestaurantAddon(addonId, reason) {
             );
         } catch (e) {
             console.error('Failed to send addon rejection notification:', e);
+        }
+
+        try {
+            const { getIO, rooms } = await import('../../../../config/socket.js');
+            const io = getIO();
+            if (io) {
+                io.to(rooms.restaurant(updated.restaurantId)).emit('food_approval_status', {
+                    success: false,
+                    type: 'addon_rejected',
+                    title: 'Addon Rejected ❌',
+                    message: `Your addon request for "${updated.draft?.name || 'New Addon'}" was rejected. Reason: ${rejectionReason}`,
+                    addonId: String(updated._id),
+                    restaurantId: String(updated.restaurantId),
+                    reason: rejectionReason
+                });
+            }
+        } catch (socketErr) {
+            console.error('Failed to emit addon rejection socket event:', socketErr);
         }
     }
 
@@ -4907,7 +4940,8 @@ export async function getDeliveryEarnings(query = {}) {
     const skip = (page - 1) * limit;
 
     const filter = {
-        'dispatch.deliveryPartnerId': { $ne: null }
+        'dispatch.deliveryPartnerId': { $ne: null },
+        orderStatus: 'delivered'
     };
 
     // Date range filters
@@ -5706,7 +5740,7 @@ export async function getDeliveryWithdrawals(query = {}) {
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit)
-            .populate('deliveryPartnerId', 'name phone profilePartnerId upiId upiQrCode')
+            .populate('deliveryPartnerId', 'name phone upiId upiQrCode')
             .lean(),
         FoodDeliveryWithdrawal.countDocuments(filter)
     ]);
@@ -5716,7 +5750,9 @@ export async function getDeliveryWithdrawals(query = {}) {
         id: w._id,
         deliveryName: w.deliveryPartnerId?.name || 'N/A',
         deliveryPhone: w.deliveryPartnerId?.phone || 'N/A',
-        deliveryIdString: w.deliveryPartnerId?.profilePartnerId || 'N/A',
+        deliveryIdString: w.deliveryPartnerId?._id
+            ? `DEL${w.deliveryPartnerId._id.toString().slice(-6).toUpperCase()}`
+            : 'N/A',
         status: w.status.charAt(0).toUpperCase() + w.status.slice(1)
     }));
 
@@ -5784,7 +5820,7 @@ export async function updateDeliveryWithdrawalStatus(id, { status, adminNote, re
     await existing.save();
 
     return FoodDeliveryWithdrawal.findById(id)
-        .populate('deliveryPartnerId', 'name phone profilePartnerId')
+        .populate('deliveryPartnerId', 'name phone')
         .lean();
 }
 

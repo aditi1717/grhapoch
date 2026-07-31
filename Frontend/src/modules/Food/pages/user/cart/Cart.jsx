@@ -364,6 +364,18 @@ export default function Cart() {
     gstRate: 0,
   })
 
+  // Prevent background scrolling when payment options sheet is open
+  useEffect(() => {
+    if (showPaymentSheet) {
+      document.body.style.overflow = "hidden"
+    } else {
+      document.body.style.overflow = "unset"
+    }
+    return () => {
+      document.body.style.overflow = "unset"
+    }
+  }, [showPaymentSheet])
+
   // Cash on Delivery has been removed; coerce any stale selection to online payment if the feature setting is disabled.
   useEffect(() => {
     if (selectedPaymentMethod === "cash" && !isFeatureEnabled("cod_control", true)) {

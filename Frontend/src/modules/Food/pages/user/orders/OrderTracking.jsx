@@ -1026,21 +1026,21 @@ export default function OrderTracking() {
           lastRealtimeRefreshRef.current = now;
           handleRefresh();
         }
-      }
 
-      // Show notification toast
-      if (message) {
-        toast.success(message, {
-          duration: 5000,
-          position: 'top-center',
-          description: estimatedDeliveryTime
-            ? `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes`
-            : undefined
-        });
+        // Show notification toast
+        if (message) {
+          toast.success(message, {
+            duration: 5000,
+            position: 'top-center',
+            description: estimatedDeliveryTime
+              ? `Estimated delivery in ${Math.round(estimatedDeliveryTime / 60)} minutes`
+              : undefined
+          });
 
-        // Optional: Vibrate device if supported
-        if (navigator.vibrate) {
-          navigator.vibrate([200, 100, 200]);
+          // Optional: Vibrate device if supported
+          if (navigator.vibrate) {
+            navigator.vibrate([200, 100, 200]);
+          }
         }
       }
     };

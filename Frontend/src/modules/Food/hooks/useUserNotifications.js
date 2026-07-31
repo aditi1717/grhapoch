@@ -155,6 +155,29 @@ export const useUserNotifications = () => {
       dispatchNotificationInboxRefresh();
     });
 
+    socketRef.current.on('dining_booking_status_update', (data) => {
+      debugLog('🔔 Dining booking status update received:', data);
+      if (data?.status === 'cancelled') {
+        const title = `Booking Cancelled 🍽️`;
+        const desc = `Your table booking #${data.bookingRef?.slice(-6) || ''} at ${data.restaurantName || 'Restaurant'} has been cancelled because the reservation time has passed.`;
+        toast.error(title, {
+          description: desc,
+          duration: 10000
+        });
+      } else {
+        const title = `Booking Update 🍽️`;
+        const desc = `Your table booking #${data.bookingRef?.slice(-6) || ''} status is now: ${data.status}.`;
+        toast.message(title, {
+          description: desc,
+          duration: 8000
+        });
+      }
+      
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('diningBookingStatusUpdate', { detail: data }));
+      }
+    });
+
     socketRef.current.on('connect_error', (error) => {
       if (import.meta.env.DEV) {
         // debugLog('❌ Socket connection error:', error.message);

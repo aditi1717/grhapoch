@@ -283,6 +283,22 @@ export default function DiningReservations() {
         return () => interval && clearInterval(interval)
     }, [pendingRequest?._id])
 
+    useEffect(() => {
+        const handleStatusUpdateEvent = (event) => {
+            const { bookingId, status } = event.detail || {};
+            if (bookingId && status) {
+                setBookings((prev) =>
+                    prev.map((b) => (b._id === bookingId ? { ...b, status } : b))
+                );
+            }
+        };
+
+        window.addEventListener("diningBookingStatusUpdate", handleStatusUpdateEvent);
+        return () => {
+            window.removeEventListener("diningBookingStatusUpdate", handleStatusUpdateEvent);
+        };
+    }, []);
+
     const handleRestaurantPhotoUpload = async (event) => {
         const files = Array.from(event.target.files || [])
         if (files.length === 0) return

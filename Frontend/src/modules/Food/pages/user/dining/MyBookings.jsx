@@ -364,10 +364,14 @@ export default function MyBookings() {
             {/* Fixed header with backdrop blur */}
             <div className="bg-white/95 dark:bg-[#0a0a0a]/95 backdrop-blur-xl p-3 flex items-center shadow-sm sticky top-0 z-40 border-b border-slate-200 dark:border-gray-800">
                 <button onClick={() => {
-                    if (location.pathname.startsWith("/food")) {
-                        navigate("/food/user/profile")
+                    const fromPage = location.state?.from;
+                    const isFood = location.pathname.startsWith("/food");
+                    if (fromPage === "dining") {
+                        navigate(isFood ? "/food/user/dining" : "/user/dining");
+                    } else if (fromPage === "profile") {
+                        navigate(isFood ? "/food/user/profile" : "/user/profile");
                     } else {
-                        navigate("/user/profile")
+                        navigate(isFood ? "/food/user/dining" : "/user/dining");
                     }
                 }}>
                     <ArrowLeft className="w-5 h-5 text-gray-700 dark:text-white cursor-pointer" />

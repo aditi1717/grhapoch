@@ -189,9 +189,15 @@ export default function MenuCategoriesPage() {
       return
     }
 
+    let imageUrl = String(formData.image || "").trim()
+
+    if (!selectedImageFile && !imageUrl) {
+      toast.error("Category image is compulsory. Please select/upload an image.")
+      return
+    }
+
     try {
       setUploadingImage(true)
-      let imageUrl = String(formData.image || "").trim()
 
       if (selectedImageFile) {
         const res = await uploadAPI.uploadMedia(selectedImageFile, { folder: "food/categories" })
@@ -478,7 +484,11 @@ export default function MenuCategoriesPage() {
                   />
                 </div>
 
-                <div className="flex items-center gap-3">
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-slate-700">
+                    Category Image <span className="text-red-500 font-bold">*</span>
+                  </label>
+                  <div className="flex items-center gap-3">
                   {(imagePreview || formData.image) && (
                     <img
                       src={imagePreview || formData.image}
@@ -501,6 +511,7 @@ export default function MenuCategoriesPage() {
                     accept="image/*"
                     onChange={(e) => handleImageFileChange(e.target.files?.[0])}
                   />
+                  </div>
                 </div>
 
                 <label className="flex items-center gap-2 text-sm text-slate-700">

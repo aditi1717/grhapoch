@@ -21,6 +21,7 @@ const SHUTDOWN_TIMEOUT_MS = 10000;
 let server = null;
 let expireOffersInterval = null;
 let fssaiExpiryInterval = null;
+let diningExpiryInterval = null;
 
 const gracefulShutdown = async (signal) => {
     logger.info(`${signal} received, starting graceful shutdown`);
@@ -35,6 +36,7 @@ const gracefulShutdown = async (signal) => {
             await closeBullMQConnection();
             if (expireOffersInterval) clearInterval(expireOffersInterval);
             if (fssaiExpiryInterval) clearInterval(fssaiExpiryInterval);
+            if (diningExpiryInterval) clearInterval(diningExpiryInterval);
             logger.info('Graceful shutdown complete');
             process.exit(0);
         } catch (err) {
@@ -80,6 +82,17 @@ const startBackgroundJobs = async () => {
     };
     await runFssaiExpirySync();
     fssaiExpiryInterval = setInterval(runFssaiExpirySync, 60 * 60 * 1000);
+
+    const runDiningExpiry = async () => {
+        try {
+            const { autoRejectExpiredBookings } = await import('./src/modules/food/dining/services/dining.service.js');
+            await autoRejectExpiredBookings();
+        } catch (err) {
+            logger.error(`Dining expiry sync error: ${err.message}`);
+        }
+    };
+    await runDiningExpiry();
+    diningExpiryInterval = setInterval(runDiningExpiry, 60 * 1000);
 };
 
 const startServer = async () => {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { Link, useNavigate } from "react-router-dom"
+import { Link, useNavigate, useLocation, useSearchParams } from "react-router-dom"
 import { ArrowLeft, Search, MoreVertical, ChevronRight, Star, RotateCcw, AlertCircle, Loader2, Clock, X, Share2, MessageCircle, Send, Copy, Mail, MessagesSquare, Link2 } from "lucide-react"
 import { orderAPI } from "@food/api"
 import { useCart } from "@food/context/CartContext"
@@ -19,7 +19,14 @@ const toNum = (value) => {
 export default function Orders() {
   const navigate = useNavigate()
   const goBack = useAppBackNavigation()
+  const handleBackToProfile = () => {
+    const isFood = window.location.pathname.startsWith("/food");
+    navigate(isFood ? "/food/user/profile" : "/user/profile");
+  };
   const { replaceCart } = useCart()
+  const location = useLocation()
+  const [searchParams] = useSearchParams()
+  const rateOrderId = searchParams.get("rateOrderId")
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
@@ -141,9 +148,9 @@ export default function Orders() {
         transformedStatus.toLowerCase() === 'delivered' ||
         transformedStatus.toLowerCase() === 'completed'
 
-      const hasRestaurantRating = Number.isFinite(Number(order.restaurantRating))
+      const hasRestaurantRating = order.restaurantRating != null && Number(order.restaurantRating) > 0
       const hasDeliveryPartner = !!(order.deliveryPartnerId || order.deliveryPartnerName)
-      const hasDeliveryRating = Number.isFinite(Number(order.deliveryPartnerRating))
+      const hasDeliveryRating = order.deliveryPartnerRating != null && Number(order.deliveryPartnerRating) > 0
       const hasRating = hasRestaurantRating && (!hasDeliveryPartner || hasDeliveryRating)
 
       const orderId = order.id || order._id || order.mongoId
@@ -202,6 +209,37 @@ export default function Orders() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [orders, shownRatingForOrders, ratingModal.open])
+
+  // Handle opening rating modal from query parameter (e.g. from tracking card redirect)
+  useEffect(() => {
+    if (rateOrderId && orders.length > 0 && !ratingModal.open) {
+      const forceOpen = searchParams.get("force") === "1"
+      const targetKey = String(rateOrderId).toLowerCase().trim()
+      const orderToRate = orders.find((o) => {
+        const oid = String(o.id || "").toLowerCase().trim()
+        const mongoId = String(o.mongoId || o._id || "").toLowerCase().trim()
+        const orderId = String(o.orderId || o.order_id || "").toLowerCase().trim()
+        return oid === targetKey || mongoId === targetKey || orderId === targetKey || (targetKey.length > 4 && (targetKey.includes(oid) || targetKey.includes(mongoId) || targetKey.includes(orderId)))
+      });
+      if (orderToRate) {
+        const hasRestaurantRating = orderToRate.restaurantRating != null && Number(orderToRate.restaurantRating) > 0;
+        const hasDeliveryPartner = !!(orderToRate.deliveryPartnerId || orderToRate.deliveryPartnerName);
+        const hasDeliveryRating = orderToRate.deliveryPartnerRating != null && Number(orderToRate.deliveryPartnerRating) > 0;
+        const hasRating = hasRestaurantRating && (!hasDeliveryPartner || hasDeliveryRating);
+
+        const orderId = orderToRate.id || orderToRate._id || orderToRate.mongoId;
+        const hasShownPopup = shownRatingForOrders.has(orderId);
+
+        if (!hasRating && (!hasShownPopup || forceOpen)) {
+          setRatingModal({ open: true, order: orderToRate });
+          setSelectedRestaurantRating(orderToRate.restaurantRating || null);
+          setSelectedDeliveryRating(orderToRate.deliveryPartnerRating || null);
+          setRestaurantFeedbackText(orderToRate.ratings?.restaurant?.comment || "");
+          setDeliveryFeedbackText(orderToRate.ratings?.deliveryPartner?.comment || "");
+        }
+      }
+    }
+  }, [rateOrderId, orders, ratingModal.open, shownRatingForOrders, searchParams])
 
   // Fetch orders from backend API
   useEffect(() => {
@@ -310,10 +348,15 @@ export default function Orders() {
             const computedTotal = Math.max(0, subtotal + deliveryFee + packagingFee + platformFee + tax - discount)
             const total = toNum(pricing.total ?? order.total ?? computedTotal) || computedTotal
 
+            const rawOId = String(order.orderId || order.order_id || order.displayOrderId || '');
+            const formattedOId = rawOId
+              ? (rawOId.startsWith('FOD-') ? rawOId : `FOD-${rawOId.replace(/^ORD-/, '')}`)
+              : (order._id ? `FOD-${order._id.toString().slice(-6).toUpperCase()}` : `FOD-${String(order.id || '').slice(-6).toUpperCase()}`);
+
             return {
               id: order._id?.toString() || order.orderId || `ORD-${order._id}`,
               mongoId: order._id,
-              orderId: order.orderId || order._id?.toString(), // Keep orderId for display
+              orderId: formattedOId, // Consistent FOD- format for display
               status: isRestaurantCancelled ? 'restaurant_cancelled' : getOrderStatus({ ...order, status: backendStatus }),
               originalStatus: originalStatus, // Keep original status for reference
               createdAt: createdAt.toISOString(),
@@ -632,11 +675,33 @@ Order again from this restaurant in the ${companyName} app.`
   }
 
   const handleCloseRating = () => {
+    if (ratingModal.order) {
+      const order = ratingModal.order;
+      const orderId = order.id || order._id || order.mongoId;
+      setShownRatingForOrders(prev => new Set([...prev, orderId]));
+      try {
+        const orderKeys = [
+          String(order.id || ''),
+          String(order._id || ''),
+          String(order.mongoId || ''),
+          String(order.orderId || ''),
+          String(order.order_id || '')
+        ].filter(Boolean);
+        const saved = localStorage.getItem("dismissed_tracking_cards");
+        const currentSet = saved ? new Set(JSON.parse(saved)) : new Set();
+        orderKeys.forEach(k => currentSet.add(k));
+        localStorage.setItem("dismissed_tracking_cards", JSON.stringify(Array.from(currentSet)));
+        window.dispatchEvent(new Event("order-dismissed"));
+      } catch (e) {}
+    }
     setRatingModal({ open: false, order: null })
     setSelectedRestaurantRating(null)
     setSelectedDeliveryRating(null)
     setRestaurantFeedbackText("")
     setDeliveryFeedbackText("")
+    if (rateOrderId) {
+      navigate(location.pathname, { replace: true })
+    }
   }
 
   // Submit rating & feedback to backend
@@ -683,6 +748,21 @@ Order again from this restaurant in the ${companyName} app.`
       const orderId = order.id || order._id || order.mongoId
       setShownRatingForOrders(prev => new Set([...prev, orderId]))
 
+      try {
+        const orderKeys = [
+          String(order.id || ''),
+          String(order._id || ''),
+          String(order.mongoId || ''),
+          String(order.orderId || ''),
+          String(order.order_id || '')
+        ].filter(Boolean);
+        const saved = localStorage.getItem("dismissed_tracking_cards");
+        const currentSet = saved ? new Set(JSON.parse(saved)) : new Set();
+        orderKeys.forEach(k => currentSet.add(k));
+        localStorage.setItem("dismissed_tracking_cards", JSON.stringify(Array.from(currentSet)));
+        window.dispatchEvent(new Event("order-dismissed"));
+      } catch (e) {}
+
       handleCloseRating()
     } catch (error) {
       debugError("Error submitting order ratings:", error)
@@ -701,7 +781,7 @@ Order again from this restaurant in the ${companyName} app.`
         <div className="bg-white dark:bg-zinc-900 p-4 flex items-center shadow-sm sticky top-0 z-10 border-b border-gray-100 dark:border-zinc-800">
           <button
             type="button"
-            onClick={goBack}
+            onClick={handleBackToProfile}
             className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
           >
             <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-200 cursor-pointer" />
@@ -721,7 +801,7 @@ Order again from this restaurant in the ${companyName} app.`
         <div className="bg-white dark:bg-zinc-900 p-4 flex items-center shadow-sm sticky top-0 z-10 border-b border-gray-100 dark:border-zinc-800">
           <button
             type="button"
-            onClick={goBack}
+            onClick={handleBackToProfile}
             className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800"
           >
             <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-200 cursor-pointer" />
@@ -744,7 +824,7 @@ Order again from this restaurant in the ${companyName} app.`
       <div className="bg-white dark:bg-slate-900 p-4 flex items-center shadow-sm sticky top-0 z-10 border-b border-gray-100 dark:border-slate-800">
         <button
           type="button"
-          onClick={goBack}
+          onClick={handleBackToProfile}
           className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-slate-800"
         >
           <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-200 cursor-pointer" />
@@ -1143,7 +1223,12 @@ Order again from this restaurant in the ${companyName} app.`
                   <X className="w-5 h-5" />
                 </button>
               </div>
-              <p className="text-sm text-black/80">{ratingModal.order.restaurant}</p>
+              <p className="text-sm font-bold text-black/90">{ratingModal.order.restaurant}</p>
+              <p className="text-xs text-black/80 mt-0.5 font-semibold">
+                Order #{String(ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id || "").startsWith("FOD-")
+                  ? (ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id)
+                  : `FOD-${String(ratingModal.order.orderId || ratingModal.order.order_id || ratingModal.order.displayOrderId || ratingModal.order.id || ratingModal.order._id || "").replace(/^ORD-/, "").slice(-6).toUpperCase()}`}
+              </p>
             </div>
 
             <div className="px-6 py-6">
@@ -1151,7 +1236,7 @@ Order again from this restaurant in the ${companyName} app.`
                 <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                   Restaurant rating (out of 5)
                 </p>
-                <div className="flex items-center justify-center gap-2 mb-3">
+                <div className="flex items-center gap-1 mb-3">
                   {Array.from({ length: 5 }, (_, i) => i + 1).map((num) => {
                     const isActive = (selectedRestaurantRating || 0) >= num
                     return (
@@ -1159,10 +1244,10 @@ Order again from this restaurant in the ${companyName} app.`
                         key={`restaurant-${num}`}
                         type="button"
                         onClick={() => setSelectedRestaurantRating(num)}
-                        className="p-2 transition-transform hover:scale-125 active:scale-95"
+                        className="p-1 transition-transform hover:scale-125 active:scale-95"
                       >
                         <Star
-                          className={`w-10 h-10 transition-all ${isActive
+                          className={`w-6 h-6 transition-all ${isActive
                             ? "text-yellow-400 fill-yellow-400 drop-shadow-lg"
                             : "text-gray-300 dark:text-zinc-800 hover:text-yellow-200"
                             }`}
@@ -1185,7 +1270,7 @@ Order again from this restaurant in the ${companyName} app.`
                   <p className="text-sm font-semibold text-gray-900 dark:text-white mb-3">
                     Delivery partner rating (out of 5)
                   </p>
-                  <div className="flex items-center justify-center gap-2 mb-3">
+                  <div className="flex items-center gap-1 mb-3">
                     {Array.from({ length: 5 }, (_, i) => i + 1).map((num) => {
                       const isActive = (selectedDeliveryRating || 0) >= num
                       return (
@@ -1193,10 +1278,10 @@ Order again from this restaurant in the ${companyName} app.`
                           key={`delivery-${num}`}
                           type="button"
                           onClick={() => setSelectedDeliveryRating(num)}
-                          className="p-2 transition-transform hover:scale-125 active:scale-95"
+                          className="p-1 transition-transform hover:scale-125 active:scale-95"
                         >
                           <Star
-                            className={`w-10 h-10 transition-all ${isActive
+                            className={`w-6 h-6 transition-all ${isActive
                               ? "text-yellow-400 fill-yellow-400 drop-shadow-lg"
                               : "text-gray-300 dark:text-zinc-800 hover:text-yellow-200"
                               }`}

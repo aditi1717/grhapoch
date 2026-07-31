@@ -266,6 +266,13 @@ export function useLocationSimple() {
 
   // Initialize: Load cached location; only fetch if missing.
   useEffect(() => {
+    const isNewSession = !sessionStorage.getItem("session_initialized")
+    if (isNewSession) {
+      sessionStorage.setItem("session_initialized", "true")
+      localStorage.removeItem("userLocation")
+      localStorage.removeItem("user_location")
+    }
+
     // Load cached location immediately (no loading state)
     const cached = localStorage.getItem("userLocation")
     if (cached) {

@@ -192,6 +192,34 @@ const mapExpiredFssai = (response) => {
   }));
 };
 
+const mapOrders = (response) => {
+  const payload = response?.data?.data;
+  const rows = payload?.orders ?? payload?.data ?? response?.data?.orders ?? [];
+  return (Array.isArray(rows) ? rows : [])
+    .filter((item) => {
+      const status = String(item?.orderStatus || item?.status || "").toLowerCase();
+      return status && status !== "delivered" && status !== "cancelled" && status !== "restaurant_cancelled";
+    })
+    .map((item) => {
+      const orderIdStr = item?.id || item?._id || item?.orderId || "";
+      const customerName = item?.user?.name || item?.customer?.name || "Customer";
+      const restaurantName = item?.restaurantName || item?.restaurant?.name || "Restaurant";
+      const orderStatus = String(item?.orderStatus || item?.status || "placed").toLowerCase();
+      
+      return {
+        id: `order-alert-${String(orderIdStr)}`,
+        title: `Order #${String(orderIdStr).slice(-6).toUpperCase() || "New Order"}`,
+        message: `Order is ${orderStatus.replace("_", " ")}. Customer: ${customerName}. Restaurant: ${restaurantName}. Total amount: ₹${item?.totalAmount || item?.amount || 0}.`,
+        type: "order",
+        category: "order",
+        path: `/admin/food/orders`,
+        createdAt: item?.createdAt || item?.updatedAt,
+        timeLabel: toDateLabel(item?.createdAt || item?.updatedAt),
+        metaLabel: joinMeta(customerName, restaurantName, `₹${item?.totalAmount || item?.amount || 0}`, orderStatus.replace("_", " ")),
+      };
+    });
+};
+
 export default function useAdminNotifications(options = {}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(Boolean(options?.autoload !== false));
@@ -208,6 +236,7 @@ export default function useAdminNotifications(options = {}) {
         supportRes,
         deliverySupportRes,
         fssaiExpiredRes,
+        ordersRes,
       ] = await Promise.all([
         adminAPI.getPendingRestaurants(),
         adminAPI.getDeliveryPartnerJoinRequests({ page: 1, limit: 50 }),
@@ -215,6 +244,7 @@ export default function useAdminNotifications(options = {}) {
         adminAPI.getSupportTicketsAdmin({ page: 1, limit: 50, source: "all" }),
         adminAPI.getDeliverySupportTickets({ page: 1, limit: 50 }),
         adminAPI.getExpiredFssaiNotifications(),
+        adminAPI.getOrders({ page: 1, limit: 50 }),
       ]);
 
       const restaurantRows =
@@ -229,6 +259,7 @@ export default function useAdminNotifications(options = {}) {
         ...mapUserRestaurantSupport(supportRes),
         ...mapDeliverySupport(deliverySupportRes),
         ...mapExpiredFssai(fssaiExpiredRes),
+        ...mapOrders(ordersRes),
       ])
         .filter((item) => !dismissed.has(item.id))
         .sort((a, b) => toDateValue(b.createdAt) - toDateValue(a.createdAt));

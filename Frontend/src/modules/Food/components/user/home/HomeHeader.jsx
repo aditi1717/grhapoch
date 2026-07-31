@@ -409,13 +409,22 @@ export default function HomeHeader({
                   )}
                 </h3>
                 <div className="flex items-center gap-2">
-                  <Link
-                    to="/food/user/notifications"
-                    onClick={() => closeNotifications()}
-                    className="text-xs font-bold text-orange-600 hover:text-orange-700"
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsNotificationsOpen(false);
+                      if (notificationsHistoryPushedRef.current) {
+                        notificationsHistoryPushedRef.current = false;
+                        window.history.back();
+                      }
+                      setTimeout(() => {
+                        navigate("/food/user/notifications");
+                      }, 50);
+                    }}
+                    className="text-xs font-bold text-orange-600 hover:text-orange-700 bg-transparent border-0 outline-none p-0 cursor-pointer"
                   >
                     {mergedNotifications.length > 0 ? "View All" : ""}
-                  </Link>
+                  </button>
                   <button
                     type="button"
                     onClick={() => closeNotifications()}

@@ -28,6 +28,10 @@ export default function DeliverymanReviews() {
     date: true,
   })
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
   const filteredReviews = useMemo(() => {
     if (!searchQuery.trim()) {
       return reviews
@@ -43,16 +47,26 @@ export default function DeliverymanReviews() {
     )
   }, [reviews, searchQuery])
 
+  // Reset page when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const paginatedReviews = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredReviews.slice(start, start + itemsPerPage)
+  }, [filteredReviews, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredReviews.length / itemsPerPage)
+
   const handleExport = (format) => {
     if (filteredReviews.length === 0) {
       alert("No data to export")
       return
     }
     switch (format) {
-      case "csv": exportReviewsToCSV(filteredReviews); break
       case "excel": exportReviewsToExcel(filteredReviews); break
       case "pdf": exportReviewsToPDF(filteredReviews); break
-      case "json": exportReviewsToJSON(filteredReviews); break
     }
   }
 
@@ -204,10 +218,6 @@ export default function DeliverymanReviews() {
                 <DropdownMenuContent align="end" className="w-56 bg-white border border-slate-200 rounded-lg shadow-lg z-50 animate-in fade-in-0 zoom-in-95 duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95">
                   <DropdownMenuLabel>Export Format</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => handleExport("csv")} className="cursor-pointer">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Export as CSV
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => handleExport("excel")} className="cursor-pointer">
                     <FileSpreadsheet className="w-4 h-4 mr-2" />
                     Export as Excel
@@ -215,10 +225,6 @@ export default function DeliverymanReviews() {
                   <DropdownMenuItem onClick={() => handleExport("pdf")} className="cursor-pointer">
                     <FileText className="w-4 h-4 mr-2" />
                     Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleExport("json")} className="cursor-pointer">
-                    <Code className="w-4 h-4 mr-2" />
-                    Export as JSON
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
@@ -313,7 +319,7 @@ export default function DeliverymanReviews() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredReviews.map((review) => (
+                  {paginatedReviews.map((review) => (
                     <tr key={review.sl || review.orderId} className="hover:bg-slate-50 transition-colors">
                       {visibleColumns.si && (
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -385,6 +391,69 @@ export default function DeliverymanReviews() {
               </table>
             )}
           </div>
+
+          {/* Pagination */}
+          {filteredReviews.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(parseInt(e.target.value, 10))
+                    setCurrentPage(1)
+                  }}
+                  className="px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-slate-600">entries</span>
+              </div>
+              <p className="text-sm text-slate-600">
+                Showing {Math.min(filteredReviews.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(currentPage * itemsPerPage, filteredReviews.length)} of {filteredReviews.length} reviews
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                  const pageNum = currentPage <= 3 
+                    ? idx + 1 
+                    : currentPage >= totalPages - 2 
+                      ? totalPages - 4 + idx 
+                      : currentPage - 2 + idx
+                  if (pageNum < 1 || pageNum > totalPages) return null
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm rounded border transition-colors ${
+                        currentPage === pageNum
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

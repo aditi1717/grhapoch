@@ -3,6 +3,9 @@ import { Refund } from './models/refund.model.js';
 import { Payment } from './models/payment.model.js';
 import { creditWallet } from './wallet.service.js';
 import { getRazorpayInstance, isRazorpayConfigured } from '../../modules/food/orders/helpers/razorpay.helper.js';
+import { getIO, rooms } from '../../config/socket.js';
+import { sendNotificationToOwner } from '../notifications/firebase.service.js';
+import { createInboxNotifications } from '../notifications/notification.service.js';
 import { logger } from '../../utils/logger.js';
 
 /**
@@ -56,6 +59,79 @@ export async function initiateRefund({ paymentId, orderId, userId, amount, reaso
             await payment.save();
 
             logger.info(`Refund processed (wallet): ${refund._id} amount=${refund.amount}`);
+
+            // Send notification for refunded amount
+            try {
+                const targetUserId = String(userId || payment.userId || refund.userId);
+                const FoodOrder = mongoose.model('FoodOrder');
+                const orderDoc = await FoodOrder.findById(refund.orderId).select('orderId').lean();
+                const displayOrderId = orderDoc ? orderDoc.orderId : String(refund.orderId);
+                const notificationTitle = "Wallet Refunded 💰";
+                const notificationBody = `Your wallet has been credited with ₹${refund.amount.toFixed(2)} for the cancellation of order #${displayOrderId}.`;
+
+                // 1. Create Inbox Notification
+                try {
+                    await createInboxNotifications({
+                        notifications: [{
+                            ownerType: 'USER',
+                            ownerId: targetUserId,
+                            title: notificationTitle,
+                            message: notificationBody,
+                            category: 'wallet_update',
+                            source: 'SYSTEM',
+                            metadata: {
+                                orderId: String(refund.orderId),
+                                refundId: String(refund._id),
+                                amount: String(refund.amount),
+                                type: 'refund'
+                            }
+                        }]
+                    });
+                } catch (notiErr) {
+                    logger.warn(`Failed to save inbox notification for refund: ${notiErr.message}`);
+                }
+
+                // 2. Send Push Notification (FCM)
+                try {
+                    await sendNotificationToOwner({
+                        ownerType: 'USER',
+                        ownerId: targetUserId,
+                        payload: {
+                            notification: {
+                                title: notificationTitle,
+                                body: notificationBody
+                            },
+                            data: {
+                                category: 'wallet_update',
+                                orderId: String(refund.orderId),
+                                refundId: String(refund._id),
+                                amount: String(refund.amount),
+                                type: 'refund'
+                            }
+                        }
+                    });
+                } catch (pushErr) {
+                    logger.warn(`Failed to send push notification for refund: ${pushErr.message}`);
+                }
+
+                // 3. Socket.IO emission
+                const io = getIO();
+                if (io) {
+                    io.to(rooms.user(targetUserId)).emit('admin_notification', {
+                        title: notificationTitle,
+                        message: notificationBody,
+                        category: 'wallet_update',
+                        metadata: {
+                            orderId: String(refund.orderId),
+                            refundId: String(refund._id),
+                            amount: String(refund.amount),
+                            type: 'refund'
+                        }
+                    });
+                }
+            } catch (notifyErr) {
+                logger.warn(`Failed to process notifications for refund: ${notifyErr.message}`);
+            }
         } catch (err) {
             refund.status = 'failed';
             refund.metadata = { error: err.message };

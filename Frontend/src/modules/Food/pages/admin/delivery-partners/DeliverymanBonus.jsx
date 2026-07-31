@@ -21,7 +21,7 @@ const formatBonusAmount = (transaction) => {
   
   // Clean the bonus string - remove superscript characters
   let cleaned = transaction.bonus.toString()
-    .replace(/¹/g, '') // Remove superscript 1
+    .replace(/ï¿½/g, '') // Remove superscript 1
     .replace(/[\u2070-\u207F\u2080-\u208F]/g, '') // Remove all superscript characters
     .trim()
   
@@ -118,6 +118,22 @@ export default function DeliverymanBonus() {
       transaction.deliveryId?.toLowerCase().includes(query)
     )
   }, [transactions, searchQuery])
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
+  // Reset page when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const paginatedTransactions = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredTransactions.slice(start, start + itemsPerPage)
+  }, [filteredTransactions, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredTransactions.length / itemsPerPage)
 
   const handleInputChange = (field, value) => {
     if (field === "amount") {
@@ -469,7 +485,7 @@ export default function DeliverymanBonus() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-slate-100">
-                  {filteredTransactions.map((transaction) => (
+                  {paginatedTransactions.map((transaction) => (
                     <tr key={transaction.sl} className="hover:bg-slate-50 transition-colors">
                       {visibleColumns.si && (
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -505,6 +521,69 @@ export default function DeliverymanBonus() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!loading && filteredTransactions.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(parseInt(e.target.value, 10))
+                    setCurrentPage(1)
+                  }}
+                  className="px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-slate-600">entries</span>
+              </div>
+              <p className="text-sm text-slate-600">
+                Showing {Math.min(filteredTransactions.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(currentPage * itemsPerPage, filteredTransactions.length)} of {filteredTransactions.length} transactions
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                  const pageNum = currentPage <= 3 
+                    ? idx + 1 
+                    : currentPage >= totalPages - 2 
+                      ? totalPages - 4 + idx 
+                      : currentPage - 2 + idx
+                  if (pageNum < 1 || pageNum > totalPages) return null
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm rounded border transition-colors ${
+                        currentPage === pageNum
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

@@ -76,6 +76,9 @@ export default function EarningAddon() {
     }
   }
 
+  const [currentPage, setCurrentPage] = useState(1)
+  const [itemsPerPage, setItemsPerPage] = useState(10)
+
   const filteredAddons = useMemo(() => {
     if (!searchQuery.trim()) {
       return earningAddons
@@ -87,6 +90,18 @@ export default function EarningAddon() {
       addon.description?.toLowerCase().includes(query)
     )
   }, [earningAddons, searchQuery])
+
+  // Reset page when search query changes
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [searchQuery])
+
+  const paginatedAddons = useMemo(() => {
+    const start = (currentPage - 1) * itemsPerPage
+    return filteredAddons.slice(start, start + itemsPerPage)
+  }, [filteredAddons, currentPage, itemsPerPage])
+
+  const totalPages = Math.ceil(filteredAddons.length / itemsPerPage)
 
   const handleOpenDialog = (addon = null) => {
     if (addon) {
@@ -399,7 +414,7 @@ export default function EarningAddon() {
                       </td>
                     </tr>
                   ) : (
-                    filteredAddons.map((addon) => (
+                    paginatedAddons.map((addon) => (
                       <tr key={addon._id} className="hover:bg-slate-50 transition-colors">
                         {visibleColumns.title && (
                           <td className="px-6 py-4">
@@ -489,6 +504,69 @@ export default function EarningAddon() {
                   )}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Pagination */}
+          {!isLoading && filteredAddons.length > 0 && (
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-4 border-t border-slate-200">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-600">Show</span>
+                <select
+                  value={itemsPerPage}
+                  onChange={(e) => {
+                    setItemsPerPage(parseInt(e.target.value, 10))
+                    setCurrentPage(1)
+                  }}
+                  className="px-2 py-1 text-sm border border-slate-300 rounded focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-slate-700"
+                >
+                  <option value={10}>10</option>
+                  <option value={25}>25</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+                <span className="text-sm text-slate-600">entries</span>
+              </div>
+              <p className="text-sm text-slate-600">
+                Showing {Math.min(filteredAddons.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(currentPage * itemsPerPage, filteredAddons.length)} of {filteredAddons.length} offers
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Previous
+                </button>
+                {Array.from({ length: Math.min(5, totalPages) }).map((_, idx) => {
+                  const pageNum = currentPage <= 3 
+                    ? idx + 1 
+                    : currentPage >= totalPages - 2 
+                      ? totalPages - 4 + idx 
+                      : currentPage - 2 + idx
+                  if (pageNum < 1 || pageNum > totalPages) return null
+                  return (
+                    <button
+                      key={idx}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-3 py-1 text-sm rounded border transition-colors ${
+                        currentPage === pageNum
+                          ? "bg-blue-600 border-blue-600 text-white"
+                          : "border-slate-300 text-slate-700 hover:bg-slate-50"
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                })}
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  className="px-3 py-1 text-sm rounded border border-slate-300 text-slate-600 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-50 transition-colors"
+                >
+                  Next
+                </button>
+              </div>
             </div>
           )}
         </div>

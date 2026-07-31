@@ -152,12 +152,19 @@ export default function SubmitComplaint() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] pb-24">
+    <div className="min-h-screen bg-gray-50 dark:bg-[#0a0a0a] pb-6">
       {/* Header */}
       <div className="bg-white dark:bg-zinc-900 p-4 flex items-center sticky top-0 z-20 shadow-sm border-b border-gray-100 dark:border-zinc-800">
         <button
           type="button"
-          onClick={goBack}
+          onClick={() => {
+            if (window.history.state && window.history.state.idx > 0) {
+              navigate(-1);
+            } else {
+              const isFood = window.location.pathname.startsWith("/food");
+              navigate(isFood ? `/food/user/orders/${orderId}/details` : `/user/orders/${orderId}/details`);
+            }
+          }}
           className="p-1 rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors"
         >
           <ArrowLeft className="w-6 h-6 text-gray-700 dark:text-gray-200" />
@@ -246,7 +253,7 @@ export default function SubmitComplaint() {
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Please provide detailed information about your complaint..."
             rows={6}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#EB590E] focus:border-transparent resize-none"
+            className="w-full px-4 py-3 bg-white dark:bg-zinc-900 border border-gray-300 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-[#EB590E] focus:border-transparent resize-none text-gray-800 dark:text-white"
             required
             maxLength={1000}
           />
@@ -267,7 +274,7 @@ export default function SubmitComplaint() {
         </div>
 
         {/* Submit Button */}
-        <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-zinc-900 border-t border-gray-200 dark:border-zinc-800 p-4 z-20">
+        <div className="mt-6 pb-6">
           <button
             type="submit"
             disabled={submitting}

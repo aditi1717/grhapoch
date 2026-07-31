@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback, useContext } from 'react';
 import io from 'socket.io-client';
 import { API_BASE_URL } from '@food/api/config';
 import { restaurantAPI } from '@food/api';
+import { toast } from 'sonner';
 const alertSound = '/zomato_sms.mp3';
 import { dispatchNotificationInboxRefresh } from '@food/hooks/useNotificationInbox';
 import { RestaurantNotificationContext } from '../context/RestaurantNotificationContext';
@@ -747,6 +748,38 @@ export const useRestaurantNotifications = () => {
     socketRef.current.on('admin_notification', (payload) => {
       void showBrowserBroadcastNotification(payload);
       dispatchNotificationInboxRefresh();
+    });
+
+    socketRef.current.on('dining_booking_status_update', (data) => {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('diningBookingStatusUpdate', {
+            detail: data || {},
+          }),
+        );
+      }
+    });
+
+    socketRef.current.on('food_approval_status', (data) => {
+      if (data?.success) {
+        toast.success(data.title || 'Approved', {
+          description: data.message,
+          duration: 6000
+        });
+      } else {
+        toast.error(data.title || 'Rejected', {
+          description: data.message,
+          duration: 8000
+        });
+      }
+
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(
+          new CustomEvent('foodApprovalStatusUpdate', {
+            detail: data || {},
+          }),
+        );
+      }
     });
 
     audioRef.current = new Audio(resolveAudioSource(alertSound));

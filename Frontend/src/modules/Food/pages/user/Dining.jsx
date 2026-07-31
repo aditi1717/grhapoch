@@ -567,7 +567,7 @@ export default function Dining() {
 
           <div className="flex items-center gap-x-2 sm:gap-x-3">
             {/* Bookings Action */}
-            <Link to="/food/user/bookings" className="flex items-center justify-center h-8 w-8 sm:h-[38px] sm:w-[38px] rounded-full bg-gray-100/80 dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700 shadow-sm transition hover:bg-gray-200 active:scale-95">
+            <Link to="/food/user/bookings" state={{ from: "dining" }} className="flex items-center justify-center h-8 w-8 sm:h-[38px] sm:w-[38px] rounded-full bg-gray-100/80 dark:bg-gray-800 border border-gray-200/60 dark:border-gray-700 shadow-sm transition hover:bg-gray-200 active:scale-95">
               <Calendar className="h-[15px] w-[15px] sm:h-[18px] sm:w-[18px] text-gray-800 dark:text-gray-200" strokeWidth={2} />
             </Link>
 

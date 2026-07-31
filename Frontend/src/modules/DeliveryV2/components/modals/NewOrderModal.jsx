@@ -184,13 +184,13 @@ export const NewOrderModal = ({ order, onAccept, onReject, onMinimize }) => {
                   <div>
                     <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-emerald-600 mb-0.5">Restaurant Pickup</h4>
                     <h3 className="text-gray-950 font-black text-lg leading-tight mb-0.5 line-clamp-1">{restaurantName}</h3>
-                    <p className="text-gray-500 text-[11px] font-bold line-clamp-1">{restaurantAddress}</p>
+                    <p className="text-gray-500 text-[11px] font-bold">{restaurantAddress}</p>
                   </div>
 
                   <div className="pt-1">
                        <h4 className="text-[10px] font-black uppercase tracking-[0.15em] text-blue-600 mb-0.5">Customer Drop</h4>
                     <h3 className="text-gray-950 font-black text-lg leading-tight mb-0.5">Delivery Location</h3>
-                    <p className="text-gray-500 text-[11px] font-bold line-clamp-1">{customerAddress}</p>
+                    <p className="text-gray-500 text-[11px] font-bold">{customerAddress}</p>
                   </div>
                 </div>
               </div>

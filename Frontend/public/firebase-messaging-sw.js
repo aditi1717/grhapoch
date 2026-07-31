@@ -228,46 +228,42 @@ function initializeFirebaseInServiceWorker(config = {}) {
       undefined;
     const notificationKey = getNotificationKey(payload);
 
-    // If app is in foreground (focused window exists): relay to page for in-app display
-    // If app is closed/background (no focused window): show system notification
+    // If app is in foreground (focused window exists): relay to page for in-app display (toast)
     if (focusedClient) {
       pushDebugLog(PUSH_DEBUG_PREFIX, "App is in foreground - relaying to page", { title, body });
-      // Only relay, don't show system notification - page will handle display
       await notifyFocusedClients(payload);
-    } else {
-      // FCM auto-displays notifications when payload contains the "notification" block.
-      // Avoid manual showNotification in that case to prevent duplicate system pushes.
-      const forceManualSanitized = shouldUseManualSanitizedNotification(payload, title, body);
-      if (hasSdkNotificationPayload(payload) && !forceManualSanitized) {
-        pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping manual showNotification to avoid duplicate SDK notification", {
-          title,
-          body,
-          notificationKey,
-        });
-        return;
-      }
+    }
 
-      // App is in background or closed - show system notification
-      pushDebugLog(PUSH_DEBUG_PREFIX, "App is in background/closed - showing system notification", {
+    // Always show system notification (native OS banner)
+    const forceManualSanitized = shouldUseManualSanitizedNotification(payload, title, body);
+    if (hasSdkNotificationPayload(payload) && !forceManualSanitized) {
+      pushDebugLog(PUSH_DEBUG_PREFIX, "Skipping manual showNotification to avoid duplicate SDK notification", {
         title,
         body,
-        image,
         notificationKey,
       });
-
-      if (!title && !body) return;
-      self.registration.showNotification(title, {
-        body,
-        icon: "/favicon.ico",
-        image,
-        tag: notificationKey,
-        renotify: true,
-        silent: false,
-        requireInteraction: false,
-        vibrate: [200, 100, 200, 100, 300],
-        data: payload?.data || {},
-      });
+      return;
     }
+
+    pushDebugLog(PUSH_DEBUG_PREFIX, "Showing system notification", {
+      title,
+      body,
+      image,
+      notificationKey,
+    });
+
+    if (!title && !body) return;
+    self.registration.showNotification(title, {
+      body,
+      icon: "/favicon.ico",
+      image,
+      tag: notificationKey,
+      renotify: true,
+      silent: false,
+      requireInteraction: false,
+      vibrate: [200, 100, 200, 100, 300],
+      data: payload?.data || {},
+    });
   });
 }
 

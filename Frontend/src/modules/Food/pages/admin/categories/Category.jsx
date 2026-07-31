@@ -351,9 +351,15 @@ export default function Category() {
     event.preventDefault()
     if (!ensureActionAccess(editingCategory ? "edit" : "create")) return
 
+    let imageUrl = String(formData.image || "").trim()
+
+    if (!selectedImageFile && !imageUrl) {
+      toast.error("Category image is compulsory. Please select/upload an image.")
+      return
+    }
+
     try {
       setUploadingImage(true)
-      let imageUrl = String(formData.image || "").trim()
 
       if (selectedImageFile) {
         const uploadRes = await uploadAPI.uploadMedia(selectedImageFile, { folder: "grhapoch/categories" })
@@ -732,7 +738,9 @@ export default function Category() {
                         </div>
 
                         <div>
-                          <label className="mb-2 block text-sm font-medium text-slate-700">Category Image</label>
+                          <label className="mb-2 block text-sm font-medium text-slate-700">
+                            Category Image <span className="text-red-500 font-bold">*</span>
+                          </label>
                           <div className="space-y-3">
                             {(imagePreview || formData.image) && (
                               <div className="relative h-32 w-32 overflow-hidden rounded-2xl border border-slate-300">

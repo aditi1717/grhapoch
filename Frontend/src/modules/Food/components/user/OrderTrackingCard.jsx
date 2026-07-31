@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef, useCallback, memo } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { UtensilsCrossed, ChevronRight, X } from "lucide-react";
+import { UtensilsCrossed, ChevronRight, X, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 const CookingAnimation = memo(() => (
@@ -74,6 +74,19 @@ const isActiveOrder = (order) => {
   if (!order) return false;
   const status = getOrderStatus(order);
   const phase = getOrderPhase(order);
+
+  const restRating = order.restaurantRating ?? order.ratings?.restaurant?.rating;
+  const delivRating = order.deliveryPartnerRating ?? order.ratings?.deliveryPartner?.rating;
+
+  const hasRestaurantRating = restRating != null && Number(restRating) > 0;
+  const hasDeliveryPartner = !!(order.deliveryPartnerId || order.deliveryPartnerName);
+  const hasDeliveryRating = delivRating != null && Number(delivRating) > 0;
+  const hasRating = hasRestaurantRating && (!hasDeliveryPartner || hasDeliveryRating);
+
+  if (status === "delivered" || status === "completed" || phase === "delivered" || phase === "completed") {
+    return !hasRating;
+  }
+
   if (TERMINAL_STATUSES.has(status)) return false;
   if (phase === "completed" || phase === "delivered") return false;
   // Some refresh payloads provide live phase but sparse status; keep tracking visible.
@@ -333,22 +346,60 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
     verifyOrderExists();
   }, [activeOrder, apiOrders, invalidOrderIds]);
 
-  const [dismissedKey, setDismissedKey] = useState(null);
+  const [dismissedTrackingCards, setDismissedTrackingCards] = useState(() => {
+    try {
+      const saved = localStorage.getItem("dismissed_tracking_cards");
+      return saved ? new Set(JSON.parse(saved)) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  const handleDismissCard = (orderId) => {
+    setDismissedTrackingCards((prev) => {
+      const next = new Set(prev);
+      next.add(orderId);
+      try {
+        localStorage.setItem("dismissed_tracking_cards", JSON.stringify(Array.from(next)));
+      } catch {}
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    const handleSyncDismissed = () => {
+      try {
+        const saved = localStorage.getItem("dismissed_tracking_cards");
+        setDismissedTrackingCards(saved ? new Set(JSON.parse(saved)) : new Set());
+      } catch {}
+      fetchOrders();
+    };
+
+    window.addEventListener("order-dismissed", handleSyncDismissed);
+    window.addEventListener("storage", handleSyncDismissed);
+    return () => {
+      window.removeEventListener("order-dismissed", handleSyncDismissed);
+      window.removeEventListener("storage", handleSyncDismissed);
+    };
+  }, [fetchOrders]);
 
   if (!activeOrder) {
     return null;
   }
 
-  const currentOrderKey = activeOrder.id || activeOrder._id || activeOrder.orderId;
-  if (dismissedKey === currentOrderKey) {
+  const currentOrderKey = String(activeOrder.id || activeOrder._id || activeOrder.orderId || "");
+  if (dismissedTrackingCards.has(currentOrderKey)) {
     return null;
   }
 
   const orderStatus = getOrderStatus(activeOrder) || "preparing";
   const orderPhase = getOrderPhase(activeOrder);
-  if (orderStatus === "delivered" || orderStatus === "completed") {
-    return null;
-  }
+  const isDelivered = orderStatus === "delivered" || orderStatus === "completed" || orderPhase === "delivered" || orderPhase === "completed";
+
+  const rawOrderId = String(activeOrder.orderId || activeOrder.order_id || activeOrder.displayOrderId || "");
+  const displayOrderId = rawOrderId
+    ? (rawOrderId.startsWith("FOD-") ? rawOrderId : `FOD-${rawOrderId.replace(/^ORD-/, "")}`)
+    : (currentOrderKey ? `FOD-${currentOrderKey.slice(-6).toUpperCase()}` : "");
 
   const restaurantName =
     activeOrder.restaurant || activeOrder.restaurantName || activeOrder.restaurantId?.restaurantName || "Restaurant";
@@ -383,12 +434,14 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
         className={`fixed ${hasBottomNav ? "bottom-20" : "bottom-6"} left-4 right-4 z-[9999]`}
       >
         <div 
-          onClick={() =>
-            navigate(
-              `/food/user/orders/${activeOrder.id || activeOrder._id || activeOrder.orderId}`,
-            )
-          }
-          className="relative bg-white/95 backdrop-blur-xl rounded-[20px] p-4 border overflow-visible cursor-pointer group"
+          onClick={() => {
+            if (isDelivered) {
+              navigate(`/food/user/orders?rateOrderId=${currentOrderKey}&force=1`);
+            } else {
+              navigate(`/food/user/orders/${currentOrderKey}`);
+            }
+          }}
+          className="relative bg-white/95 backdrop-blur-xl rounded-[20px] p-3 border overflow-visible cursor-pointer group"
           style={{
             boxShadow: cardShadow,
             borderColor: "rgba(var(--module-theme-rgb, 235,89,14), 0.22)",
@@ -403,7 +456,7 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
           />
           
           <button 
-             onClick={(e) => { e.stopPropagation(); setDismissedKey(currentOrderKey); }}
+             onClick={(e) => { e.stopPropagation(); handleDismissCard(currentOrderKey); }}
              className="absolute -top-2.5 -right-2.5 p-1.5 rounded-full transition-colors z-20 shadow-md hover:scale-110 active:scale-95"
              style={{
                backgroundColor: "#ffffff",
@@ -414,12 +467,12 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
             <X className="w-3.5 h-3.5 pointer-events-none" />
           </button>
 
-          <div className="flex items-center gap-4 relative z-10 w-full">
+          <div className="flex items-center gap-3 relative z-10 w-full">
             {restaurantImage ? (
               <img
                 src={resolveMediaUrl(restaurantImage)}
                 alt={restaurantName}
-                className="w-12 h-12 rounded-xl object-cover border border-orange-100 shadow-[0_4px_15px_rgba(235,89,14,0.15)] shrink-0"
+                className="w-10 h-10 rounded-xl object-cover border border-orange-100 shadow-[0_4px_15px_rgba(235,89,14,0.15)] shrink-0"
                 onError={(e) => {
                   e.currentTarget.style.display = 'none';
                 }}
@@ -428,31 +481,55 @@ function OrderTrackingCardInner({ hasBottomNav = true }) {
               <CookingAnimation />
             )}
 
-            <div className="flex-1 min-w-0 pr-4">
-              <p className="text-gray-900 font-bold text-base md:text-lg truncate tracking-tight">{restaurantName}</p>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <p className="text-gray-500 font-medium text-xs md:text-sm">{statusText}</p>
-                <ChevronRight className="w-3.5 h-3.5 shrink-0 group-hover:translate-x-1 transition-transform" style={{ color: themeColor }} />
-              </div>
+            <div className="flex-1 min-w-0">
+              {isDelivered ? (
+                <div className="flex flex-col">
+                  <p className="text-gray-900 font-bold text-sm truncate tracking-tight leading-tight">
+                    {restaurantName}
+                  </p>
+                  <div className="flex items-center gap-0.5 mt-[2px]">
+                    <p className="text-gray-500 font-semibold text-[10px] tracking-tight">
+                      Rate food &amp; delivery
+                    </p>
+                    <ChevronRight className="w-3 h-3 shrink-0 group-hover:translate-x-0.5 transition-transform" style={{ color: themeColor }} />
+                  </div>
+                  <p className="text-gray-400 font-normal text-[9px] mt-[1px]">
+                    Order #{displayOrderId}
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col">
+                  <p className="text-gray-900 font-bold text-sm truncate tracking-tight leading-tight">{restaurantName}</p>
+                  <div className="flex items-center gap-0.5 mt-[2px]">
+                    <p className="text-gray-500 font-medium text-[10px] truncate">{statusText}</p>
+                    <ChevronRight className="w-3 h-3 shrink-0 group-hover:translate-x-0.5 transition-transform" style={{ color: themeColor }} />
+                  </div>
+                  <p className="text-gray-400 font-normal text-[9px] mt-[1px]">
+                    Order #{displayOrderId}
+                  </p>
+                </div>
+              )}
             </div>
 
-            <div
-              className="shadow-lg rounded-xl px-4 py-2 shrink-0 flex flex-col items-center justify-center border"
-              style={{
-                background: `linear-gradient(135deg, ${themeColor}, rgba(${themeRgb}, 0.84))`,
-                boxShadow: "0 10px 18px rgba(var(--module-theme-rgb, 235,89,14), 0.25)",
-                borderColor: "rgba(var(--module-theme-rgb, 235,89,14), 0.35)",
-              }}
-            >
-              <p className="text-orange-50 text-[10px] font-bold uppercase tracking-wider opacity-95 leading-tight mb-[2px]">
-                arriving in
-              </p>
-              <p className="text-white text-base md:text-[17px] font-black leading-tight drop-shadow-sm">
-                {timeRemaining !== null
-                  ? `${Math.max(1, timeRemaining)} min`
-                  : "--"}
-              </p>
-            </div>
+            {isDelivered ? null : (
+              <div
+                className="shadow-md rounded-xl px-3 py-1.5 shrink-0 flex flex-col items-center justify-center border"
+                style={{
+                  background: `linear-gradient(135deg, ${themeColor}, rgba(${themeRgb}, 0.84))`,
+                  boxShadow: "0 6px 14px rgba(var(--module-theme-rgb, 235,89,14), 0.22)",
+                  borderColor: "rgba(var(--module-theme-rgb, 235,89,14), 0.35)",
+                }}
+              >
+                <p className="text-orange-50 text-[9px] font-bold uppercase tracking-wider opacity-95 leading-tight mb-[1px]">
+                  arriving in
+                </p>
+                <p className="text-white text-sm font-black leading-tight drop-shadow-sm">
+                  {timeRemaining !== null
+                    ? `${Math.max(1, timeRemaining)} min`
+                    : "--"}
+                </p>
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
