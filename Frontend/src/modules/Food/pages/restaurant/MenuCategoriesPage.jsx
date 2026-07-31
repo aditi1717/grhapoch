@@ -58,6 +58,27 @@ export default function MenuCategoriesPage() {
   const [isPhotoPickerOpen, setIsPhotoPickerOpen] = useState(false)
   const [isPureVegRestaurant, setIsPureVegRestaurant] = useState(false)
   const fileInputRef = useRef(null)
+  const [keyboardInset, setKeyboardInset] = useState(0)
+
+  // Track virtual keyboard height and push footer/modal above keyboard
+  useEffect(() => {
+    const viewport = window.visualViewport
+    if (!viewport) return
+
+    const updateKeyboardInset = () => {
+      const inset = Math.max(0, window.innerHeight - viewport.height - viewport.offsetTop)
+      setKeyboardInset(inset > 60 ? inset : 0)
+    }
+
+    viewport.addEventListener("resize", updateKeyboardInset)
+    viewport.addEventListener("scroll", updateKeyboardInset)
+    updateKeyboardInset()
+
+    return () => {
+      viewport.removeEventListener("resize", updateKeyboardInset)
+      viewport.removeEventListener("scroll", updateKeyboardInset)
+    }
+  }, [])
 
   useEffect(() => {
     fetchCategories()
