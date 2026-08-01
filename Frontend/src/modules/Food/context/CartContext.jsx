@@ -211,8 +211,18 @@ export function CartProvider({ children }) {
 
     let restLat = Number(firstItem?.restaurantLocation?.latitude ?? firstItem?.restaurantLocation?.coordinates?.[1] ?? firstItem?.restaurantLat)
     let restLng = Number(firstItem?.restaurantLocation?.longitude ?? firstItem?.restaurantLocation?.coordinates?.[0] ?? firstItem?.restaurantLng)
-    let serviceRadius = Number(firstItem?.serviceRadius || firstItem?.restaurantServiceRadius || 0)
+    let serviceRadius = 10
     let restData = null
+
+    try {
+      const { loadBusinessSettings } = await import("@food/utils/businessSettings")
+      const settings = await loadBusinessSettings()
+      if (settings?.userVisibilityRadius) {
+        serviceRadius = Number(settings.userVisibilityRadius)
+      }
+    } catch (err) {
+      debugWarn("Failed to load business settings in CartContext", err)
+    }
 
     if (restaurantId) {
       try {
@@ -221,21 +231,19 @@ export function CartProvider({ children }) {
         if (restData) {
           restLat = Number(restData.location?.latitude ?? restData.location?.coordinates?.[1])
           restLng = Number(restData.location?.longitude ?? restData.location?.coordinates?.[0])
-          serviceRadius = Number(restData.serviceRadius) || 10
-          restaurantLocationCacheRef.current.set(String(restaurantId), { lat: restLat, lng: restLng, serviceRadius })
+          restaurantLocationCacheRef.current.set(String(restaurantId), { lat: restLat, lng: restLng })
         }
       } catch (err) {
         debugWarn("Failed to fetch latest restaurant details for validation", err)
       }
     }
 
-    if (!restData && (!Number.isFinite(restLat) || !Number.isFinite(restLng) || serviceRadius <= 0)) {
+    if (!restData && (!Number.isFinite(restLat) || !Number.isFinite(restLng))) {
       if (restaurantId) {
         const cached = restaurantLocationCacheRef.current.get(String(restaurantId))
         if (cached) {
           restLat = cached.lat
           restLng = cached.lng
-          serviceRadius = cached.serviceRadius
         }
       }
     }

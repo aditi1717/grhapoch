@@ -572,7 +572,7 @@ export default function JoinRequest() {
             <button
               onClick={confirmApprove}
               disabled={processing}
-              className="px-4 py-2 text-sm font-medium rounded-lg bg-green-600 text-white hover:bg-green-700 transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 text-sm font-medium rounded-lg bg-red-700 text-black hover:bg-red-800 transition-all shadow-md disabled:opacity-50 flex items-center gap-2"
             >
               {processing && <Loader2 className="w-4 h-4 animate-spin" />}
               Approve

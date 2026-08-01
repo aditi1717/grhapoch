@@ -58,7 +58,7 @@ export async function listPublicFoods(query = {}) {
             const restLng = Number(restaurant.location?.longitude ?? restaurant.location?.coordinates?.[0]);
             if (!Number.isFinite(restLat) || !Number.isFinite(restLng)) return true;
             const distKm = calculateDistanceKm(userLat, userLng, restLat, restLng);
-            const radius = Number(restaurant.serviceRadius) || globalUserRadius;
+            const radius = globalUserRadius;
             return distKm !== null && distKm <= radius;
         });
     }

@@ -1882,7 +1882,7 @@ export const listApprovedRestaurants = async (query = {}) => {
                     $expr: {
                         $lte: [
                             "$distanceMeters",
-                            { $multiply: [ { $ifNull: ["$serviceRadius", globalRestaurantRadius] }, 1000 ] }
+                            { $multiply: [ globalRestaurantRadius, 1000 ] }
                         ]
                     }
                 }

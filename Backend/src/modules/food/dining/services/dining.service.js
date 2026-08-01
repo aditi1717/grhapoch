@@ -462,7 +462,7 @@ export async function listDiningRestaurantsPublic(query = {}) {
                 const restLng = Number(rest.location?.longitude ?? rest.location?.coordinates?.[0]);
                 if (!Number.isFinite(restLat) || !Number.isFinite(restLng)) return true;
                 const distKm = calculateDistanceKm(userLat, userLng, restLat, restLng);
-                const radius = Number(rest.serviceRadius) || globalUserRadius;
+                const radius = globalUserRadius;
                 return distKm !== null && distKm <= radius;
             }
             return true;

@@ -1,6 +1,7 @@
 import { FoodRestaurant } from '../../restaurant/models/restaurant.model.js';
 import { FoodItem } from '../../admin/models/food.model.js';
 import { FoodCategory } from '../../admin/models/category.model.js';
+import { FoodBusinessSettings } from '../../admin/models/businessSettings.model.js';
 import mongoose from 'mongoose';
 
 const RESTAURANT_SEARCH_SELECT = [
@@ -197,11 +198,13 @@ export const searchUnified = async (query = {}, options = {}) => {
     let results = Array.from(restaurantDetailsMap.values()).filter(r => activeRestaurantIdsSet.has(r._id.toString()));
 
     if (hasGeoSorting && results.length > 0) {
+        const globalSettings = await FoodBusinessSettings.findOne().lean().catch(() => null);
+        const globalUserRadius = Number(globalSettings?.userVisibilityRadius) || 10;
+
         results = results
             .map((restaurant) => addDistanceScore(restaurant, userLat, userLng))
             .filter((restaurant) => {
-                const maxRad = Number(restaurant.serviceRadius) || Number(radiusKm) || 20;
-                return (restaurant.distanceScore || 0) <= maxRad;
+                return (restaurant.distanceScore || 0) <= globalUserRadius;
             })
             .sort((a, b) => (a.distanceScore || 999) - (b.distanceScore || 999));
     }
