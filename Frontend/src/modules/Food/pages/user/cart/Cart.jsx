@@ -517,6 +517,7 @@ export default function Cart() {
       formattedAddress,
       address: formattedAddress,
       street: loc?.street || loc?.address || loc?.area || "Current Location",
+      landmark: loc?.landmark || "",
       additionalDetails: loc?.area || "",
       city: loc?.city || loc?.area || "Current City",
       state: loc?.state || loc?.city || "Current State",
@@ -533,6 +534,7 @@ export default function Cart() {
     currentLocation?.formattedAddress,
     currentLocation?.address,
     currentLocation?.street,
+    currentLocation?.landmark,
     currentLocation?.area,
     currentLocation?.city,
     currentLocation?.state,
@@ -1503,17 +1505,25 @@ export default function Cart() {
         return
       }
 
+      const formattedAddressStr = [
+        address.additionalDetails,
+        address.street,
+        address.landmark,
+        address.city,
+        address.state,
+        address.zipCode ? `${address.zipCode}` : ""
+      ].filter((v) => String(v || '').trim()).join(", ")
+
       // Update location in backend
       await userAPI.updateLocation({
         latitude,
         longitude,
         address: `${address.street}, ${address.city}`,
+        landmark: address.landmark || "",
         city: address.city,
         state: address.state,
         area: address.additionalDetails || "",
-        formattedAddress: address.additionalDetails
-          ? `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
-          : `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
+        formattedAddress: formattedAddressStr
       })
 
       // Update the location in localStorage
@@ -1521,13 +1531,12 @@ export default function Cart() {
         city: address.city,
         state: address.state,
         address: `${address.street}, ${address.city}`,
+        landmark: address.landmark || "",
         area: address.additionalDetails || "",
         zipCode: address.zipCode,
         latitude,
         longitude,
-        formattedAddress: address.additionalDetails
-          ? `${address.additionalDetails}, ${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
-          : `${address.street}, ${address.city}, ${address.state}${address.zipCode ? ` ${address.zipCode}` : ''}`
+        formattedAddress: formattedAddressStr
       }
       localStorage.setItem("userLocation", JSON.stringify(locationData))
       // User selected a saved address from Cart; prefer saved mode.

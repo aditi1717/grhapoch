@@ -305,14 +305,21 @@ const transformOrderForTracking = (apiOrder, previousOrder = null, explicitResta
     userPhone: apiOrder?.userPhone || apiOrder?.userId?.phone || previousOrder?.userPhone || '',
     address: {
       street: addr?.street || previousOrder?.address?.street || '',
+      landmark: addr?.landmark || previousOrder?.address?.landmark || '',
       city: addr?.city || previousOrder?.address?.city || '',
       state: addr?.state || previousOrder?.address?.state || '',
       zipCode: addr?.zipCode || previousOrder?.address?.zipCode || '',
       additionalDetails: addr?.additionalDetails || previousOrder?.address?.additionalDetails || '',
       formattedAddress: addr?.formattedAddress ||
-        (addr?.street && addr?.city
-          ? `${addr.street}${addr.additionalDetails ? `, ${addr.additionalDetails}` : ''}, ${addr.city}${addr.state ? `, ${addr.state}` : ''}${addr.zipCode ? ` ${addr.zipCode}` : ''}`
-          : previousOrder?.address?.formattedAddress || addr?.city || ''),
+        [
+          addr?.additionalDetails || previousOrder?.address?.additionalDetails,
+          addr?.street || previousOrder?.address?.street,
+          addr?.landmark || previousOrder?.address?.landmark,
+          addr?.city || previousOrder?.address?.city,
+          addr?.state || previousOrder?.address?.state,
+          addr?.zipCode || previousOrder?.address?.zipCode
+        ].filter((v) => String(v || '').trim()).join(", ") ||
+        previousOrder?.address?.formattedAddress || addr?.city || '',
       coordinates: customerCoordsResolved || addr?.location?.coordinates || previousOrder?.address?.coordinates || null
     },
     restaurantLocation: {

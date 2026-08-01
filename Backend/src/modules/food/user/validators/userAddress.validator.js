@@ -12,6 +12,7 @@ const createAddressSchema = z.object({
     label: labelSchema.optional(),
     street: z.string().min(1, 'Street is required').max(200).transform((s) => s.trim()),
     additionalDetails: z.string().max(500).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
+    landmark: z.string().max(200).optional().or(z.literal('')).transform((s) => String(s || '').trim()),
     city: z.string().min(1, 'City is required').max(100).transform((s) => s.trim()),
     state: z.string().min(1, 'State is required').max(100).transform((s) => s.trim()),
     zipCode: z.string().max(20).optional().or(z.literal('')).transform((s) => String(s || '').trim()),

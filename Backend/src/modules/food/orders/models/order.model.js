@@ -23,6 +23,7 @@ const deliveryAddressSchema = new mongoose.Schema(
         fullName: { type: String, default: '', trim: true },
         street: { type: String, required: true, trim: true },
         additionalDetails: { type: String, default: '', trim: true },
+        landmark: { type: String, default: '', trim: true },
         city: { type: String, required: true, trim: true },
         state: { type: String, required: true, trim: true },
         zipCode: { type: String, default: '', trim: true },

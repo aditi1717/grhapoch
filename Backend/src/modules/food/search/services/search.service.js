@@ -22,7 +22,8 @@ const RESTAURANT_SEARCH_SELECT = [
     'createdAt',
     'location',
     'area',
-    'city'
+    'city',
+    'serviceRadius'
 ].join(' ');
 
 const FOOD_MATCH_SELECT = '_id restaurantId name image';

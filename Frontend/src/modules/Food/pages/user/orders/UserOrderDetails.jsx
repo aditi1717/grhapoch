@@ -185,7 +185,9 @@ export default function UserOrderDetails() {
     order.deliveryAddress?.formattedAddress ||
     order.address?.formattedAddress ||
     [
+      order.deliveryAddress?.additionalDetails || order.address?.additionalDetails,
       order.deliveryAddress?.street || order.address?.street,
+      order.deliveryAddress?.landmark || order.address?.landmark,
       order.deliveryAddress?.city || order.address?.city,
       order.deliveryAddress?.state || order.address?.state,
       order.deliveryAddress?.zipCode || order.address?.zipCode

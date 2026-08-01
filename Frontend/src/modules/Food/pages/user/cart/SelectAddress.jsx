@@ -20,6 +20,7 @@ const formatAddressLine = (address) => {
   return [
     address.additionalDetails,
     address.street,
+    address.landmark,
     address.city,
     address.state,
     address.zipCode,
@@ -54,6 +55,7 @@ export default function SelectAddress() {
   const [form, setForm] = useState(() => ({
     additionalDetails: defaultAddress?.additionalDetails || "",
     street: defaultAddress?.street || "",
+    landmark: defaultAddress?.landmark || "",
     city: defaultAddress?.city || "",
     state: defaultAddress?.state || "",
     zipCode: defaultAddress?.zipCode || "",
@@ -79,6 +81,7 @@ export default function SelectAddress() {
     setForm({
       additionalDetails: addr?.additionalDetails || "",
       street: addr?.street || "",
+      landmark: addr?.landmark || "",
       city: addr?.city || "",
       state: addr?.state || "",
       zipCode: addr?.zipCode || "",
@@ -110,6 +113,7 @@ export default function SelectAddress() {
         label: toBackendLabel(label),
         additionalDetails: String(form.additionalDetails || "").trim(),
         street,
+        landmark: String(form.landmark || "").trim(),
         city,
         state,
         zipCode: String(form.zipCode || "").trim(),
@@ -289,6 +293,17 @@ export default function SelectAddress() {
                     value={form.street}
                     onChange={onChangeForm}
                     required
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="landmark">Landmark (optional)</Label>
+                  <Input
+                    id="landmark"
+                    name="landmark"
+                    placeholder="Nearby landmark (optional)"
+                    value={form.landmark}
+                    onChange={onChangeForm}
                   />
                 </div>
 

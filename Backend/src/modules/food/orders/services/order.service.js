@@ -437,6 +437,7 @@ export async function createOrder(userId, dto) {
       fullName: dto.address?.fullName || dto.address?.name || dto.customerName || "",
       street: dto.address?.street || "",
       additionalDetails: dto.address?.additionalDetails || "",
+      landmark: dto.address?.landmark || "",
       city: dto.address?.city || "",
       state: dto.address?.state || "",
       zipCode: dto.address?.zipCode || "",

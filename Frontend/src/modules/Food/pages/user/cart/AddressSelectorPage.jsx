@@ -64,6 +64,7 @@ export default function AddressSelectorPage() {
     state: "",
     zipCode: "",
     additionalDetails: "",
+    landmark: "",
     label: "Home",
     phone: "",
   })
@@ -178,6 +179,27 @@ export default function AddressSelectorPage() {
     }
 
     const q = String(addressAutocompleteValue || "").replace(/\s+/g, " ").trim()
+    if (q.length === 0) {
+      setGooglePlacesSuggestions([])
+      setKeywordAddressSuggestions([])
+      setIsKeywordSearching(false)
+      setCurrentAddress("")
+      setAddressFormData(prev => ({
+        ...prev,
+        street: "",
+        city: "",
+        state: "",
+        zipCode: "",
+        landmark: "",
+        additionalDetails: ""
+      }))
+      if (window.google?.maps?.places?.AutocompleteSessionToken) {
+        placesSessionTokenRef.current =
+          new window.google.maps.places.AutocompleteSessionToken()
+      }
+      return
+    }
+
     if (q.length < 3) {
       setGooglePlacesSuggestions([])
       setKeywordAddressSuggestions([])
@@ -455,6 +477,7 @@ export default function AddressSelectorPage() {
             latitude: lat,
             longitude: lng,
             address: address?.street || address?.address || "",
+            landmark: address?.landmark || "",
             city: address?.city || "",
             state: address?.state || "",
             area: address?.additionalDetails || "",
@@ -463,6 +486,7 @@ export default function AddressSelectorPage() {
               [
                 address?.additionalDetails,
                 address?.street,
+                address?.landmark,
                 address?.city,
                 address?.state,
                 address?.zipCode,
@@ -494,6 +518,7 @@ export default function AddressSelectorPage() {
       state: "",
       zipCode: "",
       additionalDetails: "",
+      landmark: "",
       label: "Home",
       phone: "",
     })
@@ -566,12 +591,22 @@ export default function AddressSelectorPage() {
           const city = pick("locality", "administrative_area_level_2")
           const state = pick("administrative_area_level_1")
           const zipCode = pick("postal_code")
+          const streetParts = [
+            pick("street_number"),
+            pick("premise"),
+            pick("route"),
+            pick("sublocality_level_1", "sublocality", "neighborhood"),
+          ].filter(Boolean)
+          const street = streetParts.join(", ")
+          const landmark = pick("point_of_interest", "establishment")
 
           setAddressFormData(prev => ({
             ...prev,
-            city: city || prev.city,
-            state: state || prev.state,
-            zipCode: zipCode || prev.zipCode,
+            street: street || prev.street,
+            landmark: landmark || prev.landmark,
+            city: city || "",
+            state: state || "",
+            zipCode: zipCode || "",
           }))
           return
         }
@@ -597,13 +632,17 @@ export default function AddressSelectorPage() {
         const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || ""
         const state = addr.state || ""
         const postcode = addr.postcode || ""
+        const street = addr.suburb || addr.neighbourhood || addr.road || addr.city_district || ""
+        const landmark = addr.amenity || addr.shop || addr.office || addr.tourism || ""
 
         setCurrentAddress(formatted)
         setAddressFormData(prev => ({
           ...prev,
-          city: city || prev.city,
-          state: state || prev.state,
-          zipCode: postcode || prev.zipCode,
+          street: street || prev.street,
+          landmark: landmark || prev.landmark,
+          city: city || "",
+          state: state || "",
+          zipCode: postcode || "",
         }))
       }
     } catch (e) {
@@ -665,7 +704,49 @@ export default function AddressSelectorPage() {
         getComponent(["locality"]) ||
         getComponent(["administrative_area_level_2"])
       const state = getComponent(["administrative_area_level_1"])
-      const zipCode = getComponent(["postal_code"])
+      let zipCode = getComponent(["postal_code"])
+
+      if (!zipCode) {
+        if (window.google?.maps?.Geocoder) {
+          try {
+            const geocoder = new window.google.maps.Geocoder()
+            const geoRes = await new Promise((resolve) => {
+              geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                if (status === "OK" && results?.[0]) resolve(results[0])
+                else resolve(null)
+              })
+            })
+            if (geoRes) {
+              const geoComponents = geoRes.address_components || []
+              const pickGeo = (...types) =>
+                geoComponents.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+              zipCode = pickGeo("postal_code")
+            }
+          } catch (e) {
+            debugError("Google Geocoder fallback error:", e)
+          }
+        }
+        
+        if (!zipCode) {
+          try {
+            const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+            const response = await fetch(url, { 
+              headers: { 
+                "Accept-Language": "en",
+                "User-Agent": "Grhapoch-Food-App" 
+              } 
+            })
+            const json = await response.json()
+            if (json && json.address && json.address.postcode) {
+              zipCode = json.address.postcode
+            }
+          } catch (e) {
+            debugError("Nominatim reverse postcode fallback error:", e)
+          }
+        }
+      }
+
+      const landmark = getComponent(["point_of_interest", "establishment"])
 
       setMapPosition([lat, lng])
       suppressMapIdleGeocodeRef.current = true
@@ -676,9 +757,11 @@ export default function AddressSelectorPage() {
       setCurrentAddress(formattedAddress)
       setAddressFormData((prev) => ({
         ...prev,
-        city: city || prev.city,
-        state: state || prev.state,
-        zipCode: zipCode || prev.zipCode,
+        street: streetParts.join(", ") || prev.street,
+        landmark: landmark || prev.landmark,
+        city: city || "",
+        state: state || "",
+        zipCode: zipCode || "",
       }))
       setGooglePlacesSuggestions([])
       setKeywordAddressSuggestions([])
@@ -693,7 +776,7 @@ export default function AddressSelectorPage() {
     }
   }
 
-  const selectFallbackPlace = (suggestion) => {
+  const selectFallbackPlace = async (suggestion) => {
     const { lat, lng, display, address = {} } = suggestion || {}
     if (!Number.isFinite(lat) || !Number.isFinite(lng)) return
 
@@ -705,6 +788,28 @@ export default function AddressSelectorPage() {
       address.county ||
       ""
 
+    const street = address.suburb || address.neighbourhood || address.road || address.city_district || ""
+    const landmark = address.amenity || address.shop || address.office || address.tourism || ""
+
+    let postcode = address.postcode
+    if (!postcode) {
+      try {
+        const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`
+        const response = await fetch(url, { 
+          headers: { 
+            "Accept-Language": "en",
+            "User-Agent": "Grhapoch-Food-App" 
+          } 
+        })
+        const json = await response.json()
+        if (json && json.address && json.address.postcode) {
+          postcode = json.address.postcode
+        }
+      } catch (e) {
+        debugError("Nominatim fallback postcode error:", e)
+      }
+    }
+
     setMapPosition([lat, lng])
     suppressMapIdleGeocodeRef.current = true
     googleMapRef.current?.panTo({ lat, lng })
@@ -714,9 +819,11 @@ export default function AddressSelectorPage() {
     setCurrentAddress(display || "")
     setAddressFormData((prev) => ({
       ...prev,
-      city: city || prev.city,
-      state: address.state || prev.state,
-      zipCode: address.postcode || prev.zipCode,
+      street: street || prev.street,
+      landmark: landmark || prev.landmark,
+      city: city || "",
+      state: address.state || "",
+      zipCode: postcode || "",
     }))
     setGooglePlacesSuggestions([])
     setKeywordAddressSuggestions([])
@@ -733,10 +840,11 @@ export default function AddressSelectorPage() {
       state: addr.state || "",
       zipCode: addr.zipCode || "",
       additionalDetails: addr.additionalDetails || "",
+      landmark: addr.landmark || "",
       label: addr.label === "Office" ? "Work" : (addr.label || "Home"),
       phone: addr.phone || "",
     })
-    const formattedAddr = [addr.additionalDetails, addr.street, addr.city, addr.state, addr.zipCode].filter(Boolean).join(", ")
+    const formattedAddr = [addr.additionalDetails, addr.street, addr.landmark, addr.city, addr.state, addr.zipCode].filter(Boolean).join(", ")
     setCurrentAddress(formattedAddr)
     const lat = Number.isFinite(addr.location?.coordinates?.[1])
       ? addr.location.coordinates[1]
@@ -989,8 +1097,18 @@ export default function AddressSelectorPage() {
                 onChange={e => setAddressFormData({...addressFormData, additionalDetails: e.target.value})}
                 onFocus={() => scrollFieldIntoView("additionalDetails")}
                 ref={(el) => { manualFieldRefs.current.additionalDetails = el }}
-                className="h-12 rounded-xl border-orange-200 dark:border-orange-900/40 focus:ring-orange-500"
+                className="h-12 rounded-xl border-orange-200 dark:border-orange-900/40 focus:ring-orange-500 mb-4"
                 required
+              />
+
+              <Label className="text-sm font-bold mb-2 block">Landmark (optional)</Label>
+              <Input 
+                placeholder="E.g. next to Apollo Hospital" 
+                value={addressFormData.landmark || ""} 
+                onChange={e => setAddressFormData({...addressFormData, landmark: e.target.value})}
+                onFocus={() => scrollFieldIntoView("landmark")}
+                ref={(el) => { manualFieldRefs.current.landmark = el }}
+                className="h-12 rounded-xl bg-gray-50 dark:bg-gray-800/50"
               />
             </div>
 

@@ -230,6 +230,7 @@ export function buildDeliverySocketPayload(orderDoc, restaurantDoc = null) {
   const customerAddressParts = [
     deliveryAddress.street,
     deliveryAddress.additionalDetails,
+    deliveryAddress.landmark,
     deliveryAddress.city,
     deliveryAddress.state,
     deliveryAddress.zipCode,

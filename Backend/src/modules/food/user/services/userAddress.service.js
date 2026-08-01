@@ -34,6 +34,7 @@ export const addAddress = async (userId, dto) => {
         label: normalizeLabel(dto.label),
         street: dto.street,
         additionalDetails: dto.additionalDetails || '',
+        landmark: dto.landmark || '',
         city: dto.city,
         state: dto.state,
         zipCode: dto.zipCode || '',
@@ -49,6 +50,7 @@ export const addAddress = async (userId, dto) => {
         existing.label = address.label;
         existing.street = address.street;
         existing.additionalDetails = address.additionalDetails;
+        existing.landmark = address.landmark;
         existing.city = address.city;
         existing.state = address.state;
         existing.zipCode = address.zipCode;
@@ -82,6 +84,7 @@ export const updateAddress = async (userId, addressId, dto) => {
     if (dto.label !== undefined) address.label = normalizeLabel(dto.label);
     if (dto.street !== undefined) address.street = dto.street;
     if (dto.additionalDetails !== undefined) address.additionalDetails = dto.additionalDetails || '';
+    if (dto.landmark !== undefined) address.landmark = dto.landmark || '';
     if (dto.city !== undefined) address.city = dto.city;
     if (dto.state !== undefined) address.state = dto.state;
     if (dto.zipCode !== undefined) address.zipCode = dto.zipCode || '';
