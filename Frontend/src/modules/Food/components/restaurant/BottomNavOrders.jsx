@@ -52,8 +52,11 @@ function BottomNavOrders() {
   }
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-[60] bg-gray-900/96 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)] shadow-[0_-8px_30px_rgba(0,0,0,0.15)]">
-      <div className="mx-auto w-full max-w-md py-2 px-4">
+    <div 
+      className="fixed bottom-0 left-0 right-0 z-[60] bg-gray-900/96 backdrop-blur-xl border-t border-white/10 shadow-[0_-8px_30px_rgba(0,0,0,0.15)]"
+      style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
+    >
+      <div className="mx-auto w-full max-w-md pt-2 px-4">
         <div className="relative flex items-center justify-around gap-1">
           {tabs.map((tab) => {
             const Icon = tab.icon

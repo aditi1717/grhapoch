@@ -1338,11 +1338,8 @@ export async function listOrdersRestaurant(restaurantId, query) {
   const { page, limit, skip } = buildPaginationOptions(query);
   const filter = {
     restaurantId: new mongoose.Types.ObjectId(restaurantId),
-    $or: [
-      { "payment.method": { $in: ["cash", "wallet"] } },
-      { "payment.status": { $in: ["paid", "authorized", "captured", "settled", "refunded"] } },
-    ],
   };
+
 
   const startDateRaw = query?.startDate || query?.from;
   const endDateRaw = query?.endDate || query?.to;

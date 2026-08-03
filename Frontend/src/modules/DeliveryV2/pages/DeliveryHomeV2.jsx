@@ -1116,7 +1116,7 @@ export default function DeliveryHomeV2({ tab = 'feed' }) {
 
       {/* ─── 3. BOTTOM NAV (Sticky Full-Width Bar) ─── */}
       <div 
-        className="absolute bottom-0 left-0 right-0 w-full pt-2 flex justify-center z-[200] bg-[#111111]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-10px_30px_rgba(0,0,0,0.3)]"
+        className="fixed bottom-0 left-0 right-0 w-full pt-2 flex justify-center z-[200] bg-[#111111]/95 backdrop-blur-md border-t border-white/10 shadow-[0_-10px_30px_rgba(0,0,0,0.3)]"
         style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 8px)' }}
       >
         <div className="w-full max-w-md px-4 flex items-center justify-around">

@@ -2114,8 +2114,8 @@ export default function Inventory() {
               ) : null}
             </div>
 
-            <div className="mt-4 flex flex-col sm:flex-row gap-2">
-              <div className="flex-1 relative">
+            <div className="mt-4">
+              <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                 <input
                   type="text"
@@ -2135,18 +2135,6 @@ export default function Inventory() {
                   </button>
                 ) : null}
               </div>
-
-              <button
-                onClick={() => setFilterOpen(true)}
-                className="relative flex h-12 items-center justify-center gap-2 rounded-[20px] border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50 shrink-0"
-              >
-                <SlidersHorizontal className="w-4 h-4 text-slate-700" />
-                <span>Filters</span>
-                {selectedFilter !== "all" && (
-                  <span className="absolute top-2 right-2 w-2 h-2 rounded-full" style={{ backgroundColor: "var(--module-theme-color, #2563EB)" }} />
-                )}
-              </button>
-
             </div>
 
             <div className="mt-4 flex gap-2 overflow-x-auto scrollbar-hide pb-1">

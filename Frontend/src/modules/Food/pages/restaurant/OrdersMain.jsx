@@ -132,7 +132,9 @@ function CompletedOrders({ onSelectOrder, refreshToken = 0 }) {
 
     const fetchOrders = async () => {
       try {
-        const response = await getSharedOrdersResponse();
+        // Fetch specifically delivered orders with a high limit so older
+        // completed orders (beyond the shared 50-order cache) are included.
+        const response = await restaurantAPI.getOrders({ status: "delivered", limit: 200, page: 1 });
 
         if (!isMounted) return;
 

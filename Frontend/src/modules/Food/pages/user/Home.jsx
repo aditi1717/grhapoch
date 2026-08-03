@@ -95,6 +95,7 @@ import { API_BASE_URL } from "@food/api/config";
 import OptimizedImage from "@food/components/OptimizedImage";
 import { calculateDistance } from "@food/utils/common";
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability";
+import { getCachedSettings } from "@food/utils/businessSettings";
 import HomeHeader from "@food/components/user/home/HomeHeader";
 import QuickSection from "@food/components/user/home/QuickSection";
 import PromoRow from "@food/components/user/home/PromoRow";
@@ -2652,8 +2653,9 @@ export default function Home() {
     return [...orderedFromSettings, ...fromFetchedMissing]
       .filter((restaurant) => {
         if (hasUserLocation) {
-          const maxRadius = Number(restaurant.serviceRadius) || 10;
-          if (Number.isFinite(restaurant.distanceInKm) && restaurant.distanceInKm > maxRadius) {
+          const maxRadius = Number(getCachedSettings()?.userVisibilityRadius) || 10;
+          const dist = Number(restaurant.distanceInKm);
+          if (!Number.isFinite(dist) || dist > maxRadius) {
             return false;
           }
         }

@@ -23,6 +23,7 @@ import { restaurantAPI, adminAPI } from "@food/api"
 import { isModuleAuthenticated } from "@food/utils/auth"
 import { calculateDistance, formatDistance } from "@food/utils/common"
 import { getRestaurantAvailabilityStatus } from "@food/utils/restaurantAvailability"
+import { getCachedSettings } from "@food/utils/businessSettings"
 import {
   buildCartLineId,
   getDefaultFoodVariant,
@@ -376,8 +377,8 @@ export default function Under250() {
         };
       })
       .filter(r => {
-        // Radius check: exclude if distanceInKm exceeds userVisibilityRadius (or fallback 10km)
-        const maxRadius = Number(r.userVisibilityRadius) || 10;
+        // Radius check: exclude if distanceInKm exceeds the global visibility radius configured by admin (or fallback 10km)
+        const maxRadius = Number(getCachedSettings()?.userVisibilityRadius) || 10;
         if (Number.isFinite(r.distanceInKm) && r.distanceInKm > maxRadius) {
           return false;
         }

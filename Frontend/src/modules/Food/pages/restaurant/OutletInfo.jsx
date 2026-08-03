@@ -33,6 +33,23 @@ const OWNER_NAME_REGEX = /^[A-Za-z]+(?:\s+[A-Za-z]+)*$/
 const EMAIL_REGEX = /^(?!.*\.\.)([A-Za-z0-9]+[._%+-]?)*[A-Za-z0-9]+@[A-Za-z0-9-]+\.[A-Za-z]{2,}$/
 const INDIAN_MOBILE_REGEX = /^[6-9]\d{9}$/
 const PAN_REGEX = /^[A-Z]{5}[0-9]{4}[A-Z]$/
+
+const normalizeLocationQuery = (value) => String(value || "").trim().toLowerCase()
+const extractPincode = (address) => {
+  if (!address || typeof address !== "string") return ""
+  const match = address.match(/\b[1-9][0-9]{5}\b/)
+  return match ? match[0] : ""
+}
+const fetchPincodeFromCoords = async (lat, lng) => {
+  if (!lat || !lng) return ""
+  try {
+    const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`)
+    const data = await res.json()
+    const postcode = data?.address?.postcode || ""
+    const match = postcode.match(/\b[1-9][0-9]{5}\b/)
+    return match ? match[0] : ""
+  } catch { return "" }
+}
 const GST_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/
 const FSSAI_REGEX = /^\d{14}$/
 const IFSC_REGEX = /^[A-Z]{4}0[A-Z0-9]{6}$/
@@ -70,6 +87,10 @@ export default function OutletInfo() {
     primaryContactNumber: "",
     ownerEmail: "",
     pureVegRestaurant: false,
+    openingTime: "",
+    closingTime: "",
+    openDays: [],
+    estimatedDeliveryTime: "",
   })
   const [savingBasic, setSavingBasic] = useState(false)
   const [showEditBankDialog, setShowEditBankDialog] = useState(false)
@@ -94,6 +115,29 @@ export default function OutletInfo() {
     fssaiExpiry: "",
   })
   const [savingCompliance, setSavingCompliance] = useState(false)
+  const [showEditAddressDialog, setShowEditAddressDialog] = useState(false)
+  const [addrSearchValue, setAddrSearchValue] = useState("")
+  const [addrSuggestions, setAddrSuggestions] = useState([])
+  const [isSearchingAddr, setIsSearchingAddr] = useState(false)
+  const [addrAutoLocked, setAddrAutoLocked] = useState(false)
+  const addrSearchInputRef = useRef(null)
+  const addrSearchContainerRef = useRef(null)
+  const addrPlacesAutocompleteServiceRef = useRef(null)
+  const addrPlacesDetailsServiceRef = useRef(null)
+  const addrPlacesSessionTokenRef = useRef(null)
+  const addrSuppressFetchRef = useRef(false)
+  const [addressForm, setAddressForm] = useState({
+    addressLine1: "",
+    addressLine2: "",
+    area: "",
+    city: "",
+    state: "",
+    pincode: "",
+    landmark: "",
+    latitude: "",
+    longitude: "",
+  })
+  const [savingAddress, setSavingAddress] = useState(false)
   const [restaurantId, setRestaurantId] = useState("")
   const [restaurantMongoId, setRestaurantMongoId] = useState("")
   const [uploadingImage, setUploadingImage] = useState(false)
@@ -375,7 +419,28 @@ export default function OutletInfo() {
       primaryContactNumber: String(restaurantData?.primaryContactNumber || ""),
       ownerEmail: String(restaurantData?.ownerEmail || ""),
       pureVegRestaurant: restaurantData?.pureVegRestaurant === true,
+      openingTime: String(restaurantData?.openingTime || ""),
+      closingTime: String(restaurantData?.closingTime || ""),
+      openDays: Array.isArray(restaurantData?.openDays) ? restaurantData.openDays : [],
+      estimatedDeliveryTime: String(restaurantData?.estimatedDeliveryTime || ""),
     })
+  }, [restaurantData])
+
+  useEffect(() => {
+    if (restaurantData?.location) {
+      const loc = restaurantData.location
+      setAddressForm({
+        addressLine1: String(loc.addressLine1 || ""),
+        addressLine2: String(loc.addressLine2 || ""),
+        area: String(loc.area || ""),
+        city: String(loc.city || ""),
+        state: String(loc.state || ""),
+        pincode: String(loc.pincode || ""),
+        landmark: String(loc.landmark || ""),
+        latitude: String(loc.latitude ?? ""),
+        longitude: String(loc.longitude ?? ""),
+      })
+    }
   }, [restaurantData])
 
   useEffect(() => {
@@ -879,7 +944,12 @@ export default function OutletInfo() {
       const payload = {
         ownerName,
         ownerEmail,
+        primaryContactNumber,
         pureVegRestaurant: basicForm.pureVegRestaurant === true,
+        openingTime: basicForm.openingTime || undefined,
+        closingTime: basicForm.closingTime || undefined,
+        openDays: basicForm.openDays,
+        estimatedDeliveryTime: basicForm.estimatedDeliveryTime || undefined,
       }
       const response = await restaurantAPI.updateProfile(payload)
       applyProfileSaveResult(response, "basic", payload)
@@ -889,6 +959,244 @@ export default function OutletInfo() {
       toast.error(error?.response?.data?.message || "Failed to update basic details")
     } finally {
       setSavingBasic(false)
+    }
+  }
+
+  // Close addr suggestions when clicking outside
+  useEffect(() => {
+    const handler = (e) => {
+      if (addrSearchContainerRef.current && !addrSearchContainerRef.current.contains(e.target)) {
+        setAddrSuggestions([])
+      }
+    }
+    document.addEventListener("mousedown", handler)
+    document.addEventListener("touchstart", handler)
+    return () => {
+      document.removeEventListener("mousedown", handler)
+      document.removeEventListener("touchstart", handler)
+    }
+  }, [])
+
+  // Initialize Google Places services when the address dialog opens
+  useEffect(() => {
+    if (!showEditAddressDialog) return
+    const tryInit = () => {
+      if (window.google?.maps?.places) {
+        const div = document.createElement("div")
+        if (!addrPlacesAutocompleteServiceRef.current) {
+          addrPlacesAutocompleteServiceRef.current = new window.google.maps.places.AutocompleteService()
+        }
+        if (!addrPlacesDetailsServiceRef.current) {
+          addrPlacesDetailsServiceRef.current = new window.google.maps.places.PlacesService(div)
+        }
+        if (!addrPlacesSessionTokenRef.current && window.google.maps.places.AutocompleteSessionToken) {
+          addrPlacesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+        }
+      }
+    }
+    tryInit()
+    // also sync search value with existing location on open
+    const loc = restaurantData?.location
+    if (loc) {
+      const display = loc.formattedAddress || loc.addressLine1 || ""
+      setAddrSearchValue(display)
+      setAddrAutoLocked(!!display)
+    } else {
+      setAddrSearchValue("")
+      setAddrAutoLocked(false)
+    }
+  }, [showEditAddressDialog, restaurantData])
+
+  // Hybrid search: Google Autocomplete → Nominatim fallback
+  useEffect(() => {
+    if (!showEditAddressDialog) return
+    if (addrSuppressFetchRef.current) {
+      addrSuppressFetchRef.current = false
+      return
+    }
+    const q = normalizeLocationQuery(addrSearchValue)
+    if (!q) {
+      setAddrSuggestions([])
+      setIsSearchingAddr(false)
+      setAddrAutoLocked(false)
+      setAddressForm({
+        addressLine1: "", addressLine2: "", landmark: "",
+        area: "", city: "", state: "", pincode: "", latitude: "", longitude: "",
+      })
+      return
+    }
+    if (q.length < 3) { setAddrSuggestions([]); return }
+
+    const t = setTimeout(async () => {
+      try {
+        setIsSearchingAddr(true)
+        if (addrPlacesAutocompleteServiceRef.current && window.google?.maps?.places?.PlacesServiceStatus) {
+          if (!addrPlacesSessionTokenRef.current && window.google.maps.places.AutocompleteSessionToken) {
+            addrPlacesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+          }
+          const predictions = await new Promise((resolve) => {
+            addrPlacesAutocompleteServiceRef.current.getPlacePredictions(
+              { input: q, componentRestrictions: { country: "in" }, sessionToken: addrPlacesSessionTokenRef.current || undefined },
+              (items, status) => {
+                const ok = status === window.google.maps.places.PlacesServiceStatus.OK
+                resolve(ok && Array.isArray(items) ? items : [])
+              }
+            )
+          })
+          if (predictions.length > 0) {
+            setAddrSuggestions(predictions.slice(0, 6).map((p) => ({
+              id: p.place_id, placeId: p.place_id,
+              display: p.description || "",
+              mainText: p.structured_formatting?.main_text || "",
+              secondaryText: p.structured_formatting?.secondary_text || "",
+              source: "google",
+            })))
+            return
+          }
+        }
+        // Nominatim fallback
+        const url = `https://nominatim.openstreetmap.org/search?format=json&addressdetails=1&limit=6&q=${encodeURIComponent(q)}&countrycodes=in`
+        const res = await fetch(url, { headers: { Accept: "application/json" } })
+        const json = await res.json()
+        setAddrSuggestions((Array.isArray(json) ? json : []).map((r) => ({
+          id: `n-${r.place_id}`, display: r.display_name || "",
+          lat: Number(r.lat), lng: Number(r.lon), addr: r.address || {}, source: "nominatim",
+        })))
+      } catch { setAddrSuggestions([]) }
+      finally { setIsSearchingAddr(false) }
+    }, 400)
+    return () => clearTimeout(t)
+  }, [addrSearchValue, showEditAddressDialog])
+
+  const handleAddrSuggestionClick = async (s) => {
+    if (s.source === "google" && s.placeId && addrPlacesDetailsServiceRef.current && window.google?.maps?.places?.PlacesServiceStatus) {
+      try {
+        const place = await new Promise((resolve, reject) => {
+          addrPlacesDetailsServiceRef.current.getDetails(
+            { placeId: s.placeId, fields: ["formatted_address", "address_components", "geometry"], sessionToken: addrPlacesSessionTokenRef.current || undefined },
+            (result, status) => {
+              if (status === window.google.maps.places.PlacesServiceStatus.OK && result) resolve(result)
+              else reject(new Error(String(status)))
+            }
+          )
+        })
+        const comps = Array.isArray(place?.address_components) ? place.address_components : []
+        const get = (types) => comps.find((c) => types.some((t) => c.types?.includes(t)))?.long_name || ""
+        const formattedAddress = place?.formatted_address || s.display || ""
+        const area = get(["sublocality_level_1", "sublocality", "neighborhood"]) || get(["locality"])
+        const city = get(["locality"]) || get(["administrative_area_level_2"])
+        const state = get(["administrative_area_level_1"]) || get(["administrative_area_level_2"])
+        const pincode = get(["postal_code"]) || extractPincode(formattedAddress)
+        const lat = place?.geometry?.location?.lat?.()
+        const lng = place?.geometry?.location?.lng?.()
+        const resolvedPincode = (!pincode && typeof lat === "number" && typeof lng === "number")
+          ? await fetchPincodeFromCoords(lat, lng) : pincode
+        setAddressForm((prev) => ({
+          ...prev,
+          area: area || prev.area,
+          city: city || prev.city,
+          state: state || prev.state,
+          pincode: resolvedPincode || prev.pincode,
+          latitude: typeof lat === "number" ? Number(lat.toFixed(6)) : prev.latitude,
+          longitude: typeof lng === "number" ? Number(lng.toFixed(6)) : prev.longitude,
+        }))
+        addrSuppressFetchRef.current = true
+        setAddrSearchValue(formattedAddress)
+        setAddrSuggestions([])
+        setAddrAutoLocked(true)
+        if (window.google?.maps?.places?.AutocompleteSessionToken) {
+          addrPlacesSessionTokenRef.current = new window.google.maps.places.AutocompleteSessionToken()
+        }
+        return
+      } catch {}
+    }
+    // Nominatim path
+    const { lat, lng, display, addr = {} } = s
+    const area = addr.suburb || addr.neighbourhood || addr.city_district || addr.locality || ""
+    const city = addr.city || addr.town || addr.village || ""
+    const state = addr.state || ""
+    const pincode = addr.postcode || extractPincode(display)
+    const resolvedPincode = (!pincode && lat && lng) ? await fetchPincodeFromCoords(lat, lng) : pincode
+    setAddressForm((prev) => ({
+      ...prev,
+      area: area || prev.area,
+      city: city || prev.city,
+      state: state || prev.state,
+      pincode: resolvedPincode || prev.pincode,
+      latitude: Number.isFinite(lat) ? lat : prev.latitude,
+      longitude: Number.isFinite(lng) ? lng : prev.longitude,
+    }))
+    addrSuppressFetchRef.current = true
+    setAddrSearchValue(display)
+    setAddrSuggestions([])
+    setAddrAutoLocked(true)
+  }
+
+  const handleSaveAddressDetails = async () => {
+    const addressLine1 = String(addressForm.addressLine1 || "").trim()
+    const addressLine2 = String(addressForm.addressLine2 || "").trim()
+    const landmark = String(addressForm.landmark || "").trim()
+    const area = String(addressForm.area || "").trim()
+    const city = String(addressForm.city || "").trim()
+    const state = String(addressForm.state || "").trim()
+    const pincode = String(addressForm.pincode || "").trim()
+    const lat = Number(addressForm.latitude)
+    const lng = Number(addressForm.longitude)
+
+    if (!area) {
+      toast.error("Area is required")
+      return
+    }
+    if (!city) {
+      toast.error("City is required")
+      return
+    }
+    if (!state) {
+      toast.error("State is required")
+      return
+    }
+    if (!pincode) {
+      toast.error("Pincode is required")
+      return
+    }
+    if (isNaN(lat) || lat < -90 || lat > 90) {
+      toast.error("Please enter a valid latitude (-90 to 90)")
+      return
+    }
+    if (isNaN(lng) || lng < -180 || lng > 180) {
+      toast.error("Please enter a valid longitude (-180 to 180)")
+      return
+    }
+
+    const addressParts = [addressLine1, addressLine2, landmark, area, city, state, pincode]
+      .map(p => p.trim())
+      .filter(Boolean)
+    const formattedAddress = addressParts.join(", ")
+
+    try {
+      setSavingAddress(true)
+      const payload = {
+        location: {
+          addressLine1,
+          addressLine2,
+          landmark,
+          area,
+          city,
+          state,
+          pincode,
+          latitude: lat,
+          longitude: lng,
+          formattedAddress,
+        }
+      }
+      const response = await restaurantAPI.updateProfile(payload)
+      applyProfileSaveResult(response, "location", payload)
+      setShowEditAddressDialog(false)
+      toast.success("Location details submitted for admin approval")
+    } catch (error) {
+      toast.error(error?.response?.data?.message || "Failed to update address details")
+    } finally {
+      setSavingAddress(false)
     }
   }
 
@@ -1202,11 +1510,48 @@ export default function OutletInfo() {
                   </span>
                 </div>
               </div>
+              <div>
+                <p className="text-xs text-slate-500">Operational hours</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {restaurantData?.openingTime && restaurantData?.closingTime 
+                    ? `${restaurantData.openingTime} - ${restaurantData.closingTime}`
+                    : "Not set"}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs text-slate-500">Estimated delivery time</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {restaurantData?.estimatedDeliveryTime || "Not set"}
+                </p>
+              </div>
+              <div className="sm:col-span-2">
+                <p className="text-xs text-slate-500">Open days</p>
+                <p className="text-sm font-medium text-slate-900">
+                  {restaurantData?.openDays && restaurantData.openDays.length > 0
+                    ? restaurantData.openDays.join(", ")
+                    : "Not set"}
+                </p>
+              </div>
             </div>
           </div>
 
           <div className="bg-white rounded-2xl p-4 border border-slate-200 shadow-sm">
-            <h3 className="text-sm font-semibold text-slate-900 mb-3">Address and location</h3>
+            <div className="flex items-start justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-slate-900">Address and location</h3>
+                {String(restaurantData?.locationUpdateStatus || "").toLowerCase() === "pending" && (
+                  <span className="inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold bg-amber-100 text-amber-700">
+                    Pending
+                  </span>
+                )}
+              </div>
+              <button 
+                onClick={() => setShowEditAddressDialog(true)} 
+                className="text-blue-600 text-sm font-medium"
+              >
+                Edit
+              </button>
+            </div>
             <div className="space-y-2">
               <div><p className="text-xs text-slate-500">Full address</p><p className="text-sm font-medium text-slate-900">{direct(fullAddress)}</p></div>
               {String(restaurantData?.locationUpdateStatus || "").toLowerCase() === "pending" ? (
@@ -1398,11 +1743,11 @@ export default function OutletInfo() {
       </Dialog>
 
       <Dialog open={showEditBasicDialog} onOpenChange={setShowEditBasicDialog}>
-        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%]">
-          <DialogHeader className="p-4 border-b border-gray-100">
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%] max-h-[85vh] flex flex-col">
+          <DialogHeader className="p-4 border-b border-gray-100 shrink-0">
             <DialogTitle className="text-lg font-bold">Edit basic details</DialogTitle>
           </DialogHeader>
-          <div className="p-4 space-y-3">
+          <div className="p-4 space-y-4 overflow-y-auto flex-1">
             <div>
               <p className="text-xs text-slate-500 mb-1">Owner name</p>
               <Input
@@ -1420,8 +1765,12 @@ export default function OutletInfo() {
               <p className="text-xs text-slate-500 mb-1">Primary contact</p>
               <Input
                 value={basicForm.primaryContactNumber}
-                readOnly
-                disabled
+                onChange={(e) =>
+                  setBasicForm((prev) => ({
+                    ...prev,
+                    primaryContactNumber: e.target.value.replace(/\D/g, "").slice(0, 10),
+                  }))
+                }
                 placeholder="Enter primary contact"
               />
             </div>
@@ -1439,12 +1788,17 @@ export default function OutletInfo() {
               />
             </div>
             <div>
-              <p className="text-xs text-slate-500 mb-2">Restaurant type (Not editable)</p>
+              <p className="text-xs text-slate-500 mb-2">Restaurant type</p>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  disabled
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors cursor-not-allowed opacity-60 ${
+                  onClick={() =>
+                    setBasicForm((prev) => ({
+                      ...prev,
+                      pureVegRestaurant: true,
+                    }))
+                  }
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     basicForm.pureVegRestaurant === true
                       ? "border-emerald-500 bg-emerald-50 text-emerald-700 font-semibold"
                       : "border-slate-200 bg-slate-50 text-slate-400"
@@ -1454,8 +1808,13 @@ export default function OutletInfo() {
                 </button>
                 <button
                   type="button"
-                  disabled
-                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors cursor-not-allowed opacity-60 ${
+                  onClick={() =>
+                    setBasicForm((prev) => ({
+                      ...prev,
+                      pureVegRestaurant: false,
+                    }))
+                  }
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
                     basicForm.pureVegRestaurant === false
                       ? "border-rose-500 bg-rose-50 text-rose-700 font-semibold"
                       : "border-slate-200 bg-slate-50 text-slate-400"
@@ -1465,8 +1824,78 @@ export default function OutletInfo() {
                 </button>
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Opening time</p>
+                <Input
+                  type="time"
+                  value={basicForm.openingTime}
+                  onChange={(e) =>
+                    setBasicForm((prev) => ({
+                      ...prev,
+                      openingTime: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Closing time</p>
+                <Input
+                  type="time"
+                  value={basicForm.closingTime}
+                  onChange={(e) =>
+                    setBasicForm((prev) => ({
+                      ...prev,
+                      closingTime: e.target.value,
+                    }))
+                  }
+                />
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Estimated delivery time (e.g. "30 min")</p>
+              <Input
+                value={basicForm.estimatedDeliveryTime}
+                onChange={(e) =>
+                  setBasicForm((prev) => ({
+                    ...prev,
+                    estimatedDeliveryTime: e.target.value,
+                  }))
+                }
+                placeholder="Enter estimated delivery time"
+              />
+            </div>
+            <div>
+              <p className="text-xs text-slate-500 mb-2">Open days</p>
+              <div className="flex flex-wrap gap-1.5">
+                {['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'].map(day => {
+                  const isSelected = basicForm.openDays.includes(day);
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() => {
+                        setBasicForm(prev => {
+                          const nextDays = prev.openDays.includes(day)
+                            ? prev.openDays.filter(d => d !== day)
+                            : [...prev.openDays, day];
+                          return { ...prev, openDays: nextDays };
+                        });
+                      }}
+                      className={`px-3 py-1.5 rounded-full text-xs font-semibold border transition-all ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 text-blue-700"
+                          : "border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+                      }`}
+                    >
+                      {day.slice(0, 3)}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
-          <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3">
+          <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3 shrink-0">
             <Button variant="outline" onClick={() => setShowEditBasicDialog(false)}>Cancel</Button>
             <Button onClick={handleSaveBasicDetails} disabled={savingBasic} className="bg-blue-600 text-white">
               {savingBasic ? "Saving..." : "Save"}
@@ -1474,6 +1903,144 @@ export default function OutletInfo() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <Dialog open={showEditAddressDialog} onOpenChange={setShowEditAddressDialog}>
+        <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-xl w-[90%] max-h-[85vh] flex flex-col">
+          <DialogHeader className="p-4 border-b border-gray-100 shrink-0">
+            <DialogTitle className="text-lg font-bold">Edit address and location</DialogTitle>
+          </DialogHeader>
+          <div className="p-4 space-y-4 overflow-y-auto flex-1">
+            {/* Search location */}
+            <div ref={addrSearchContainerRef} className="relative">
+              <p className="text-xs font-semibold text-gray-700 mb-1">Search location</p>
+              <div className="relative">
+                <Input
+                  ref={addrSearchInputRef}
+                  value={addrSearchValue}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    setAddrSearchValue(val)
+                    if (!val.trim()) {
+                      setAddrAutoLocked(false)
+                      setAddrSuggestions([])
+                      setAddressForm({ addressLine1: "", addressLine2: "", landmark: "", area: "", city: "", state: "", pincode: "", latitude: "", longitude: "" })
+                    }
+                  }}
+                  placeholder="Start typing your restaurant address..."
+                  className="pr-8"
+                />
+                {isSearchingAddr && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#FA0272] border-t-transparent" />
+                  </div>
+                )}
+              </div>
+              {addrSuggestions.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-xl z-[999999] overflow-hidden max-h-60 overflow-y-auto">
+                  {addrSuggestions.map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => handleAddrSuggestionClick(s)}
+                      className="w-full px-4 py-2 text-left text-[13px] hover:bg-orange-50 border-b border-gray-100 last:border-none font-medium text-gray-700"
+                    >
+                      <span className="block truncate">{s.mainText || s.display}</span>
+                      {s.secondaryText && (
+                        <span className="block truncate text-[11px] text-gray-500">{s.secondaryText}</span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <p className="text-[11px] text-gray-400 mt-1">Select a suggestion to auto-fill area/city/state/pincode and coordinates.</p>
+            </div>
+
+            {/* Shop no. / building no. */}
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Shop no. / building no.*</p>
+              <Input
+                value={addressForm.addressLine1}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, addressLine1: e.target.value }))}
+                placeholder="Shop no. / building no."
+              />
+            </div>
+            {/* Floor / tower */}
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Floor / tower*</p>
+              <Input
+                value={addressForm.addressLine2}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, addressLine2: e.target.value }))}
+                placeholder="Floor / tower"
+              />
+            </div>
+            {/* Landmark */}
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Nearby landmark*</p>
+              <Input
+                value={addressForm.landmark}
+                onChange={(e) => setAddressForm((prev) => ({ ...prev, landmark: e.target.value }))}
+                placeholder="Nearby landmark"
+              />
+            </div>
+            {/* Area — read-only when auto-locked */}
+            <div>
+              <p className="text-xs text-slate-500 mb-1">Area / Sector / Locality*</p>
+              <Input
+                value={addressForm.area}
+                readOnly={addrAutoLocked && !!addressForm.area}
+                onChange={(e) => !addrAutoLocked && setAddressForm((prev) => ({ ...prev, area: e.target.value }))}
+                placeholder="Area / Sector / Locality"
+                className={addrAutoLocked && !!addressForm.area ? "bg-gray-50 text-gray-500 cursor-default" : ""}
+              />
+            </div>
+            {/* City — read-only when auto-locked */}
+            <div>
+              <p className="text-xs text-slate-500 mb-1">City*</p>
+              <Input
+                value={addressForm.city}
+                readOnly={addrAutoLocked && !!addressForm.city}
+                onChange={(e) => !addrAutoLocked && setAddressForm((prev) => ({ ...prev, city: e.target.value }))}
+                placeholder="City"
+                className={addrAutoLocked && !!addressForm.city ? "bg-gray-50 text-gray-500 cursor-default" : ""}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              {/* State — read-only when auto-locked */}
+              <div>
+                <p className="text-xs text-slate-500 mb-1">State*</p>
+                <Input
+                  value={addressForm.state}
+                  readOnly={addrAutoLocked && !!addressForm.state}
+                  onChange={(e) => !addrAutoLocked && setAddressForm((prev) => ({ ...prev, state: e.target.value }))}
+                  placeholder="State"
+                  className={addrAutoLocked && !!addressForm.state ? "bg-gray-50 text-gray-500 cursor-default" : ""}
+                />
+              </div>
+              {/* Pincode — read-only when auto-locked */}
+              <div>
+                <p className="text-xs text-slate-500 mb-1">Pincode*</p>
+                <Input
+                  value={addressForm.pincode}
+                  readOnly={addrAutoLocked && !!addressForm.pincode}
+                  onChange={(e) => !addrAutoLocked && setAddressForm((prev) => ({ ...prev, pincode: e.target.value }))}
+                  placeholder="Pincode"
+                  className={addrAutoLocked && !!addressForm.pincode ? "bg-gray-50 text-gray-500 cursor-default" : ""}
+                />
+              </div>
+            </div>
+            <p className="text-[11px] text-gray-400 -mt-2">Please ensure that this address is the same as mentioned on your FSSAI license.</p>
+
+
+          </div>
+          <DialogFooter className="p-4 bg-gray-50 flex flex-row gap-3 shrink-0">
+            <Button variant="outline" onClick={() => setShowEditAddressDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveAddressDetails} disabled={savingAddress} className="bg-blue-600 text-white">
+              {savingAddress ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={showEditComplianceDialog} onOpenChange={setShowEditComplianceDialog}>
         <DialogContent className="sm:max-w-lg p-0 overflow-hidden rounded-xl w-[92%]">

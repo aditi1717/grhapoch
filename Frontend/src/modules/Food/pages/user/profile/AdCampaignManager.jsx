@@ -92,7 +92,8 @@ export default function AdCampaignManager() {
       setLoading(true);
       const res = await api.getMyAdCampaigns();
       if (res.data.success) {
-        setAds(res.data.data.campaigns || res.data.data.ads || []);
+        const rawAds = res.data.data.campaigns || res.data.data.ads || [];
+        setAds(rawAds.filter(ad => ad.paymentStatus !== "pending"));
       }
     } catch (err) {
       console.error("Error loading ad campaigns:", err);
