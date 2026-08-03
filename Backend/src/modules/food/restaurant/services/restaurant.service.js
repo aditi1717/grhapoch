@@ -678,16 +678,7 @@ export const registerRestaurant = async (payload, files) => {
 
     const normalizedOpeningTime = normalizeRestaurantTime(openingTime);
     const normalizedClosingTime = normalizeRestaurantTime(closingTime);
-    const openingMinutes = timeToMinutes(normalizedOpeningTime);
-    const closingMinutes = timeToMinutes(normalizedClosingTime);
-    if (openingMinutes !== null && closingMinutes !== null) {
-        if (openingMinutes === closingMinutes) {
-            throw new ValidationError('Opening time and closing time cannot be same');
-        }
-        if (closingMinutes < openingMinutes) {
-            throw new ValidationError('Closing time cannot be less than opening time');
-        }
-    }
+
     const estimatedDeliveryTimeText = String(estimatedDeliveryTime || '').trim();
     const estimatedDeliveryTimeMinutes = parseEstimatedDeliveryMinutes(estimatedDeliveryTimeText);
 
@@ -1294,16 +1285,7 @@ export const updateRestaurantProfile = async (restaurantId, body = {}) => {
         }
     }
 
-    const openingMinutes = body.openingTime !== undefined ? timeToMinutes(update.openingTime) : null;
-    const closingMinutes = body.closingTime !== undefined ? timeToMinutes(update.closingTime) : null;
-    if (openingMinutes !== null && closingMinutes !== null) {
-        if (openingMinutes === closingMinutes) {
-            throw new ValidationError('Opening time and closing time cannot be same');
-        }
-        if (closingMinutes < openingMinutes) {
-            throw new ValidationError('Closing time cannot be less than opening time');
-        }
-    }
+
 
     if (body.menuImages !== undefined) {
         if (!Array.isArray(body.menuImages)) {

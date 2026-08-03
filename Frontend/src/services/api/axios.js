@@ -171,7 +171,11 @@ function createModuleClient(moduleName) {
           original.headers.Authorization = `Bearer ${newAccessToken}`;
           return client(original);
         }
-      } catch (_) {
+      } catch (refreshErr) {
+        const isNetworkError = !refreshErr?.response || refreshErr?.code === 'ERR_NETWORK' || refreshErr?.message === 'Network Error';
+        if (isNetworkError) {
+          return Promise.reject(err);
+        }
         onRefreshFailed();
         return Promise.reject(err);
       } finally {

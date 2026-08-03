@@ -120,15 +120,8 @@ const timeToMinutes = (value) => {
 };
 
 const validateOpeningClosingTimes = (openingTime, closingTime) => {
-    const open = timeToMinutes(openingTime);
-    const close = timeToMinutes(closingTime);
-    if (open === null || close === null) return;
-    if (open === close) {
-        throw new ValidationError('Opening time and closing time cannot be same');
-    }
-    if (close < open) {
-        throw new ValidationError('Closing time cannot be less than opening time');
-    }
+    // Disabled as opening and closing times can be anything
+    return;
 };
 
 const normalizeDayName = (value) => {

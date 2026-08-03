@@ -1450,15 +1450,7 @@ export default function RestaurantOnboarding() {
     if (!step2.closingTime?.trim()) {
       errors.push("Closing time is required")
     }
-    const openingMinutes = timeStringToMinutes(step2.openingTime)
-    const closingMinutes = timeStringToMinutes(step2.closingTime)
-    if (openingMinutes !== null && closingMinutes !== null) {
-      if (openingMinutes === closingMinutes) {
-        errors.push("Opening time and closing time cannot be same")
-      } else if (closingMinutes < openingMinutes) {
-        errors.push("Closing time cannot be less than opening time")
-      }
-    }
+
     if (!step2.openDays || step2.openDays.length === 0) {
       errors.push("Please select at least one open day")
     }
@@ -2603,7 +2595,7 @@ export default function RestaurantOnboarding() {
                     key={idx}
                     className="relative aspect-4/5 rounded-xl overflow-hidden bg-gray-100"
                   >
-                    <div className="absolute top-1 right-1 z-30">
+                    <div className="absolute top-1 right-1 z-10">
                       <button
                         type="button"
                         onClick={async (e) => {
@@ -2744,18 +2736,6 @@ export default function RestaurantOnboarding() {
               value={step2.openingTime || ""}
               onChange={(val) => {
                 const nextOpening = normalizeTimeValue(val) || ""
-                const openingMinutes = timeStringToMinutes(nextOpening)
-                const closingMinutes = timeStringToMinutes(step2.closingTime)
-                if (openingMinutes !== null && closingMinutes !== null) {
-                  if (openingMinutes === closingMinutes) {
-                    toast.error("Opening time and closing time cannot be same")
-                    return
-                  }
-                  if (closingMinutes < openingMinutes) {
-                    toast.error("Closing time cannot be less than opening time")
-                    return
-                  }
-                }
                 setStep2((prev) => ({ ...prev, openingTime: nextOpening }))
               }}
             />
@@ -2764,18 +2744,6 @@ export default function RestaurantOnboarding() {
               value={step2.closingTime || ""}
               onChange={(val) => {
                 const nextClosing = normalizeTimeValue(val) || ""
-                const openingMinutes = timeStringToMinutes(step2.openingTime)
-                const closingMinutes = timeStringToMinutes(nextClosing)
-                if (openingMinutes !== null && closingMinutes !== null) {
-                  if (openingMinutes === closingMinutes) {
-                    toast.error("Opening time and closing time cannot be same")
-                    return
-                  }
-                  if (closingMinutes < openingMinutes) {
-                    toast.error("Closing time cannot be less than opening time")
-                    return
-                  }
-                }
                 setStep2((prev) => ({ ...prev, closingTime: nextClosing }))
               }}
             />

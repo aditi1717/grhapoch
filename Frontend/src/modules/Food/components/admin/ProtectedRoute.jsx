@@ -36,6 +36,13 @@ export default function ProtectedRoute({ children }) {
           setChecking(false)
         }
       } catch (_error) {
+        const isNetworkError = !_error?.response || _error?.code === 'ERR_NETWORK' || _error?.message === 'Network Error';
+        if (isNetworkError) {
+          if (isMounted) {
+            setChecking(false)
+          }
+          return
+        }
         clearModuleAuth("admin")
         if (isMounted) {
           setAuthError(true)

@@ -1144,16 +1144,26 @@ export default function Cart() {
             ? response.data.data.items
             : []
           if (resolvedItems.length > 0) {
+            const buildLocalLineId = (itemId, variantId = "") =>
+              `${String(itemId || "")}::${String(variantId || "base")}`
+
             const priceById = new Map(
-              resolvedItems.map((item) => [String(item.itemId), item]),
+              resolvedItems.map((item) => [buildLocalLineId(item.itemId, item.variantId), item]),
             )
             const nextCart = cart.map((cartItem) => {
-              const itemId = String(cartItem.itemId || cartItem.id || "")
-              const resolved = priceById.get(itemId)
+              const lineId = cartItem.id || buildLocalLineId(cartItem.itemId, cartItem.variantId)
+              const resolved = priceById.get(lineId)
               if (!resolved) return cartItem
 
               const nextPrice = Number(resolved.price)
-              if (!Number.isFinite(nextPrice) || nextPrice === Number(cartItem.price)) {
+              const nextVariantPrice = Number(resolved.variantPrice ?? nextPrice)
+              const nextVariantName = resolved.variantName || cartItem.variantName
+
+              if (
+                nextPrice === Number(cartItem.price) &&
+                nextVariantPrice === Number(cartItem.variantPrice) &&
+                nextVariantName === cartItem.variantName
+              ) {
                 return cartItem
               }
 
@@ -1161,8 +1171,8 @@ export default function Cart() {
                 ...cartItem,
                 name: resolved.name || cartItem.name,
                 price: nextPrice,
-                variantPrice: Number(resolved.variantPrice ?? nextPrice),
-                variantName: resolved.variantName || cartItem.variantName,
+                variantPrice: nextVariantPrice,
+                variantName: nextVariantName,
               }
             })
 

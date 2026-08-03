@@ -478,15 +478,7 @@ export default function AddRestaurant() {
     if (!step2.estimatedDeliveryTime?.trim()) errors.push("Estimated delivery time is required")
     if (!step2.openingTime?.trim()) errors.push("Opening time is required")
     if (!step2.closingTime?.trim()) errors.push("Closing time is required")
-    const openingMinutes = timeStringToMinutes(step2.openingTime)
-    const closingMinutes = timeStringToMinutes(step2.closingTime)
-    if (openingMinutes !== null && closingMinutes !== null) {
-      if (openingMinutes === closingMinutes) {
-        errors.push("Opening time and closing time cannot be same")
-      } else if (closingMinutes < openingMinutes) {
-        errors.push("Closing time cannot be less than opening time")
-      }
-    }
+
     if (!step2.openDays || step2.openDays.length === 0) errors.push("Please select at least one open day")
     return errors
   }
@@ -1436,20 +1428,7 @@ export default function AddRestaurant() {
                 type="time"
                 value={step2.openingTime || ""}
                 onChange={(e) => {
-                  const nextOpening = e.target.value
-                  const closingMinutes = timeStringToMinutes(step2.closingTime)
-                  const openingMinutes = timeStringToMinutes(nextOpening)
-                  if (openingMinutes !== null && closingMinutes !== null) {
-                    if (openingMinutes === closingMinutes) {
-                      toast.error("Opening time and closing time cannot be same")
-                      return
-                    }
-                    if (closingMinutes < openingMinutes) {
-                      toast.error("Closing time cannot be less than opening time")
-                      return
-                    }
-                  }
-                  setStep2({ ...step2, openingTime: nextOpening })
+                  setStep2({ ...step2, openingTime: e.target.value })
                 }}
                 autoComplete="off"
                 className="bg-white text-sm"
@@ -1461,20 +1440,7 @@ export default function AddRestaurant() {
                 type="time"
                 value={step2.closingTime || ""}
                 onChange={(e) => {
-                  const nextClosing = e.target.value
-                  const openingMinutes = timeStringToMinutes(step2.openingTime)
-                  const closingMinutes = timeStringToMinutes(nextClosing)
-                  if (openingMinutes !== null && closingMinutes !== null) {
-                    if (openingMinutes === closingMinutes) {
-                      toast.error("Opening time and closing time cannot be same")
-                      return
-                    }
-                    if (closingMinutes < openingMinutes) {
-                      toast.error("Closing time cannot be less than opening time")
-                      return
-                    }
-                  }
-                  setStep2({ ...step2, closingTime: nextClosing })
+                  setStep2({ ...step2, closingTime: e.target.value })
                 }}
                 autoComplete="off"
                 className="bg-white text-sm"

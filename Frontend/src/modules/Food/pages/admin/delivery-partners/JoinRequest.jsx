@@ -505,9 +505,7 @@ export default function JoinRequest() {
                 </select>
                 <span className="text-sm text-slate-600">entries</span>
               </div>
-              <p className="text-sm text-slate-600">
-                Showing {Math.min(filteredRequests.length, (currentPage - 1) * itemsPerPage + 1)} to {Math.min(currentPage * itemsPerPage, filteredRequests.length)} of {filteredRequests.length} requests
-              </p>
+
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
